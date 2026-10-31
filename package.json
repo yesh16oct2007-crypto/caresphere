@@ -1,0 +1,54 @@
+{
+  "name": "caresphere",
+  "version": "1.0.0",
+  "description": "CareSphere - AI-Powered Multilingual Hospital Information and Patient Assistance Platform",
+  "main": "server/src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:client": "npm run --prefix client dev",
+    "postinstall": "npm run --prefix client install",
+    "build:client": "npm run --prefix client build",
+    "build:server": "tsc -p server/tsconfig.json && node -e \"import('fs').then(fs => { fs.mkdirSync('server/dist/db', {recursive: true}); fs.copyFileSync('server/src/db/schema.sql', 'server/dist/db/schema.sql'); })\"",
+    "build": "npm run build:client && npm run build:server",
+    "start": "node server/dist/index.js",
+    "start:dev": "tsx server/src/index.ts",
+    "seed": "tsx server/src/db/seed.ts",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "healthcare",
+    "multilingual",
+    "hospital",
+    "ai-assistant",
+    "appointments"
+  ],
+  "author": "CareSphere Team",
+  "license": "ISC",
+  "dependencies": {
+    "@types/multer": "^2.3.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/node": "^22.13.4",
+    "@types/supertest": "^6.0.2",
+    "concurrently": "^9.1.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

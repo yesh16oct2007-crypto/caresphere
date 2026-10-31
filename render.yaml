@@ -1,0 +1,36 @@
+# ==============================================================================
+# CareSphere - Render Infrastructure as Code (render.yaml)
+# Production Deployment Blueprint for https://render.com
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Option 1: Full-Stack Web Service (Recommended)
+  # Deploys backend API and pre-compiled client as a unified high-performance service.
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: caresphere
+    env: node
+    plan: free # Change to starter if persistent disk or zero-sleep is desired
+    region: oregon # Choose: oregon, frankfurt, ohio, singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+        # Set your Google Gemini API Key in the Render dashboard environment tab
+        # (Optional: CareSphere features a built-in multilingual fallback engine)
+
+    # Optional: Attach persistent disk on Starter plan ($7/mo) to preserve SQLite & uploads across deploys
+    # disk:
+    #   name: caresphere-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
