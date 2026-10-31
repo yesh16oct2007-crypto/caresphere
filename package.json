@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch server/src/index.ts",
     "dev:client": "npm run --prefix client dev",
-    "postinstall": "npm run --prefix client install",
+    "postinstall": "npm run --prefix client",
     "build:client": "npm run --prefix client build",
     "build:server": "tsc -p server/tsconfig.json && node -e \"import('fs').then(fs => { fs.mkdirSync('server/dist/db', {recursive: true}); fs.copyFileSync('server/src/db/schema.sql', 'server/dist/db/schema.sql'); })\"",
     "build": "npm run build:client && npm run build:server",
