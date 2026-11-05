@@ -243,7 +243,7 @@ export function login(req: Request, res: Response): void {
     }
 
     const user = db.prepare(`
-      SELECT id, name, email, phone, password_hash, role, preferred_language
+      SELECT id, name, email, phone, password_hash, role, preferred_language, hospital_id
       FROM users WHERE email = ?
     `).get(email) as any;
 
@@ -262,8 +262,8 @@ export function login(req: Request, res: Response): void {
 
     if (user.role === 'doctor') {
       const doc = db.prepare(`
-        SELECT id as doctor_id, hospital_name, hospital_location, registration_number, specialization, qualifications,
-               experience_years, consultation_fee, verification_status, department_id
+        SELECT id as doctor_id, hospital_id, hospital_name, hospital_location, registration_number, specialization, qualifications,
+               experience_years, consultation_fee, teleconsultation_available, teleconsultation_fee, verification_status, department_id
         FROM doctor_profiles WHERE user_id = ?
       `).get(user.id) as any;
       if (doc) {
@@ -277,10 +277,13 @@ export function login(req: Request, res: Response): void {
       if (patient) {
         extraDetails = { patient };
       }
+    } else if ((user.role === 'hospital_admin' || user.role === 'admin') && user.hospital_id) {
+      const hosp = db.prepare('SELECT id, name, code, location, city FROM hospitals WHERE id = ?').get(user.hospital_id) as any;
+      if (hosp) extraDetails.hospital = hosp;
     }
 
     const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: user.role, preferred_language: user.preferred_language },
+      { id: user.id, name: user.name, email: user.email, role: user.role, preferred_language: user.preferred_language, hospital_id: user.hospital_id },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -297,6 +300,7 @@ export function login(req: Request, res: Response): void {
         phone: user.phone,
         role: user.role,
         preferred_language: user.preferred_language,
+        hospital_id: user.hospital_id,
         ...extraDetails
       }
     });
@@ -314,7 +318,7 @@ export function getCurrentUser(req: AuthenticatedRequest, res: Response): void {
     }
 
     const user = db.prepare(`
-      SELECT id, name, email, phone, role, preferred_language, created_at
+      SELECT id, name, email, phone, role, preferred_language, hospital_id, created_at
       FROM users WHERE id = ?
     `).get(req.user.id) as any;
 
@@ -338,6 +342,9 @@ export function getCurrentUser(req: AuthenticatedRequest, res: Response): void {
         SELECT * FROM patient_profiles WHERE user_id = ?
       `).get(user.id) as any;
       extraDetails = { patient };
+    } else if ((user.role === 'hospital_admin' || user.role === 'admin') && user.hospital_id) {
+      const hosp = db.prepare('SELECT id, name, code, location, city, emergency_hotline FROM hospitals WHERE id = ?').get(user.hospital_id) as any;
+      if (hosp) extraDetails.hospital = hosp;
     }
 
     res.json({

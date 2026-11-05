@@ -84,6 +84,70 @@ export function initDatabase(): void {
     if (!colNames.has('hospital_location')) {
       db.exec("ALTER TABLE doctor_profiles ADD COLUMN hospital_location TEXT DEFAULT 'Main Campus, Bengaluru'");
     }
+    if (!colNames.has('hospital_id')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN hospital_id INTEGER REFERENCES hospitals(id)");
+    }
+    if (!colNames.has('teleconsultation_available')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN teleconsultation_available INTEGER DEFAULT 1");
+    }
+    if (!colNames.has('teleconsultation_fee')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN teleconsultation_fee INTEGER DEFAULT 500");
+    }
+
+    // Auto-migrate users columns and role check if needed
+    const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+    const userColNames = new Set(userColumns.map(c => c.name));
+    if (!userColNames.has('hospital_id')) {
+      db.exec("ALTER TABLE users ADD COLUMN hospital_id INTEGER REFERENCES hospitals(id)");
+    }
+
+    // Check if users table needs constraint upgrade for hospital_admin / superadmin
+    const userSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql: string } | undefined;
+    if (userSqlRow && userSqlRow.sql && !userSqlRow.sql.includes('hospital_admin')) {
+      db.exec("PRAGMA foreign_keys=OFF;");
+      db.exec(`
+        CREATE TABLE users_migrated (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          phone TEXT,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin', 'hospital_admin', 'superadmin')),
+          preferred_language TEXT NOT NULL DEFAULT 'en',
+          hospital_id INTEGER REFERENCES hospitals(id),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO users_migrated (id, name, email, phone, password_hash, role, preferred_language, hospital_id, created_at, updated_at)
+          SELECT id, name, email, phone, password_hash, role, preferred_language, hospital_id, created_at, updated_at FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_migrated RENAME TO users;
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      `);
+      db.exec("PRAGMA foreign_keys=ON;");
+    }
+
+    // Auto-migrate appointments columns
+    const apptColumns = db.prepare('PRAGMA table_info(appointments)').all() as { name: string }[];
+    const apptColNames = new Set(apptColumns.map(c => c.name));
+    if (!apptColNames.has('consultation_type')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN consultation_type TEXT DEFAULT 'in_person'");
+    }
+    if (!apptColNames.has('video_room_id')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN video_room_id TEXT");
+    }
+    if (!apptColNames.has('video_session_status')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN video_session_status TEXT DEFAULT 'scheduled'");
+    }
+    if (!apptColNames.has('meeting_link')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN meeting_link TEXT");
+    }
+    if (!apptColNames.has('prescription_url')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN prescription_url TEXT");
+    }
+    if (!apptColNames.has('hospital_id')) {
+      db.exec("ALTER TABLE appointments ADD COLUMN hospital_id INTEGER REFERENCES hospitals(id)");
+    }
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

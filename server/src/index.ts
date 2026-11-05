@@ -53,6 +53,73 @@ import {
   markAllNotificationsRead
 } from './controllers/hospitalController.js';
 import { chatWithAssistant } from './controllers/aiController.js';
+import { uploadRecord, uploadReport } from './middleware/uploadMiddleware.js';
+import {
+  uploadMedicalRecord,
+  getPatientMedicalRecords,
+  getMedicalRecordById,
+  downloadMedicalRecord,
+  deleteMedicalRecord,
+  shareMedicalRecord,
+  revokeMedicalRecordShare,
+  getMedicalRecordAccessLogs,
+  getRecordsSharedWithDoctor
+} from './controllers/medicalRecordController.js';
+import {
+  getTeleconsultationDoctors,
+  bookOnlineConsultation,
+  getConsultationRoom,
+  postRoomSignalOrMessage,
+  completeOnlineConsultation,
+  getMyOnlineConsultations
+} from './controllers/consultationController.js';
+import {
+  getAdminHospitals,
+  getAnalyticsOverview,
+  getHospitalDetailedAnalytics,
+  exportAnalyticsReport
+} from './controllers/analyticsController.js';
+import {
+  explainMedicalReport,
+  getReportExplainerHistory
+} from './controllers/aiReportExplainerController.js';
+import {
+  getLiveResources,
+  getHospitalResources,
+  updateHospitalResource
+} from './controllers/resourceController.js';
+import {
+  getPatientMedicines,
+  addMedicineReminder,
+  logMedicineDose,
+  deleteMedicineReminder,
+  getMedicineHistory
+} from './controllers/medicineReminderController.js';
+import {
+  getInsuranceProviders,
+  getHospitalInsuranceInfo,
+  getInsuranceComparison,
+  getMyPolicies,
+  saveMyPolicy,
+  deleteMyPolicy
+} from './controllers/insuranceController.js';
+import {
+  getNavigationHospitals,
+  getHospitalFloorData,
+  computeIndoorRoute
+} from './controllers/navigationController.js';
+import {
+  getMyFollowUps,
+  getDoctorFollowUps,
+  scheduleFollowUp,
+  submitPatientProgress,
+  reviewPatientProgress
+} from './controllers/followupController.js';
+import {
+  getAllHospitals,
+  createHospital,
+  updateHospital
+} from './controllers/hospitalMgmtController.js';
 
 dotenv.config();
 
@@ -173,6 +240,72 @@ app.put('/api/notifications/read-all', authenticateToken, markAllNotificationsRe
 
 // ----------------- AI ASSISTANT -----------------
 app.post('/api/ai/chat', simpleRateLimiter(40, 60000), chatWithAssistant);
+
+// ----------------- 1. DIGITAL PATIENT MEDICAL RECORDS -----------------
+app.post('/api/medical-records', authenticateToken, uploadRecord.single('file'), uploadMedicalRecord);
+app.get('/api/medical-records', authenticateToken, getPatientMedicalRecords);
+app.get('/api/medical-records/shared-with-me', authenticateToken, requireRole(['doctor']), getRecordsSharedWithDoctor);
+app.get('/api/medical-records/:id', authenticateToken, getMedicalRecordById);
+app.get('/api/medical-records/:id/download', authenticateToken, downloadMedicalRecord);
+app.delete('/api/medical-records/:id', authenticateToken, deleteMedicalRecord);
+app.post('/api/medical-records/:id/share', authenticateToken, shareMedicalRecord);
+app.delete('/api/medical-records/:id/share/:doctorId', authenticateToken, revokeMedicalRecordShare);
+app.get('/api/medical-records/:id/logs', authenticateToken, getMedicalRecordAccessLogs);
+
+// ----------------- 2. ONLINE DOCTOR CONSULTATION -----------------
+app.get('/api/consultations/doctors', getTeleconsultationDoctors);
+app.post('/api/consultations/book', authenticateToken, bookOnlineConsultation);
+app.get('/api/consultations/my', authenticateToken, getMyOnlineConsultations);
+app.get('/api/consultations/room/:roomId', authenticateToken, getConsultationRoom);
+app.post('/api/consultations/room/:roomId/signal', authenticateToken, postRoomSignalOrMessage);
+app.post('/api/consultations/room/:roomId/complete', authenticateToken, requireRole(['doctor']), completeOnlineConsultation);
+
+// ----------------- 3. HOSPITAL-WISE ADMIN ANALYTICS -----------------
+app.get('/api/admin/analytics/overview', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getAnalyticsOverview);
+app.get('/api/admin/analytics/hospitals', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getAdminHospitals);
+app.get('/api/admin/analytics/hospital/:hospitalId', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getHospitalDetailedAnalytics);
+app.get('/api/admin/analytics/export', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), exportAnalyticsReport);
+
+// ----------------- 4. AI MEDICAL REPORT EXPLAINER -----------------
+app.post('/api/ai/explain-report', authenticateToken, uploadReport.single('file'), explainMedicalReport);
+app.get('/api/ai/report-history', authenticateToken, getReportExplainerHistory);
+
+// ----------------- 5. LIVE HOSPITAL RESOURCE AVAILABILITY -----------------
+app.get('/api/resources', getLiveResources);
+app.get('/api/resources/hospital/:hospitalId', getHospitalResources);
+app.put('/api/resources/:id', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), updateHospitalResource);
+
+// ----------------- 6. MEDICINE REMINDER SYSTEM -----------------
+app.get('/api/medicines', authenticateToken, requireRole(['patient']), getPatientMedicines);
+app.post('/api/medicines', authenticateToken, requireRole(['patient']), addMedicineReminder);
+app.post('/api/medicines/:id/log', authenticateToken, requireRole(['patient']), logMedicineDose);
+app.delete('/api/medicines/:id', authenticateToken, requireRole(['patient']), deleteMedicineReminder);
+app.get('/api/medicines/history', authenticateToken, requireRole(['patient']), getMedicineHistory);
+
+// ----------------- 7. HEALTH INSURANCE ASSISTANCE -----------------
+app.get('/api/insurance/providers', getInsuranceProviders);
+app.get('/api/insurance/hospital/:hospitalId', getHospitalInsuranceInfo);
+app.get('/api/insurance/comparison', getInsuranceComparison);
+app.get('/api/insurance/my-policies', authenticateToken, requireRole(['patient']), getMyPolicies);
+app.post('/api/insurance/my-policies', authenticateToken, requireRole(['patient']), saveMyPolicy);
+app.delete('/api/insurance/my-policies/:id', authenticateToken, requireRole(['patient']), deleteMyPolicy);
+
+// ----------------- 8. HOSPITAL INDOOR NAVIGATION -----------------
+app.get('/api/navigation/hospitals', getNavigationHospitals);
+app.get('/api/navigation/hospital/:hospitalId/floors', getHospitalFloorData);
+app.get('/api/navigation/route', computeIndoorRoute);
+
+// ----------------- 9. REMOTE PATIENT FOLLOW-UP -----------------
+app.get('/api/followups/my', authenticateToken, requireRole(['patient']), getMyFollowUps);
+app.get('/api/followups/doctor', authenticateToken, requireRole(['doctor']), getDoctorFollowUps);
+app.post('/api/followups', authenticateToken, requireRole(['doctor']), scheduleFollowUp);
+app.put('/api/followups/:id/submit-progress', authenticateToken, requireRole(['patient']), submitPatientProgress);
+app.put('/api/followups/:id/review', authenticateToken, requireRole(['doctor']), reviewPatientProgress);
+
+// ----------------- 10. MULTI-HOSPITAL MANAGEMENT -----------------
+app.get('/api/hospitals', getAllHospitals);
+app.post('/api/admin/hospitals', authenticateToken, requireRole(['admin', 'superadmin']), createHospital);
+app.put('/api/admin/hospitals/:id', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), updateHospital);
 
 // ----------------- SERVE STATIC FRONTEND (IN PRODUCTION) -----------------
 const clientDistCandidates = [

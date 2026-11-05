@@ -27,7 +27,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     // If doctor attempts to open admin or patient attempts doctor, redirect to their home or their dashboard
     if (role === 'doctor') return <Navigate to="/dashboard/doctor" replace />;
-    if (role === 'admin') return <Navigate to="/dashboard/admin" replace />;
+    if (role === 'admin' || role === 'hospital_admin' || role === 'superadmin') {
+      return <Navigate to="/dashboard/admin" replace />;
+    }
     return <Navigate to="/dashboard/patient" replace />;
   }
 

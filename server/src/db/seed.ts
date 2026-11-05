@@ -508,7 +508,364 @@ export function seedDatabase() {
     insertAnn.run(a.title, a.content, a.priority);
   });
 
-  // 9. Initial Audit Log
+  // 9. Hospitals Network
+  const hospitals = [
+    {
+      name: 'CareSphere Super Specialty Hospital',
+      code: 'CS-BLR-01',
+      location: 'Central Campus, Outer Ring Road, Bellandur',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      address: 'Plot 42, Tech Corridor, Bellandur, Bengaluru 560103',
+      contact_phone: '+91-80-4920-1100',
+      contact_email: 'bangalore.info@caresphere.health',
+      emergency_hotline: '+91-80-CARE-911',
+      rating: 4.9,
+      total_beds: 350
+    },
+    {
+      name: 'CareSphere Multi-Specialty Hospital',
+      code: 'CS-CHN-01',
+      location: 'Greams Road Campus, Thousand Lights',
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      address: '21 Greams Road, Thousand Lights, Chennai 600006',
+      contact_phone: '+91-44-2829-0200',
+      contact_email: 'chennai.info@caresphere.health',
+      emergency_hotline: '+91-44-CARE-911',
+      rating: 4.8,
+      total_beds: 280
+    },
+    {
+      name: 'CareSphere Advanced Healthcare Center',
+      code: 'CS-HYD-01',
+      location: 'Hitec City Medical Enclave, Madhapur',
+      city: 'Hyderabad',
+      state: 'Telangana',
+      address: 'Block C, Cyber Gateway Road, Hitec City, Hyderabad 500081',
+      contact_phone: '+91-40-6712-4400',
+      contact_email: 'hyderabad.info@caresphere.health',
+      emergency_hotline: '+91-40-CARE-911',
+      rating: 4.8,
+      total_beds: 220
+    }
+  ];
+
+  const insertHosp = db.prepare(`
+    INSERT OR IGNORE INTO hospitals (name, code, location, city, state, address, contact_phone, contact_email, emergency_hotline, rating, total_beds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  hospitals.forEach(h => {
+    insertHosp.run(h.name, h.code, h.location, h.city, h.state, h.address, h.contact_phone, h.contact_email, h.emergency_hotline, h.rating, h.total_beds);
+  });
+
+  const hospRows: Record<string, number> = {};
+  (db.prepare('SELECT id, code FROM hospitals').all() as any[]).forEach(h => {
+    hospRows[h.code] = h.id;
+  });
+
+  // Hospital Administrators
+  const hospAdminPassword = bcrypt.hashSync('Hospital@12345', 10);
+  insertUser.run('Bengaluru Hospital Admin', 'blr.admin@caresphere.health', '+91-9876543291', hospAdminPassword, 'hospital_admin', 'en');
+  insertUser.run('Chennai Hospital Admin', 'chn.admin@caresphere.health', '+91-9876543292', hospAdminPassword, 'hospital_admin', 'ta');
+
+  // Assign hospital_id to administrators
+  db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'blr.admin@caresphere.health'").run(hospRows['CS-BLR-01'] || 1);
+  db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'chn.admin@caresphere.health'").run(hospRows['CS-CHN-01'] || 2);
+
+  // Link existing doctors to hospitals
+  db.prepare("UPDATE doctor_profiles SET hospital_id = ?, teleconsultation_available = 1, teleconsultation_fee = 750 WHERE id IN (1, 2, 3)").run(hospRows['CS-BLR-01'] || 1);
+  db.prepare("UPDATE doctor_profiles SET hospital_id = ?, teleconsultation_available = 1, teleconsultation_fee = 650 WHERE id IN (4, 5)").run(hospRows['CS-CHN-01'] || 2);
+  db.prepare("UPDATE doctor_profiles SET hospital_id = ?, teleconsultation_available = 1, teleconsultation_fee = 600 WHERE id >= 6").run(hospRows['CS-HYD-01'] || 3);
+
+  // Link existing appointments to hospitals
+  db.prepare("UPDATE appointments SET hospital_id = ? WHERE doctor_id IN (1, 2, 3) AND hospital_id IS NULL").run(hospRows['CS-BLR-01'] || 1);
+  db.prepare("UPDATE appointments SET hospital_id = ? WHERE doctor_id IN (4, 5) AND hospital_id IS NULL").run(hospRows['CS-CHN-01'] || 2);
+  db.prepare("UPDATE appointments SET hospital_id = ? WHERE hospital_id IS NULL").run(hospRows['CS-BLR-01'] || 1);
+
+  // 10. Live Hospital Resources
+  const insertResource = db.prepare(`
+    INSERT OR IGNORE INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status, details_json, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  Object.values(hospRows).forEach(hId => {
+    insertResource.run(hId, 'general_beds', 200, 72, 128, 'available', JSON.stringify({ male_ward_avail: 34, female_ward_avail: 38 }));
+    insertResource.run(hId, 'icu_beds', 35, 9, 26, 'available', JSON.stringify({ ventilator_avail: 6, ccu_avail: 3 }));
+    insertResource.run(hId, 'emergency_beds', 25, 7, 18, 'available', JSON.stringify({ trauma_bay: 'Operational', triage_status: 'Normal Flow' }));
+    insertResource.run(hId, 'ambulance', 8, 5, 3, 'available', JSON.stringify({ bls_ambulances: 3, als_ambulances: 2, response_time_mins: 8 }));
+    insertResource.run(hId, 'blood_bank', 120, 94, 26, 'available', JSON.stringify({ 'A+': 18, 'A-': 8, 'B+': 24, 'B-': 6, 'O+': 26, 'O-': 4, 'AB+': 8 }));
+    insertResource.run(hId, 'lab_services', 1, 1, 0, 'operational', JSON.stringify({ routine_wait_mins: 15, stat_turnaround_mins: 45, nabl_accredited: true }));
+    insertResource.run(hId, 'pharmacy', 1, 1, 0, 'operational', JSON.stringify({ open_24x7: true, generic_availability: '98%', home_delivery: true }));
+    insertResource.run(hId, 'emergency_dept', 1, 1, 0, 'operational', JSON.stringify({ level: 'Level 1 Trauma Center', chief_er_doctor_on_duty: 'Dr. S. Nair' }));
+  });
+
+  // 11. Insurance Providers & Hospital Partnerships
+  const insuranceProviders = [
+    { name: 'Star Health & Allied Insurance', code: 'STAR-HLTH', toll: '1800-425-2255', cashless: 1, info: 'Pre-authorization turnaround within 2 hours with digital e-card.' },
+    { name: 'HDFC ERGO General Insurance', code: 'HDFC-ERGO', toll: '1800-2666', cashless: 1, info: 'Direct TPA desk processing on Ground Floor counter 3.' },
+    { name: 'ICICI Lombard Health Care', code: 'ICICI-LOMB', toll: '1800-2666', cashless: 1, info: 'Instant approval for planned surgical admissions and daycare procedures.' },
+    { name: 'Care Health Insurance (Religare)', code: 'CARE-HLTH', toll: '1800-102-4455', cashless: 1, info: '100% cashless hospital network partnership with zero sub-limits.' },
+    { name: 'Niva Bupa Health Insurance', code: 'NIVA-BUPA', toll: '1860-500-8888', cashless: 1, info: 'Express discharge settlement within 60 minutes of final bill.' },
+    { name: 'Ayushman Bharat (PM-JAY)', code: 'PMJAY-GOV', toll: '14555', cashless: 1, info: 'Government health scheme offering cashless coverage up to ₹5 Lakhs per family.' }
+  ];
+
+  const insertInsProvider = db.prepare(`
+    INSERT OR IGNORE INTO insurance_providers (name, code, toll_free_number, is_cashless_network, claim_process_info)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  insuranceProviders.forEach(p => {
+    insertInsProvider.run(p.name, p.code, p.toll, p.cashless, p.info);
+  });
+
+  const insRows: Record<string, number> = {};
+  (db.prepare('SELECT id, code FROM insurance_providers').all() as any[]).forEach(i => {
+    insRows[i.code] = i.id;
+  });
+
+  const insertInsPartner = db.prepare(`
+    INSERT OR IGNORE INTO hospital_insurance_partners (hospital_id, insurance_id, is_cashless_enabled, tpa_desk_contact, tpa_room_location)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  Object.values(hospRows).forEach(hId => {
+    Object.values(insRows).forEach(iId => {
+      insertInsPartner.run(hId, iId, 1, '+91-80-CARE-INS (ext 114)', 'Ground Floor Atrium, Room G-14');
+    });
+  });
+
+  // 12. Hospital Indoor Multi-Floor Navigation Maps
+  const insertFloor = db.prepare(`
+    INSERT OR IGNORE INTO hospital_floor_maps (hospital_id, floor_number, floor_name, svg_layout_data, is_active)
+    VALUES (?, ?, ?, ?, 1)
+  `);
+
+  const blrHospId = hospRows['CS-BLR-01'] || 1;
+  insertFloor.run(blrHospId, 0, 'Ground Floor - Main Atrium & Diagnostics', JSON.stringify({ wing: 'Main Atrium', zone_count: 8 }));
+  insertFloor.run(blrHospId, 1, '1st Floor - Clinical Outpatient (OPD)', JSON.stringify({ wing: 'Clinical OPD', zone_count: 6 }));
+  insertFloor.run(blrHospId, 2, '2nd Floor - Orthopedics, Radiology & Daycare', JSON.stringify({ wing: 'Specialty Wing', zone_count: 5 }));
+  insertFloor.run(blrHospId, 3, '3rd Floor - Advanced Cardiology, Cath Lab & ICU', JSON.stringify({ wing: 'Cardiovascular Wing', zone_count: 4 }));
+
+  const floorRows: Record<number, number> = {};
+  (db.prepare('SELECT id, floor_number FROM hospital_floor_maps WHERE hospital_id = ?').all(blrHospId) as any[]).forEach(f => {
+    floorRows[f.floor_number] = f.id;
+  });
+
+  const insertLocation = db.prepare(`
+    INSERT OR IGNORE INTO hospital_locations (hospital_id, floor_id, name, category, room_number, wing, directions_text, is_wheelchair_accessible)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  // Ground Floor locations
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Main Hospital Entrance (Gate 1)', 'reception', 'Gate 1', 'Main Atrium', 'Main entrance directly from patient drop-off porch.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, '24/7 Emergency & Trauma Resuscitation', 'emergency', 'ER-01', 'East Wing', 'Immediate access via Emergency Ambulance Ramp (Gate 2).', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Central Registration & Token Counter', 'reception', 'Counter 1-6', 'Central Lobby', 'Located opposite Main Atrium information desk.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, '24/7 Outpatient Pharmacy', 'pharmacy', 'PH-01', 'West Wing', 'Turn left from Main Entrance; located beside billing counters.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Central Diagnostic Pathology Lab', 'diagnostic', 'LAB-G01', 'North Corridor', 'Follow green floor signage; sample collection in Room G-08.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Billing & TPA Insurance Helpdesk', 'billing', 'Room G-14', 'Atrium Wing', 'Directly adjacent to central discharge lounge.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Elevator Bank A (Wheelchair Accessible)', 'amenity', 'Elevator A', 'Central Core', 'High-capacity stretcher elevators serving Floors 0 to 6.', 1);
+  insertLocation.run(blrHospId, floorRows[0] || 1, 'Cafeteria & Patient Dining', 'amenity', 'Cafeteria', 'Courtyard Wing', 'Open from 07:00 AM to 10:00 PM.', 1);
+
+  // 1st Floor locations
+  insertLocation.run(blrHospId, floorRows[1] || 2, 'General & Internal Medicine OPD', 'opd', 'Chamber 101', 'Block A', 'Exit Elevator A, turn right. Located opposite Nursing Station 1.', 1);
+  insertLocation.run(blrHospId, floorRows[1] || 2, 'Pediatrics & Child Wellness Clinic', 'opd', 'Chamber 104', 'Block C', 'Follow playful yellow wall graphics down Block C corridor.', 1);
+  insertLocation.run(blrHospId, floorRows[1] || 2, 'Dermatology & Skin Care Suite', 'opd', 'Chamber 106', 'Block B', 'Located next to Minor Procedure Room 108.', 1);
+
+  // 2nd Floor locations
+  insertLocation.run(blrHospId, floorRows[2] || 3, 'Orthopedics & Joint Replacement Center', 'opd', 'Chamber 201', 'Block A', 'Exit elevator, turn left toward Orthopedics OPD registration.', 1);
+  insertLocation.run(blrHospId, floorRows[2] || 3, 'Digital X-Ray & MRI / CT Scanning Wing', 'diagnostic', 'RAD-202', 'Specialty Wing', 'Sign in at Radiology Reception desk.', 1);
+
+  // 3rd Floor locations
+  insertLocation.run(blrHospId, floorRows[3] || 4, 'Interventional Cardiology OPD (Dr. Rajesh Sharma)', 'opd', 'Chamber 304', 'Cardiovascular Wing', 'Exit Elevator A, turn right at Cardiology desk. Chamber 304.', 1);
+  insertLocation.run(blrHospId, floorRows[3] || 4, 'Cardiac Catheterization Laboratory (Cath Lab)', 'opd', 'CATH-01', 'Cardiovascular Wing', 'Restricted sterile clinical zone.', 1);
+  insertLocation.run(blrHospId, floorRows[3] || 4, 'Intensive Cardiac Care Unit (ICCU)', 'icu', 'ICU-301', 'West Core', 'Visitor entry via sanitized airlock at designated hours.', 1);
+
+  // 13. Patient Medical Records for Patient Ravi Kumar (User ID 8)
+  const patientRavi = db.prepare("SELECT id FROM users WHERE email = 'ravi.kumar@example.com'").get() as any;
+  if (patientRavi) {
+    const insertMedRecord = db.prepare(`
+      INSERT OR IGNORE INTO medical_records (patient_id, title, document_type, file_path, file_name, file_size, mime_type, hospital_name, doctor_name, record_date, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertMedRecord.run(
+      patientRavi.id,
+      'Comprehensive Lipid Profile & Liver Function Panel',
+      'lab_report',
+      'uploads/medical_records/sample_lipid_report.pdf',
+      'Lipid_LFT_Report_Oct2026.pdf',
+      245800,
+      'application/pdf',
+      'CareSphere Super Specialty Hospital',
+      'Dr. Rajesh Sharma',
+      '2026-10-15',
+      'Routine 6-month lipid panel review. Total cholesterol slightly elevated at 228 mg/dL.'
+    );
+
+    insertMedRecord.run(
+      patientRavi.id,
+      'Cardiology Outpatient Prescription & Care Plan',
+      'prescription',
+      'uploads/medical_records/sample_prescription.pdf',
+      'Prescription_Cardiology_Sharma.pdf',
+      128400,
+      'application/pdf',
+      'CareSphere Super Specialty Hospital',
+      'Dr. Rajesh Sharma',
+      '2026-10-15',
+      'Prescribed Atorvastatin 20mg and Telmisartan 40mg. Advised low-sodium Mediterranean diet.'
+    );
+
+    insertMedRecord.run(
+      patientRavi.id,
+      'Chest X-Ray PA View Radiology Report',
+      'radiology_scan',
+      'uploads/medical_records/sample_xray.pdf',
+      'Chest_XRay_PA_Sep2026.pdf',
+      584200,
+      'application/pdf',
+      'CareSphere Super Specialty Hospital',
+      'Dr. V. Raman',
+      '2026-09-20',
+      'Normal lung parenchyma, normal cardiothoracic ratio, clear costophrenic angles.'
+    );
+
+    // Share with Dr. Rajesh Sharma
+    const firstRec = db.prepare('SELECT id FROM medical_records WHERE patient_id = ? LIMIT 1').get(patientRavi.id) as any;
+    if (firstRec) {
+      db.prepare(`
+        INSERT OR IGNORE INTO medical_record_shares (record_id, patient_id, doctor_id, status, expires_at)
+        VALUES (?, ?, 1, 'active', datetime('now', '+30 days'))
+      `).run(firstRec.id, patientRavi.id);
+
+      db.prepare(`
+        INSERT INTO medical_record_access_logs (record_id, accessed_by, accessor_name, accessor_role, action, ip_address)
+        VALUES (?, ?, 'Dr. Rajesh Sharma', 'doctor', 'VIEW', '127.0.0.1')
+      `).run(firstRec.id, 2);
+    }
+
+    // 14. Medicine Reminders for Ravi Kumar
+    const insertReminder = db.prepare(`
+      INSERT OR IGNORE INTO medicine_reminders (patient_id, doctor_id, medicine_name, dosage, frequency, timing_slots, food_relation, start_date, end_date, doctor_instructions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertReminder.run(
+      patientRavi.id,
+      1,
+      'Atorvastatin',
+      '20 mg (1 tablet)',
+      'Once Daily',
+      JSON.stringify(['21:00']),
+      'after_food',
+      '2026-10-15',
+      '2026-12-15',
+      'Take at night after dinner for lipid control.'
+    );
+
+    insertReminder.run(
+      patientRavi.id,
+      1,
+      'Telmisartan',
+      '40 mg (1 tablet)',
+      'Once Daily',
+      JSON.stringify(['08:00']),
+      'after_food',
+      '2026-10-15',
+      '2026-12-15',
+      'Take in the morning with a glass of water for blood pressure management.'
+    );
+
+    insertReminder.run(
+      patientRavi.id,
+      1,
+      'Metformin ER',
+      '500 mg (1 tablet)',
+      'Twice Daily',
+      JSON.stringify(['08:00', '20:00']),
+      'with_food',
+      '2026-10-15',
+      '2026-12-15',
+      'Take with breakfast and dinner.'
+    );
+
+    // Today's log for Ravi
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const rem1 = db.prepare('SELECT id FROM medicine_reminders WHERE patient_id = ? LIMIT 1').get(patientRavi.id) as any;
+    if (rem1) {
+      db.prepare(`
+        INSERT OR IGNORE INTO medicine_logs (reminder_id, patient_id, scheduled_date, scheduled_time, status, logged_at)
+        VALUES (?, ?, ?, '08:00', 'taken', datetime('now'))
+      `).run(rem1.id, patientRavi.id, todayStr);
+    }
+
+    // 15. Saved Insurance Policy for Ravi Kumar
+    const starIns = insRows['STAR-HLTH'] || 1;
+    db.prepare(`
+      INSERT OR IGNORE INTO patient_insurance_policies (
+        patient_id, insurance_provider_id, provider_name, policy_number,
+        policy_holder_name, tpa_id, sum_insured, valid_until
+      ) VALUES (?, ?, 'Star Health & Allied Insurance', 'SH-2024-8849201', 'Ravi Kumar', 'TPA-STAR-BLR-492', 1000000, '2027-08-31')
+    `).run(patientRavi.id, starIns);
+
+    // 16. Remote Follow-up for Ravi Kumar with Dr. Rajesh Sharma
+    db.prepare(`
+      INSERT OR IGNORE INTO patient_followups (
+        doctor_id, patient_id, hospital_id, scheduled_date, instructions, status, patient_symptoms, patient_recovery_score, vitals_data, doctor_feedback, doctor_reviewed_at
+      ) VALUES (?, ?, ?, ?, ?, 'reviewed', ?, ?, ?, ?, datetime('now', '-2 days'))
+    `).run(
+      1,
+      patientRavi.id,
+      blrHospId,
+      '2026-10-28',
+      'Post-consultation follow-up: Log blood pressure readings every morning for 5 consecutive days.',
+      'Blood pressure readings stabilized around 122/80 mmHg. No dizziness or shortness of breath.',
+      9,
+      JSON.stringify({ blood_pressure: '122/80 mmHg', pulse: '72 bpm', fasting_sugar: '104 mg/dL' }),
+      'Readings look excellent. Well controlled on Telmisartan 40mg. Continue current therapy.'
+    );
+
+    // Upcoming follow-up
+    db.prepare(`
+      INSERT OR IGNORE INTO patient_followups (
+        doctor_id, patient_id, hospital_id, scheduled_date, instructions, status
+      ) VALUES (?, ?, ?, ?, ?, 'pending')
+    `).run(
+      1,
+      patientRavi.id,
+      blrHospId,
+      new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      'Second stage follow-up: Check fasting blood glucose and submit self-reported energy levels.'
+    );
+
+    // 17. Demo Online Video Consultation Appointment
+    const vcRef = `CS-VC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const vcRoom = 'room-care-teleconsult-demo-01';
+    db.prepare(`
+      INSERT OR IGNORE INTO appointments (
+        reference_no, patient_id, doctor_id, department_id, hospital_id,
+        appointment_date, appointment_time, consultation_type, status,
+        video_room_id, video_session_status, meeting_link, patient_notes, doctor_notes
+      ) VALUES (?, ?, 1, 1, ?, ?, '16:00', 'online_video', 'confirmed', ?, 'scheduled', ?, 'Routine cardiac rhythm check and medication review.', 'Patient has active teleconsult scheduled.')
+    `).run(
+      vcRef,
+      patientRavi.id,
+      blrHospId,
+      new Date().toISOString().slice(0, 10),
+      vcRoom,
+      `/consultations/room/${vcRoom}`
+    );
+
+    // 18. Patient Feedback
+    db.prepare(`
+      INSERT OR IGNORE INTO patient_feedback (hospital_id, patient_id, doctor_id, rating, review)
+      VALUES (?, ?, 1, 5, 'Dr. Rajesh Sharma was thorough, patient, and explained everything clearly in Hindi and English. Hospital staff was courteous.')
+    `).run(blrHospId, patientRavi.id);
+  }
+
+  // 19. Initial Audit Log
   db.prepare(`
     INSERT INTO audit_logs (user_name, user_role, action, resource, details)
     VALUES ('System Initializer', 'system', 'SYSTEM_SEED', 'DATABASE', 'CareSphere demo environment seeded successfully.')

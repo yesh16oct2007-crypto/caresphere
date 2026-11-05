@@ -21,6 +21,15 @@ import { PatientDashboardPage } from './pages/PatientDashboardPage.js';
 import { DoctorDashboardPage } from './pages/DoctorDashboardPage.js';
 import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
 
+// New Advanced Feature Pages
+import { MedicalRecordsPage } from './pages/MedicalRecordsPage.js';
+import { TeleconsultDirectoryPage } from './pages/TeleconsultDirectoryPage.js';
+import { ConsultationRoomPage } from './pages/ConsultationRoomPage.js';
+import { AIReportExplainerPage } from './pages/AIReportExplainerPage.js';
+import { HospitalResourcesPage } from './pages/HospitalResourcesPage.js';
+import { InsuranceAssistancePage } from './pages/InsuranceAssistancePage.js';
+import { IndoorNavigationPage } from './pages/IndoorNavigationPage.js';
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -45,11 +54,34 @@ export const App: React.FC = () => {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
+                {/* Advanced Features (Features 1 to 9) */}
+                <Route path="/teleconsult" element={<TeleconsultDirectoryPage />} />
+                <Route
+                  path="/consultations/room/:roomId"
+                  element={
+                    <ProtectedRoute>
+                      <ConsultationRoomPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/records"
+                  element={
+                    <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'hospital_admin', 'superadmin']}>
+                      <MedicalRecordsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/ai-report-explainer" element={<AIReportExplainerPage />} />
+                <Route path="/resources" element={<HospitalResourcesPage />} />
+                <Route path="/insurance" element={<InsuranceAssistancePage />} />
+                <Route path="/indoor-navigation" element={<IndoorNavigationPage />} />
+
                 {/* Role Protected Dashboard Routes */}
                 <Route
                   path="/dashboard/patient"
                   element={
-                    <ProtectedRoute allowedRoles={['patient', 'admin']}>
+                    <ProtectedRoute allowedRoles={['patient', 'admin', 'superadmin']}>
                       <PatientDashboardPage />
                     </ProtectedRoute>
                   }
@@ -57,7 +89,7 @@ export const App: React.FC = () => {
                 <Route
                   path="/dashboard/doctor"
                   element={
-                    <ProtectedRoute allowedRoles={['doctor', 'admin']}>
+                    <ProtectedRoute allowedRoles={['doctor', 'admin', 'superadmin']}>
                       <DoctorDashboardPage />
                     </ProtectedRoute>
                   }
@@ -65,7 +97,7 @@ export const App: React.FC = () => {
                 <Route
                   path="/dashboard/admin"
                   element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin', 'hospital_admin', 'superadmin']}>
                       <AdminDashboardPage />
                     </ProtectedRoute>
                   }

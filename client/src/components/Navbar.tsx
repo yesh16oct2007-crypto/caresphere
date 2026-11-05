@@ -13,7 +13,13 @@ import {
   Moon,
   ShieldCheck,
   Stethoscope,
-  Building2
+  Building2,
+  Video,
+  FileText,
+  Activity,
+  Compass,
+  FileCheck,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
@@ -35,6 +41,8 @@ export const Navbar: React.FC = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
+
+  const isAdminRole = role === 'admin' || role === 'hospital_admin' || role === 'superadmin';
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -61,38 +69,76 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-          <Link
-            to="/"
-            className={`px-3 py-2 rounded-xl transition-colors ${
-              isActive('/') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            {t('nav.home')}
-          </Link>
+        <nav className="hidden lg:flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <Link
             to="/doctors"
             className={`px-3 py-2 rounded-xl transition-colors ${
-              isActive('/doctors') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              isActive('/doctors')
+                ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
           >
             {t('nav.doctors')}
           </Link>
+
           <Link
-            to="/departments"
-            className={`px-3 py-2 rounded-xl transition-colors ${
-              isActive('/departments') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            to="/teleconsult"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/teleconsult')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
           >
-            {t('nav.departments')}
+            <Video className="w-3.5 h-3.5 text-teal-600" />
+            <span>Teleconsult</span>
           </Link>
+
           <Link
-            to="/facilities"
-            className={`px-3 py-2 rounded-xl transition-colors ${
-              isActive('/facilities') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            to="/resources"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/resources')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
           >
-            {t('nav.facilities')}
+            <Activity className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Live Beds</span>
+          </Link>
+
+          <Link
+            to="/indoor-navigation"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/indoor-navigation')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Indoor Map</span>
+          </Link>
+
+          <Link
+            to="/insurance"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/insurance')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5 text-amber-500" />
+            <span>Insurance</span>
+          </Link>
+
+          <Link
+            to="/ai-report-explainer"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/ai-report-explainer')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-rose-500" />
+            <span>AI Explainer</span>
           </Link>
 
           {/* Role specific dashboard link */}
@@ -100,7 +146,9 @@ export const Navbar: React.FC = () => {
             <Link
               to="/dashboard/patient"
               className={`px-3 py-2 rounded-xl transition-colors ${
-                isActive('/dashboard/patient') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                isActive('/dashboard/patient')
+                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
+                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
               }`}
             >
               {t('nav.patient_dashboard')}
@@ -111,7 +159,9 @@ export const Navbar: React.FC = () => {
             <Link
               to="/dashboard/doctor"
               className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
-                isActive('/dashboard/doctor') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                isActive('/dashboard/doctor')
+                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
+                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
               }`}
             >
               <Stethoscope className="w-4 h-4 text-brand-600" />
@@ -119,11 +169,13 @@ export const Navbar: React.FC = () => {
             </Link>
           )}
 
-          {isAuthenticated && role === 'admin' && (
+          {isAuthenticated && isAdminRole && (
             <Link
               to="/dashboard/admin"
               className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
-                isActive('/dashboard/admin') ? 'text-brand-600 dark:text-brand-400 font-semibold bg-brand-50/60 dark:bg-slate-800' : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                isActive('/dashboard/admin')
+                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
+                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
               }`}
             >
               <ShieldCheck className="w-4 h-4 text-brand-600" />
@@ -162,7 +214,7 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && user ? (
             <div className="hidden sm:flex items-center gap-2">
               <Link
-                to={role === 'doctor' ? '/dashboard/doctor' : role === 'admin' ? '/dashboard/admin' : '/dashboard/patient'}
+                to={role === 'doctor' ? '/dashboard/doctor' : isAdminRole ? '/dashboard/admin' : '/dashboard/patient'}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
                 <User className="w-3.5 h-3.5 text-brand-600" />
@@ -206,39 +258,71 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden px-4 pt-2 pb-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2 animate-in slide-in-from-top-2 duration-150">
+        <div className="lg:hidden px-4 pt-2 pb-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1.5 animate-in slide-in-from-top-2 duration-150 text-xs">
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {t('nav.home')}
           </Link>
           <Link
             to="/doctors"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {t('nav.doctors')}
           </Link>
           <Link
-            to="/departments"
+            to="/teleconsult"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
           >
-            {t('nav.departments')}
+            Online Video Teleconsult
           </Link>
           <Link
-            to="/facilities"
+            to="/resources"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            {t('nav.facilities')}
+            Live Bed & Resource Status
           </Link>
+          <Link
+            to="/indoor-navigation"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Hospital Indoor Map
+          </Link>
+          <Link
+            to="/insurance"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Health Insurance & TPA Desk
+          </Link>
+          <Link
+            to="/ai-report-explainer"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            AI Medical Report Explainer
+          </Link>
+
+          {isAuthenticated && (
+            <Link
+              to="/records"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800"
+            >
+              Digital Medical Records Vault
+            </Link>
+          )}
+
           <Link
             to="/book"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300"
+            className="block px-3 py-2 rounded-xl font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300"
           >
             {t('nav.book_appointment')}
           </Link>
@@ -246,15 +330,19 @@ export const Navbar: React.FC = () => {
           {isAuthenticated ? (
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
               <Link
-                to={role === 'doctor' ? '/dashboard/doctor' : role === 'admin' ? '/dashboard/admin' : '/dashboard/patient'}
+                to={role === 'doctor' ? '/dashboard/doctor' : isAdminRole ? '/dashboard/admin' : '/dashboard/patient'}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-xl text-sm font-semibold text-brand-600 dark:text-brand-400"
+                className="block px-3 py-2 rounded-xl font-semibold text-brand-600 dark:text-brand-400"
               >
-                {role === 'doctor' ? t('nav.doctor_dashboard') : role === 'admin' ? t('nav.admin_dashboard') : t('nav.patient_dashboard')}
+                {role === 'doctor'
+                  ? t('nav.doctor_dashboard')
+                  : isAdminRole
+                  ? t('nav.admin_dashboard')
+                  : t('nav.patient_dashboard')}
               </Link>
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                className="w-full text-left px-3 py-2 rounded-xl font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
               >
                 {t('nav.sign_out')} ({user?.name})
               </button>
@@ -264,14 +352,14 @@ export const Navbar: React.FC = () => {
               <Link
                 to="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-sm font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                className="flex-1 text-center py-2 font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
               >
                 {t('nav.sign_in')}
               </Link>
               <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-sm font-semibold rounded-xl bg-brand-600 text-white"
+                className="flex-1 text-center py-2 font-semibold rounded-xl bg-brand-600 text-white"
               >
                 {t('nav.register')}
               </Link>

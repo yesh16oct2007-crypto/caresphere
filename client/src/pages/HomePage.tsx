@@ -19,7 +19,12 @@ import {
   ChevronUp,
   ShieldCheck,
   MapPin,
-  Navigation
+  Navigation,
+  Video,
+  Activity,
+  Compass,
+  FileText,
+  FileCheck
 } from 'lucide-react';
 import { Department, DoctorProfile, Facility, FAQ, Announcement } from '../types/index.js';
 import { DoctorNavigationModal } from '../components/DoctorNavigationModal.js';
@@ -156,6 +161,149 @@ export const HomePage: React.FC = () => {
               <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('home.stats_languages')}</div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Advanced Healthcare Features Hub */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="text-xs uppercase tracking-wider font-bold text-teal-600 dark:text-teal-400">
+            CareSphere Next-Gen Capabilities
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+            Smart Hospital Services & Patient Assistance
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-2">
+            Integrated digital care: from online specialist video calls to real-time bed tracking and AI report decoding.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link
+            to="/teleconsult"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-teal-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Video className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>Online Video Teleconsult</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-teal-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Connect with verified hospital doctors from home via secure WebRTC video calls and receive official digital prescriptions.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-teal-600">
+              Verified Doctors Available • Encrypted Video
+            </div>
+          </Link>
+
+          <Link
+            to="/resources"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-emerald-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Activity className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>Live Hospital Bed & ICU Status</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Real-time verified capacity of general beds, ventilator ICU suites, emergency trauma bays, and blood bank inventory.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-emerald-600">
+              Live Updates Across 3 Premier Hospitals
+            </div>
+          </Link>
+
+          <Link
+            to="/ai-report-explainer"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-rose-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <FileCheck className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>AI Medical Report Explainer</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-rose-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Upload diagnostic lab tests. Our clinical AI extracts biomarkers, normal ranges, and translates findings in 10 Indian regional languages.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-rose-600">
+              Available in 10 Languages • Safety Disclaimers
+            </div>
+          </Link>
+
+          <Link
+            to="/indoor-navigation"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-indigo-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Compass className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>Hospital Indoor Map & GPS</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-indigo-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Multi-floor interactive SVG floor plans. Step-by-step turn-by-turn navigation from entrance gate to your doctor's chamber or diagnostic room.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-indigo-600">
+              Floors 0 to 3 • Wheelchair Accessible Routes
+            </div>
+          </Link>
+
+          <Link
+            to="/insurance"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-amber-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>Health Insurance & TPA Desk</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Check cashless coverage across partner insurers, review mandatory document checklists, and save policy cards in your vault.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-amber-600">
+              100% Cashless Pre-Auth • 24/7 Desk Contacts
+            </div>
+          </Link>
+
+          <Link
+            to="/records"
+            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-medblue-500/50 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-medblue-50 dark:bg-medblue-950/60 text-medblue-600 dark:text-medblue-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+                <span>Digital Patient Medical Records</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-medblue-600 transition-all" />
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Securely store prescriptions, discharge summaries, and radiology scans with doctor-sharing consent and access audit trails.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-medblue-600">
+              End-to-End Encrypted • Access Audit Logs
+            </div>
+          </Link>
         </div>
       </section>
 
