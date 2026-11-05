@@ -627,7 +627,7 @@ export const DoctorDashboardPage: React.FC = () => {
                             {rec.document_type.replace('_', ' ')}
                           </span>
                           <span className="text-[11px] text-slate-400">
-                            {new Date(rec.document_date).toLocaleDateString()}
+                            {new Date(rec.document_date || (rec as any).record_date || rec.created_at || Date.now()).toLocaleDateString()}
                           </span>
                         </div>
 

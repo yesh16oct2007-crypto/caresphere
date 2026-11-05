@@ -72,6 +72,24 @@ export const uploadRecord = multer({
   fileFilter: documentFilter
 });
 
+// Middleware that accepts either 'file' or 'document' form field
+export const uploadMedicalRecordMiddleware = (req: any, res: any, next: any) => {
+  uploadRecord.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'document', maxCount: 1 }
+  ])(req, res, (err: any) => {
+    if (err) return next(err);
+    if (req.files) {
+      if (req.files['document'] && req.files['document'][0]) {
+        req.file = req.files['document'][0];
+      } else if (req.files['file'] && req.files['file'][0]) {
+        req.file = req.files['file'][0];
+      }
+    }
+    next();
+  });
+};
+
 export const uploadReport = multer({
   storage: aiReportsStorage,
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max

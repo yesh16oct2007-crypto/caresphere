@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS medical_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  document_type TEXT NOT NULL CHECK(document_type IN ('lab_report', 'prescription', 'radiology_scan', 'discharge_summary', 'consultation_note', 'other')),
+  document_type TEXT NOT NULL CHECK(document_type IN ('lab_report', 'prescription', 'scan_imaging', 'radiology_scan', 'discharge_summary', 'consultation_note', 'vaccination', 'other')),
   file_path TEXT NOT NULL,
   file_name TEXT NOT NULL,
   file_size INTEGER NOT NULL,

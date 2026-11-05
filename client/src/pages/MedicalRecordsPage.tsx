@@ -57,6 +57,10 @@ export const MedicalRecordsPage: React.FC = () => {
 
   // Fetch records
   const fetchRecords = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -67,7 +71,10 @@ export const MedicalRecordsPage: React.FC = () => {
       const res = await fetch(apiUrl(`/api/records?${query.toString()}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to load medical records');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to load medical records');
+      }
       const data = await res.json();
       setRecords(data.records || []);
     } catch (err: any) {
@@ -80,6 +87,8 @@ export const MedicalRecordsPage: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchRecords();
+    } else {
+      setLoading(false);
     }
   }, [token, selectedType]);
 
@@ -108,9 +117,11 @@ export const MedicalRecordsPage: React.FC = () => {
       setError(null);
       const formData = new FormData();
       formData.append('document', uploadFile);
+      formData.append('file', uploadFile);
       formData.append('title', uploadTitle);
       formData.append('document_type', uploadType);
       formData.append('document_date', uploadDate);
+      formData.append('record_date', uploadDate);
       formData.append('doctor_name', uploadDoctor);
       formData.append('hospital_name', uploadHospital);
       formData.append('notes', uploadNotes);
@@ -124,7 +135,7 @@ export const MedicalRecordsPage: React.FC = () => {
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to upload document');
       }
 
@@ -329,7 +340,33 @@ export const MedicalRecordsPage: React.FC = () => {
       </div>
 
       {/* Medical Documents Grid */}
-      {loading ? (
+      {!user ? (
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="w-16 h-16 rounded-3xl bg-teal-50 dark:bg-teal-900/40 text-teal-600 flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            Secure Digital Health Records Vault
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
+            Please sign in to access your encrypted medical documents vault, diagnostic lab tests, prescriptions, and imaging reports.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="/login"
+              className="bg-gradient-to-r from-teal-600 to-medblue-600 hover:from-teal-700 hover:to-medblue-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-md transition-all text-sm"
+            >
+              Sign In to Patient Portal
+            </a>
+            <a
+              href="/login"
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold px-6 py-2.5 rounded-xl transition-all text-sm"
+            >
+              Doctor Sign In
+            </a>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="py-20 text-center">
           <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-slate-500">Loading secure medical records...</p>
@@ -362,13 +399,19 @@ export const MedicalRecordsPage: React.FC = () => {
                     {record.document_type.replace('_', ' ')}
                   </span>
                   <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                    {new Date(record.document_date).toLocaleDateString()}
+                    {new Date(record.document_date || (record as any).record_date || record.created_at || Date.now()).toLocaleDateString()}
                   </span>
                 </div>
 
                 <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 line-clamp-1">
                   {record.title}
                 </h3>
+
+                {(record as any).patient_name && (
+                  <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 mb-2">
+                    Patient: {(record as any).patient_name}
+                  </p>
+                )}
 
                 <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 mb-4">
                   {record.doctor_name && (
@@ -408,13 +451,15 @@ export const MedicalRecordsPage: React.FC = () => {
                 </button>
 
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setShareModalRecord(record)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                    title="Share with Doctor (Consent)"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
+                  {(user?.role === 'patient' || user?.id === record.patient_id) && (
+                    <button
+                      onClick={() => setShareModalRecord(record)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      title="Share with Doctor (Consent)"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  )}
 
                   <button
                     onClick={() => openAuditLogs(record)}
@@ -424,13 +469,15 @@ export const MedicalRecordsPage: React.FC = () => {
                     <History className="w-4 h-4" />
                   </button>
 
-                  <button
-                    onClick={() => handleDelete(record.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                    title="Delete Record"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {(user?.role === 'patient' || user?.id === record.patient_id || user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <button
+                      onClick={() => handleDelete(record.id)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                      title="Delete Record"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

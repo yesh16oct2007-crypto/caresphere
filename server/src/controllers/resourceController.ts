@@ -5,7 +5,8 @@ import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
 // 1. Get Live Hospital Resources (Public / Patient / Doctor / Admin)
 export function getLiveResources(req: Request, res: Response): void {
   try {
-    const { hospital_id, city, resource_type, search } = req.query;
+    const { hospital_id, city, search } = req.query;
+    const resource_type = (req.query.resource_type || req.query.type) as string;
 
     let query = `
       SELECT hr.id, hr.hospital_id, hr.resource_type, hr.total_capacity,
@@ -27,8 +28,12 @@ export function getLiveResources(req: Request, res: Response): void {
       params.push(city);
     }
     if (resource_type && resource_type !== 'all') {
-      query += ` AND hr.resource_type = ?`;
-      params.push(resource_type);
+      if (resource_type === 'ambulances' || resource_type === 'ambulance') {
+        query += ` AND (hr.resource_type = 'ambulances' OR hr.resource_type = 'ambulance')`;
+      } else {
+        query += ` AND hr.resource_type = ?`;
+        params.push(resource_type);
+      }
     }
     if (search) {
       query += ` AND (h.name LIKE ? OR h.city LIKE ? OR hr.resource_type LIKE ?)`;
@@ -40,12 +45,42 @@ export function getLiveResources(req: Request, res: Response): void {
 
     const rawRows = db.prepare(query).all(...params) as any[];
 
-    const resources = rawRows.map(r => ({
-      ...r,
-      details: r.details_json ? JSON.parse(r.details_json) : null,
-      last_updated_human: r.updated_at ? new Date(r.updated_at).toLocaleString() : 'Availability not confirmed',
-      is_stale: !r.updated_at || (Date.now() - new Date(r.updated_at).getTime() > 24 * 60 * 60 * 1000)
-    }));
+    const resources = rawRows.map(r => {
+      let formattedDetails = '';
+      if (r.details_json) {
+        try {
+          const parsed = typeof r.details_json === 'string' ? JSON.parse(r.details_json) : r.details_json;
+          if (typeof parsed === 'object' && parsed !== null) {
+            formattedDetails = Object.entries(parsed)
+              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+              .join(' • ');
+          } else {
+            formattedDetails = String(parsed);
+          }
+        } catch {
+          formattedDetails = String(r.details_json);
+        }
+      }
+
+      const available = Number(r.available_count ?? 0);
+      const total = Number(r.total_capacity ?? 0);
+      const occupied = Number(r.occupied_count ?? Math.max(0, total - available));
+      const updatedTime = r.updated_at || new Date().toISOString();
+
+      return {
+        ...r,
+        available_capacity: available,
+        available_count: available,
+        total_capacity: total,
+        occupied_count: occupied,
+        last_updated: updatedTime,
+        updated_at: updatedTime,
+        details: formattedDetails,
+        details_json: r.details_json,
+        last_updated_human: r.updated_at ? new Date(r.updated_at).toLocaleString() : 'Availability not confirmed',
+        is_stale: !r.updated_at || (Date.now() - new Date(r.updated_at).getTime() > 24 * 60 * 60 * 1000)
+      };
+    });
 
     res.json({ resources });
   } catch (err: any) {
@@ -90,7 +125,16 @@ export function updateHospitalResource(req: AuthenticatedRequest, res: Response)
     }
 
     const resourceId = Number(req.params.id);
-    const { total_capacity, available_count, occupied_count, status, details } = req.body;
+    const total_capacity = req.body.total_capacity !== undefined ? Number(req.body.total_capacity) : undefined;
+    const available_count = req.body.available_capacity !== undefined
+      ? Number(req.body.available_capacity)
+      : (req.body.available_count !== undefined ? Number(req.body.available_count) : undefined);
+    const occupied_count = req.body.occupied_count !== undefined
+      ? Number(req.body.occupied_count)
+      : (total_capacity !== undefined && available_count !== undefined ? Math.max(0, total_capacity - available_count) : undefined);
+    const status = req.body.status;
+    const details = req.body.details !== undefined ? req.body.details : req.body.details_json;
+    const details_json = details ? (typeof details === 'object' ? JSON.stringify(details) : JSON.stringify({ note: String(details) })) : null;
 
     const resource = db.prepare('SELECT * FROM hospital_resources WHERE id = ?').get(resourceId) as any;
     if (!resource) {
@@ -121,7 +165,7 @@ export function updateHospitalResource(req: AuthenticatedRequest, res: Response)
       available_count !== undefined ? available_count : null,
       occupied_count !== undefined ? occupied_count : null,
       status || null,
-      details ? JSON.stringify(details) : null,
+      details_json,
       req.user.id,
       nowIso,
       resourceId

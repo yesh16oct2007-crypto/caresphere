@@ -4,9 +4,12 @@ import { db, initDatabase } from './database.js';
 export function ensureDatabaseSeeded(): void {
   try {
     initDatabase();
-    const row = db.prepare('SELECT count(*) as count FROM users').get() as { count: number } | undefined;
-    if (!row || row.count === 0) {
-      console.log('CareSphere fresh database detected. Running automatic initial data seed...');
+    const userRow = db.prepare('SELECT count(*) as count FROM users').get() as { count: number } | undefined;
+    const resRow = db.prepare('SELECT count(*) as count FROM hospital_resources').get() as { count: number } | undefined;
+    const hospRow = db.prepare('SELECT count(*) as count FROM hospitals').get() as { count: number } | undefined;
+
+    if (!userRow || userRow.count === 0 || !resRow || resRow.count === 0 || !hospRow || hospRow.count === 0) {
+      console.log('CareSphere missing essential data detected (users/hospitals/resources). Seeding initial demo data...');
       seedDatabase();
     }
   } catch (err) {
@@ -594,8 +597,10 @@ export function seedDatabase() {
     insertResource.run(hId, 'general_beds', 200, 72, 128, 'available', JSON.stringify({ male_ward_avail: 34, female_ward_avail: 38 }));
     insertResource.run(hId, 'icu_beds', 35, 9, 26, 'available', JSON.stringify({ ventilator_avail: 6, ccu_avail: 3 }));
     insertResource.run(hId, 'emergency_beds', 25, 7, 18, 'available', JSON.stringify({ trauma_bay: 'Operational', triage_status: 'Normal Flow' }));
-    insertResource.run(hId, 'ambulance', 8, 5, 3, 'available', JSON.stringify({ bls_ambulances: 3, als_ambulances: 2, response_time_mins: 8 }));
+    insertResource.run(hId, 'ambulances', 8, 5, 3, 'available', JSON.stringify({ bls_ambulances: 3, als_ambulances: 2, response_time_mins: 8 }));
     insertResource.run(hId, 'blood_bank', 120, 94, 26, 'available', JSON.stringify({ 'A+': 18, 'A-': 8, 'B+': 24, 'B-': 6, 'O+': 26, 'O-': 4, 'AB+': 8 }));
+    insertResource.run(hId, 'oxygen_cylinders', 50, 38, 12, 'available', JSON.stringify({ jumbo_cylinders: 22, portable_units: 16 }));
+    insertResource.run(hId, 'ventilators', 20, 6, 14, 'available', JSON.stringify({ invasive_units: 4, non_invasive_units: 2 }));
     insertResource.run(hId, 'lab_services', 1, 1, 0, 'operational', JSON.stringify({ routine_wait_mins: 15, stat_turnaround_mins: 45, nabl_accredited: true }));
     insertResource.run(hId, 'pharmacy', 1, 1, 0, 'operational', JSON.stringify({ open_24x7: true, generic_availability: '98%', home_delivery: true }));
     insertResource.run(hId, 'emergency_dept', 1, 1, 0, 'operational', JSON.stringify({ level: 'Level 1 Trauma Center', chief_er_doctor_on_duty: 'Dr. S. Nair' }));

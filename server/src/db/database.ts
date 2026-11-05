@@ -148,6 +148,33 @@ export function initDatabase(): void {
     if (!apptColNames.has('hospital_id')) {
       db.exec("ALTER TABLE appointments ADD COLUMN hospital_id INTEGER REFERENCES hospitals(id)");
     }
+
+    // Auto-migrate medical_records table check constraint to support scan_imaging and vaccination
+    const mrSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='medical_records'").get() as { sql: string } | undefined;
+    if (mrSqlRow && mrSqlRow.sql && !mrSqlRow.sql.includes('scan_imaging')) {
+      db.exec("PRAGMA foreign_keys=OFF;");
+      db.exec(`
+        CREATE TABLE medical_records_migrated (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          document_type TEXT NOT NULL CHECK(document_type IN ('lab_report', 'prescription', 'scan_imaging', 'radiology_scan', 'discharge_summary', 'consultation_note', 'vaccination', 'other')),
+          file_path TEXT NOT NULL,
+          file_name TEXT NOT NULL,
+          file_size INTEGER NOT NULL,
+          mime_type TEXT NOT NULL,
+          hospital_name TEXT,
+          doctor_name TEXT,
+          record_date TEXT NOT NULL,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO medical_records_migrated SELECT * FROM medical_records;
+        DROP TABLE medical_records;
+        ALTER TABLE medical_records_migrated RENAME TO medical_records;
+      `);
+      db.exec("PRAGMA foreign_keys=ON;");
+    }
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

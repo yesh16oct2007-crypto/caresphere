@@ -44,7 +44,10 @@ export const HospitalResourcesPage: React.FC = () => {
       setError(null);
       const query = new URLSearchParams();
       if (selectedCity !== 'all') query.set('city', selectedCity);
-      if (selectedType !== 'all') query.set('type', selectedType);
+      if (selectedType !== 'all') {
+        query.set('type', selectedType);
+        query.set('resource_type', selectedType);
+      }
 
       const res = await fetch(apiUrl(`/api/resources?${query.toString()}`));
       if (!res.ok) throw new Error('Failed to load hospital resources');
@@ -98,8 +101,11 @@ export const HospitalResourcesPage: React.FC = () => {
     }
   };
 
-  const isStale = (lastUpdatedStr: string) => {
-    const diffHours = (Date.now() - new Date(lastUpdatedStr).getTime()) / (1000 * 60 * 60);
+  const isStale = (lastUpdatedStr?: string) => {
+    if (!lastUpdatedStr) return true;
+    const time = new Date(lastUpdatedStr).getTime();
+    if (isNaN(time)) return true;
+    const diffHours = (Date.now() - time) / (1000 * 60 * 60);
     return diffHours > 4;
   };
 
@@ -251,9 +257,10 @@ export const HospitalResourcesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {resources.map((res) => {
-            const stale = isStale(res.last_updated);
-            const percentage =
-              res.total_capacity > 0 ? Math.round((res.available_capacity / res.total_capacity) * 100) : 0;
+            const stale = isStale(res.last_updated || (res as any).updated_at);
+            const avail = res.available_capacity ?? (res as any).available_count ?? 0;
+            const total = res.total_capacity ?? 0;
+            const percentage = total > 0 ? Math.round((avail / total) * 100) : 0;
 
             const canEdit =
               isHospitalAdmin &&
@@ -285,10 +292,10 @@ export const HospitalResourcesPage: React.FC = () => {
                       <button
                         onClick={() => {
                           setEditingResource(res);
-                          setEditAvailable(res.available_capacity);
-                          setEditTotal(res.total_capacity);
+                          setEditAvailable(avail);
+                          setEditTotal(total);
                           setEditStatus(res.status);
-                          setEditDetails(res.details || '');
+                          setEditDetails(typeof res.details === 'object' ? JSON.stringify(res.details) : (res.details || ''));
                         }}
                         className="p-1.5 rounded-xl text-teal-600 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
                         title="Update Live Capacity (Hospital Admin)"
@@ -317,9 +324,9 @@ export const HospitalResourcesPage: React.FC = () => {
                       <span className="text-xs text-slate-500">Available Units:</span>
                       <div className="text-right">
                         <span className="text-2xl font-black text-slate-900 dark:text-white">
-                          {res.available_capacity}
+                          {avail}
                         </span>
-                        <span className="text-xs text-slate-400"> / {res.total_capacity}</span>
+                        <span className="text-xs text-slate-400"> / {total}</span>
                       </div>
                     </div>
 
@@ -336,7 +343,7 @@ export const HospitalResourcesPage: React.FC = () => {
 
                   {res.details && (
                     <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 bg-white dark:bg-slate-850 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                      {res.details}
+                      {typeof res.details === 'object' ? JSON.stringify(res.details) : String(res.details)}
                     </p>
                   )}
                 </div>
@@ -345,7 +352,14 @@ export const HospitalResourcesPage: React.FC = () => {
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    <span>Updated {new Date(res.last_updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>
+                      Updated {(() => {
+                        const raw = res.last_updated || (res as any).updated_at;
+                        if (!raw) return 'Recently';
+                        const d = new Date(raw);
+                        return isNaN(d.getTime()) ? 'Recently' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      })()}
+                    </span>
                   </span>
                   <span className="font-semibold uppercase text-teal-600 dark:text-teal-400">
                     {res.status}

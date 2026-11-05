@@ -53,7 +53,7 @@ import {
   markAllNotificationsRead
 } from './controllers/hospitalController.js';
 import { chatWithAssistant } from './controllers/aiController.js';
-import { uploadRecord, uploadReport } from './middleware/uploadMiddleware.js';
+import { uploadRecord, uploadReport, uploadMedicalRecordMiddleware } from './middleware/uploadMiddleware.js';
 import {
   uploadMedicalRecord,
   getPatientMedicalRecords,
@@ -242,7 +242,19 @@ app.put('/api/notifications/read-all', authenticateToken, markAllNotificationsRe
 app.post('/api/ai/chat', simpleRateLimiter(40, 60000), chatWithAssistant);
 
 // ----------------- 1. DIGITAL PATIENT MEDICAL RECORDS -----------------
-app.post('/api/medical-records', authenticateToken, uploadRecord.single('file'), uploadMedicalRecord);
+// Primary frontend routes (/api/records)
+app.post('/api/records', authenticateToken, uploadMedicalRecordMiddleware, uploadMedicalRecord);
+app.get('/api/records', authenticateToken, getPatientMedicalRecords);
+app.get('/api/records/shared-with-me', authenticateToken, requireRole(['doctor']), getRecordsSharedWithDoctor);
+app.get('/api/records/:id', authenticateToken, getMedicalRecordById);
+app.get('/api/records/:id/download', authenticateToken, downloadMedicalRecord);
+app.delete('/api/records/:id', authenticateToken, deleteMedicalRecord);
+app.post('/api/records/:id/share', authenticateToken, shareMedicalRecord);
+app.delete('/api/records/:id/share/:doctorId', authenticateToken, revokeMedicalRecordShare);
+app.get('/api/records/:id/logs', authenticateToken, getMedicalRecordAccessLogs);
+
+// Compatibility alias routes (/api/medical-records)
+app.post('/api/medical-records', authenticateToken, uploadMedicalRecordMiddleware, uploadMedicalRecord);
 app.get('/api/medical-records', authenticateToken, getPatientMedicalRecords);
 app.get('/api/medical-records/shared-with-me', authenticateToken, requireRole(['doctor']), getRecordsSharedWithDoctor);
 app.get('/api/medical-records/:id', authenticateToken, getMedicalRecordById);

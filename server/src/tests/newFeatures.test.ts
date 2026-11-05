@@ -119,6 +119,19 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
       expect(logRes.status).toBe(200);
       expect(logRes.body.logs.length).toBeGreaterThan(0);
       expect(logRes.body.logs[0].action).toBeDefined();
+
+      // Test frontend primary /api/records routes
+      const frontendRecordsRes = await request(app)
+        .get('/api/records')
+        .set('Authorization', `Bearer ${patientToken}`);
+      expect(frontendRecordsRes.status).toBe(200);
+      expect(frontendRecordsRes.body.records[0].document_date).toBeDefined();
+
+      const docSharedRes = await request(app)
+        .get('/api/records/shared-with-me')
+        .set('Authorization', `Bearer ${doctorToken}`);
+      expect(docSharedRes.status).toBe(200);
+      expect(Array.isArray(docSharedRes.body.records)).toBe(true);
     });
   });
 
@@ -275,6 +288,8 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.body.resources.length).toBeGreaterThan(0);
       expect(res.body.resources[0].last_updated_human).toBeDefined();
+      expect(res.body.resources[0].available_capacity).toBeDefined();
+      expect(typeof res.body.resources[0].details).toBe('string');
     });
 
     it('allows Hospital Admin to update their own hospital resource availability', async () => {
@@ -282,9 +297,10 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
         .put('/api/resources/1')
         .set('Authorization', `Bearer ${blrAdminToken}`)
         .send({
-          available_count: 55,
-          occupied_count: 145,
-          status: 'available'
+          available_capacity: 55,
+          total_capacity: 200,
+          status: 'available',
+          details: 'Updated live capacity'
         });
 
       expect(res.status).toBe(200);

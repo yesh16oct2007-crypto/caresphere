@@ -18,8 +18,8 @@ const getRecordsStorageDir = (): string => {
 // 1. Upload a Medical Record
 export function uploadMedicalRecord(req: AuthenticatedRequest, res: Response): void {
   try {
-    if (!req.user || req.user.role !== 'patient') {
-      res.status(403).json({ error: 'Only registered patients can upload medical records.' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required. Please sign in.' });
       return;
     }
 
@@ -34,9 +34,13 @@ export function uploadMedicalRecord(req: AuthenticatedRequest, res: Response): v
       document_type = 'other',
       hospital_name = 'CareSphere Super Specialty Hospital',
       doctor_name = '',
-      record_date = new Date().toISOString().slice(0, 10),
       notes = ''
     } = req.body;
+
+    const record_date = req.body.record_date || req.body.document_date || new Date().toISOString().slice(0, 10);
+    const targetPatientId = req.body.patient_id && (req.user.role === 'admin' || req.user.role === 'superadmin')
+      ? Number(req.body.patient_id)
+      : req.user.id;
 
     if (!title || title.trim().length === 0) {
       res.status(400).json({ error: 'Record title is required.' });
@@ -51,7 +55,7 @@ export function uploadMedicalRecord(req: AuthenticatedRequest, res: Response): v
     `);
 
     const result = stmt.run(
-      req.user.id,
+      targetPatientId,
       title.trim(),
       document_type,
       file.path,
@@ -81,11 +85,13 @@ export function uploadMedicalRecord(req: AuthenticatedRequest, res: Response): v
       message: 'Medical record uploaded securely.',
       record: {
         id: recordId,
+        patient_id: targetPatientId,
         title,
         document_type,
         file_name: file.originalname,
         file_size: file.size,
         record_date,
+        document_date: record_date,
         hospital_name,
         doctor_name
       }
@@ -100,20 +106,52 @@ export function uploadMedicalRecord(req: AuthenticatedRequest, res: Response): v
 export function getPatientMedicalRecords(req: AuthenticatedRequest, res: Response): void {
   try {
     if (!req.user) {
-      res.status(401).json({ error: 'Authentication required.' });
+      res.status(401).json({ error: 'Authentication required. Please sign in.' });
       return;
     }
 
     const { type, search, sort = 'desc' } = req.query;
 
-    let query = `
-      SELECT mr.id, mr.patient_id, mr.title, mr.document_type, mr.file_name, mr.file_size,
-             mr.mime_type, mr.hospital_name, mr.doctor_name, mr.record_date, mr.notes, mr.created_at,
-             (SELECT COUNT(*) FROM medical_record_shares WHERE record_id = mr.id AND status = 'active') as active_shares_count
-      FROM medical_records mr
-      WHERE mr.patient_id = ?
-    `;
-    const params: any[] = [req.user.id];
+    let query = '';
+    const params: any[] = [];
+
+    if (req.user.role === 'doctor') {
+      const doc = db.prepare('SELECT id FROM doctor_profiles WHERE user_id = ?').get(req.user.id) as any;
+      const docId = doc?.id || 0;
+      query = `
+        SELECT mr.id, mr.patient_id, mr.title, mr.document_type, mr.file_name, mr.file_size,
+               mr.mime_type, mr.hospital_name, mr.doctor_name, mr.record_date,
+               mr.record_date as document_date, mr.notes, mr.created_at,
+               u.name as patient_name, u.email as patient_email, u.phone as patient_phone,
+               (SELECT COUNT(*) FROM medical_record_shares WHERE record_id = mr.id AND status = 'active') as active_shares_count
+        FROM medical_records mr
+        JOIN medical_record_shares mrs ON mr.id = mrs.record_id
+        JOIN users u ON mr.patient_id = u.id
+        WHERE mrs.doctor_id = ? AND mrs.status = 'active'
+      `;
+      params.push(docId);
+    } else if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      query = `
+        SELECT mr.id, mr.patient_id, mr.title, mr.document_type, mr.file_name, mr.file_size,
+               mr.mime_type, mr.hospital_name, mr.doctor_name, mr.record_date,
+               mr.record_date as document_date, mr.notes, mr.created_at,
+               u.name as patient_name, u.email as patient_email, u.phone as patient_phone,
+               (SELECT COUNT(*) FROM medical_record_shares WHERE record_id = mr.id AND status = 'active') as active_shares_count
+        FROM medical_records mr
+        LEFT JOIN users u ON mr.patient_id = u.id
+        WHERE 1=1
+      `;
+    } else {
+      query = `
+        SELECT mr.id, mr.patient_id, mr.title, mr.document_type, mr.file_name, mr.file_size,
+               mr.mime_type, mr.hospital_name, mr.doctor_name, mr.record_date,
+               mr.record_date as document_date, mr.notes, mr.created_at,
+               (SELECT COUNT(*) FROM medical_record_shares WHERE record_id = mr.id AND status = 'active') as active_shares_count
+        FROM medical_records mr
+        WHERE mr.patient_id = ?
+      `;
+      params.push(req.user.id);
+    }
 
     if (type && type !== 'all') {
       query += ` AND mr.document_type = ?`;
@@ -147,7 +185,7 @@ export function getMedicalRecordById(req: AuthenticatedRequest, res: Response): 
 
     const recordId = Number(req.params.id);
     const record = db.prepare(`
-      SELECT mr.*, u.name as patient_name, u.email as patient_email
+      SELECT mr.*, mr.record_date as document_date, u.name as patient_name, u.email as patient_email
       FROM medical_records mr
       JOIN users u ON mr.patient_id = u.id
       WHERE mr.id = ?
@@ -416,7 +454,8 @@ export function getMedicalRecordAccessLogs(req: AuthenticatedRequest, res: Respo
     }
 
     const logs = db.prepare(`
-      SELECT id, accessor_name, accessor_role, action, ip_address, created_at
+      SELECT id, record_id, accessed_by, accessor_name, accessor_role, action, ip_address,
+             created_at, created_at as timestamp
       FROM medical_record_access_logs
       WHERE record_id = ?
       ORDER BY created_at DESC
@@ -445,9 +484,10 @@ export function getRecordsSharedWithDoctor(req: AuthenticatedRequest, res: Respo
 
     const records = db.prepare(`
       SELECT mr.id, mr.title, mr.document_type, mr.file_name, mr.file_size, mr.record_date,
-             mr.hospital_name, mr.doctor_name, mr.notes, mr.created_at,
+             mr.record_date as document_date, mr.hospital_name, mr.doctor_name, mr.notes, mr.created_at,
              u.name as patient_name, u.email as patient_email, u.phone as patient_phone,
-             mrs.expires_at, mrs.created_at as shared_at
+             mrs.expires_at, mrs.created_at as shared_at,
+             (SELECT COUNT(*) FROM medical_record_shares WHERE record_id = mr.id AND status = 'active') as active_shares_count
       FROM medical_record_shares mrs
       JOIN medical_records mr ON mrs.record_id = mr.id
       JOIN users u ON mr.patient_id = u.id
