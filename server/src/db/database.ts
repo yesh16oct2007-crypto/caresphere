@@ -215,6 +215,62 @@ export function initDatabase(): void {
         }
       }
     }
+
+    // Auto-seed registered network hospitals across all partner chains (Apollo, Fortis, Manipal, Max, Narayana)
+    const hospPartnerCount = db.prepare("SELECT COUNT(*) as count FROM hospitals WHERE name LIKE '%Apollo%' OR name LIKE '%Fortis%' OR name LIKE '%Manipal%'").get() as any;
+    if (!hospPartnerCount || hospPartnerCount.count === 0) {
+      const insHosp = db.prepare(`
+        INSERT OR IGNORE INTO hospitals (name, code, location, city, state, address, contact_phone, contact_email, emergency_hotline, rating, total_beds, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `);
+      insHosp.run('Apollo Hospitals - Bannerghatta', 'APL-BLR-01', 'Bannerghatta Main Road, Opposite IIMB', 'Bengaluru', 'Karnataka', '154/11, Bannerghatta Main Rd, Bengaluru 560076', '+91-80-2630-4050', 'apollo.blr@partner.caresphere.health', '1066', 4.9, 250);
+      insHosp.run('Fortis Hospital - Cunningham Road', 'FOR-BLR-01', '14, Cunningham Road, Vasanth Nagar', 'Bengaluru', 'Karnataka', '14, Cunningham Rd, Vasanth Nagar, Bengaluru 560052', '+91-80-4199-4444', 'fortis.blr@partner.caresphere.health', '105711', 4.8, 200);
+      insHosp.run('Manipal Hospital - Old Airport Road', 'MAN-BLR-01', '98, HAL Old Airport Road, Kodihalli', 'Bengaluru', 'Karnataka', '98, HAL Old Airport Rd, Kodihalli, Bengaluru 560017', '+91-80-2502-4444', 'manipal.blr@partner.caresphere.health', '+91-80-2502-3333', 4.9, 300);
+      insHosp.run('Max Super Specialty Hospital - Saket', 'MAX-DEL-01', '1, 2, Press Enclave Marg, Saket', 'New Delhi', 'Delhi', '1, 2, Press Enclave Marg, Saket Institutional Area, New Delhi 110017', '+91-11-2651-5050', 'max.delhi@partner.caresphere.health', '+91-11-4055-4055', 4.9, 320);
+      insHosp.run('Narayana Multispeciality Hospital - Whitefield', 'NAR-BLR-01', '3 & 4, ITPL Main Road, KIADB Area', 'Bengaluru', 'Karnataka', '3 & 4, ITPL Main Rd, KIADB Export Promotion Industrial Area, Bengaluru 560066', '+91-80-7122-2222', 'narayana.blr@partner.caresphere.health', '+91-80-7122-2999', 4.7, 180);
+    }
+
+    // Link doctors to diverse partner hospitals so all hospitals have verified specialists
+    const apolloRow = db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Apollo%' LIMIT 1").get() as any;
+    const fortisRow = db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Fortis%' LIMIT 1").get() as any;
+    const manipalRow = db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Manipal%' LIMIT 1").get() as any;
+
+    if (apolloRow && fortisRow && manipalRow) {
+      db.prepare("UPDATE doctor_profiles SET hospital_id = ?, hospital_name = 'Apollo Hospitals - Bannerghatta', hospital_location = 'Bannerghatta Main Road, Opposite IIMB' WHERE id = 4").run(apolloRow.id);
+      db.prepare("UPDATE doctor_profiles SET hospital_id = ?, hospital_name = 'Fortis Hospital - Cunningham Road', hospital_location = '14, Cunningham Road, Vasanth Nagar', verification_status = 'verified' WHERE id = 5").run(fortisRow.id);
+      db.prepare("UPDATE doctor_profiles SET hospital_id = ?, hospital_name = 'Manipal Hospital - Old Airport Road', hospital_location = '98, HAL Old Airport Road, Kodihalli', verification_status = 'verified' WHERE id = 6").run(manipalRow.id);
+    }
+
+    const maxRow = db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Max%' LIMIT 1").get() as any;
+    const narayanaRow = db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Narayana%' LIMIT 1").get() as any;
+
+    if (maxRow && narayanaRow) {
+      const docVikram = db.prepare("SELECT id FROM users WHERE email = 'dr.vikram@partner.caresphere.health'").get() as any;
+      if (!docVikram) {
+        const docPass = '$2a$10$wTqgI7Xo94s9p2w0PqK0yeLzG39P1wL3zHh8C8a2tZ0n3ZqLqT7q2';
+        const insU = db.prepare("INSERT INTO users (name, email, phone, password_hash, role, preferred_language) VALUES (?, ?, ?, ?, 'doctor', 'en')");
+        const u7 = insU.run('Dr. Vikram Seth', 'dr.vikram@partner.caresphere.health', '+91-9876543207', docPass);
+        const u7Id = Number(u7.lastInsertRowid);
+        const insDp = db.prepare(`
+          INSERT INTO doctor_profiles (user_id, hospital_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications, experience_years, consultation_fee, bio, verification_status, verified_at)
+          VALUES (?, ?, 'Max Super Specialty Hospital - Saket', '1, 2, Press Enclave Marg, Saket', 'DMC-2015-88312', 'Delhi Medical Council', 1, 'Senior Consultant Cardiologist', 'MBBS, MD, DM (Cardiology)', 14, 800, 'Interventional cardiologist at Max Hospital specializing in complex angioplasties.', 'verified', datetime('now'))
+        `);
+        insDp.run(u7Id, maxRow.id);
+      }
+
+      const docMeena = db.prepare("SELECT id FROM users WHERE email = 'dr.meenakshi@partner.caresphere.health'").get() as any;
+      if (!docMeena) {
+        const docPass = '$2a$10$wTqgI7Xo94s9p2w0PqK0yeLzG39P1wL3zHh8C8a2tZ0n3ZqLqT7q2';
+        const insU = db.prepare("INSERT INTO users (name, email, phone, password_hash, role, preferred_language) VALUES (?, ?, ?, ?, 'doctor', 'en')");
+        const u8 = insU.run('Dr. Meenakshi Iyer', 'dr.meenakshi@partner.caresphere.health', '+91-9876543208', docPass);
+        const u8Id = Number(u8.lastInsertRowid);
+        const insDp = db.prepare(`
+          INSERT INTO doctor_profiles (user_id, hospital_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications, experience_years, consultation_fee, bio, verification_status, verified_at)
+          VALUES (?, ?, 'Narayana Multispeciality Hospital - Whitefield', '3 & 4, ITPL Main Road, Whitefield', 'KMC-2017-91022', 'Karnataka Medical Council', 3, 'Consultant Pediatrician', 'MBBS, MD (Pediatrics)', 9, 650, 'Pediatric consultant at Narayana Multispeciality Hospital Whitefield.', 'verified', datetime('now'))
+        `);
+        insDp.run(u8Id, narayanaRow.id);
+      }
+    }
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

@@ -13,12 +13,10 @@ import {
   ArrowLeft,
   ShieldCheck,
   Stethoscope,
-  MapPin,
-  Navigation
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { Department, DoctorProfile } from '../types/index.js';
-import { DoctorNavigationModal } from '../components/DoctorNavigationModal.js';
 import { apiUrl } from '../services/api.js';
 
 export const BookAppointmentPage: React.FC = () => {
@@ -29,9 +27,13 @@ export const BookAppointmentPage: React.FC = () => {
 
   // Wizard steps: 1: Department, 2: Doctor, 3: Date & Slot, 4: Notes & Review, 5: Success
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [navigatingDoc, setNavigatingDoc] = useState<DoctorProfile | null>(null);
 
   // Form State
+  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [selectedHospitalId, setSelectedHospitalId] = useState<number | null>(
+    searchParams.get('hospital_id') ? Number(searchParams.get('hospital_id')) : null
+  );
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState<number | null>(
     searchParams.get('dept_id') ? Number(searchParams.get('dept_id')) : null
@@ -59,20 +61,28 @@ export const BookAppointmentPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
 
-  // 1. Load departments
+  // 1. Load departments and hospitals
   useEffect(() => {
     fetch(apiUrl('/api/hospital/departments'))
       .then(res => res.json())
       .then(data => setDepartments(data.departments || []))
       .catch(err => console.error(err));
+
+    fetch(apiUrl('/api/hospitals'))
+      .then(res => res.json())
+      .then(data => setHospitals(data.hospitals || []))
+      .catch(err => console.error(err));
   }, []);
 
-  // 2. Load doctors whenever selectedDeptId changes
+  // 2. Load doctors whenever selectedDeptId or selectedHospitalId changes
   useEffect(() => {
     let url = '/api/doctors';
-    if (selectedDeptId) {
-      url += `?department_id=${selectedDeptId}`;
-    }
+    const params = new URLSearchParams();
+    if (selectedDeptId) params.append('department_id', String(selectedDeptId));
+    if (selectedHospitalId) params.append('hospital_id', String(selectedHospitalId));
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+
     fetch(apiUrl(url))
       .then(res => res.json())
       .then(data => {
@@ -93,7 +103,7 @@ export const BookAppointmentPage: React.FC = () => {
         }
       })
       .catch(err => console.error(err));
-  }, [selectedDeptId]);
+  }, [selectedDeptId, selectedHospitalId]);
 
   // 3. Load slots whenever doctor or date changes
   useEffect(() => {
@@ -120,6 +130,8 @@ export const BookAppointmentPage: React.FC = () => {
   const selectedDoctorObj = doctors.find(d => (d.id || d.doctor_id) === selectedDoctorId);
   const selectedDeptObj = departments.find(d => d.id === selectedDeptId) || 
     (selectedDoctorObj ? departments.find(d => d.name === selectedDoctorObj.department_name) : null);
+  const selectedHospitalObj = hospitals.find(h => h.id === selectedHospitalId) ||
+    (selectedDoctorObj ? hospitals.find(h => h.id === selectedDoctorObj.hospital_id) : null);
 
   const handleConfirmBooking = async () => {
     if (!isAuthenticated) {
@@ -181,16 +193,53 @@ export const BookAppointmentPage: React.FC = () => {
       {/* Page Title */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-semibold mb-2">
-          <Calendar className="w-3.5 h-3.5 text-brand-600" />
-          <span>Outpatient Consultation Scheduling</span>
+          <Building2 className="w-3.5 h-3.5 text-brand-600" />
+          <span>Multi-Hospital Healthcare Network • Appointment Scheduling</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
           {t('booking.title')}
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {t('booking.subtitle')}
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl mx-auto">
+          Book verified outpatient consultations across Apollo, Fortis, Manipal, CareSphere, and registered healthcare facilities.
         </p>
       </div>
+
+      {/* Hospital Network Selector Bar */}
+      {currentStep < 5 && (
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-brand-50 via-teal-50 to-blue-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-850 border border-brand-200 dark:border-slate-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
+              <div>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Select Participating Hospital
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Choose your preferred hospital or browse doctors across all registered facilities
+                </div>
+              </div>
+            </div>
+            <div className="sm:w-72">
+              <select
+                value={selectedHospitalId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  setSelectedHospitalId(val);
+                  setSelectedDoctorId(null);
+                }}
+                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-brand-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-2xs"
+              >
+                <option value="">All Hospitals (Network-Wide)</option>
+                {hospitals.map(h => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} • {h.city}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Wizard Progress Steps Bar */}
       {currentStep < 5 && (
@@ -272,7 +321,7 @@ export const BookAppointmentPage: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-bold text-sm text-slate-800 dark:text-slate-100">{dept.name}</div>
-                      <div className="text-xs text-slate-400">{dept.floor}</div>
+                      <div className="text-xs text-slate-400">Clinical Department</div>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-slate-400" />
@@ -303,63 +352,79 @@ export const BookAppointmentPage: React.FC = () => {
             {t('booking.select_doctor_label')}
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {doctors.map((doc) => {
-              const docId = doc.id || doc.doctor_id!;
-              const isSelected = selectedDoctorId === docId;
-              return (
-                <button
-                  key={docId}
-                  onClick={() => {
-                    setSelectedDoctorId(docId);
-                    setCurrentStep(3);
-                  }}
-                  className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between ${
-                    isSelected
-                      ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-900 dark:text-brand-200 ring-2 ring-brand-500'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
+          {doctors.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6">
+              <Stethoscope className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <div className="text-sm font-bold text-slate-700 dark:text-slate-300">No doctors found for this selection</div>
+              <p className="text-xs text-slate-400 mt-1">Try switching to &quot;All Hospitals&quot; or select another clinical department.</p>
+              <button
+                onClick={() => { setSelectedHospitalId(null); setSelectedDeptId(null); }}
+                className="mt-3 px-4 py-1.5 rounded-xl bg-brand-50 text-brand-700 text-xs font-semibold"
+              >
+                Reset Selection
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {doctors.map((doc) => {
+                const docId = doc.id || doc.doctor_id!;
+                const isSelected = selectedDoctorId === docId;
+                return (
+                  <button
+                    key={docId}
+                    onClick={() => {
+                      setSelectedDoctorId(docId);
+                      setCurrentStep(3);
+                    }}
+                    className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-900 dark:text-brand-200 ring-2 ring-brand-500'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-600'
+                    }`}
+                  >
                     <div>
-                      <div className="font-bold text-sm text-slate-900 dark:text-white">{doc.name}</div>
-                      <div className="text-xs font-semibold text-brand-600 dark:text-brand-400">{doc.specialization}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{doc.qualifications}</div>
-                    </div>
-                    {(doc.verification_status === 'verified' || doc.verification_status === 'approved') ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 shrink-0">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        <span>Verified</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
-                        Pending
-                      </span>
-                    )}
-                  </div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="font-bold text-sm text-slate-900 dark:text-white">{doc.name}</div>
+                          <div className="text-xs font-semibold text-brand-600 dark:text-brand-400">{doc.specialization}</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">{doc.qualifications}</div>
+                        </div>
+                        {(doc.verification_status === 'verified' || doc.verification_status === 'approved') ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 shrink-0">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            <span>Verified</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full shrink-0">
+                            Pending
+                          </span>
+                        )}
+                      </div>
 
-                  {doc.hospital_name && (
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1 font-medium">
-                      <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
-                      <span className="truncate">{doc.hospital_name} {doc.hospital_location ? `• ${doc.hospital_location}` : ''}</span>
+                      {/* Hospital & Location Badge */}
+                      <div className="mt-2 mb-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/80">
+                        <div className="text-xs font-semibold text-brand-700 dark:text-brand-300 flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                          <span className="truncate">{doc.hospital_name || 'Participating Hospital'}</span>
+                        </div>
+                        {doc.hospital_location && (
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+                            <span className="truncate">{doc.hospital_location}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {doc.room_number && (
-                    <div className="flex items-center gap-1 text-[11px] text-teal-600 dark:text-teal-400 font-semibold mb-2">
-                      <MapPin className="w-3 h-3" />
-                      <span>{doc.room_number} {doc.floor ? `(${doc.floor})` : ''}</span>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex justify-between">
+                      <span>{doc.experience_years} yrs exp</span>
+                      <span>Fee: ₹{doc.consultation_fee}</span>
                     </div>
-                  )}
-
-                  <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex justify-between">
-                    <span>{doc.experience_years} yrs exp</span>
-                    <span>Fee: ₹{doc.consultation_fee}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -376,7 +441,7 @@ export const BookAppointmentPage: React.FC = () => {
             </button>
             <div className="text-right">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">{selectedDoctorObj?.name}</span>
-              <span className="text-[11px] text-brand-600 dark:text-brand-400 font-semibold">{selectedDoctorObj?.specialization}</span>
+              <span className="text-[11px] text-brand-600 dark:text-brand-400 font-semibold">{selectedDoctorObj?.hospital_name || 'Participating Hospital'}</span>
             </div>
           </div>
 
@@ -478,13 +543,13 @@ export const BookAppointmentPage: React.FC = () => {
             <div className="flex justify-between items-start text-sm">
               <span className="text-slate-500">Hospital & Campus:</span>
               <strong className="text-brand-700 dark:text-brand-300 text-right">
-                {selectedDoctorObj?.hospital_name || 'CareSphere Super Specialty Hospital'}
+                {selectedDoctorObj?.hospital_name || 'Participating Hospital'}
                 {selectedDoctorObj?.hospital_location ? ` (${selectedDoctorObj.hospital_location})` : ''}
               </strong>
             </div>
             <div className="flex justify-between items-start text-sm">
               <span className="text-slate-500">Department:</span>
-              <span className="text-slate-800 dark:text-slate-200">{selectedDoctorObj?.department_name} ({selectedDoctorObj?.department_floor})</span>
+              <span className="text-slate-800 dark:text-slate-200">{selectedDoctorObj?.department_name}</span>
             </div>
             <div className="flex justify-between items-start text-sm">
               <span className="text-slate-500">Appointment Date:</span>
@@ -567,22 +632,10 @@ export const BookAppointmentPage: React.FC = () => {
           </div>
 
           <div className="max-w-md mx-auto text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-left space-y-1.5">
-            <div><strong>Hospital:</strong> {selectedDoctorObj?.hospital_name || 'CareSphere Super Specialty Hospital'} {selectedDoctorObj?.hospital_location ? `(${selectedDoctorObj.hospital_location})` : ''}</div>
+            <div><strong>Hospital:</strong> {selectedDoctorObj?.hospital_name || 'Participating Hospital'} {selectedDoctorObj?.hospital_location ? `(${selectedDoctorObj.hospital_location})` : ''}</div>
             <div><strong>Doctor:</strong> {selectedDoctorObj?.name}</div>
+            <div><strong>Department:</strong> {selectedDoctorObj?.department_name}</div>
             <div><strong>Date & Slot:</strong> {appointmentDate} at {selectedSlotTime}</div>
-            <div><strong>Consultation Chamber:</strong> {selectedDoctorObj?.room_number || 'OPD Chamber'} ({selectedDoctorObj?.department_floor || selectedDoctorObj?.floor})</div>
-            {selectedDoctorObj?.room_number && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => setNavigatingDoc(selectedDoctorObj)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline"
-                >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>Preview Hospital Indoor Route to Chamber</span>
-                </button>
-              </div>
-            )}
             <div className="text-[11px] text-teal-600 dark:text-teal-400 pt-1">
               {t('booking.save_ref_notice')}
             </div>
@@ -603,14 +656,6 @@ export const BookAppointmentPage: React.FC = () => {
             </Link>
           </div>
         </div>
-      )}
-
-      {/* Hospital Indoor Navigation Modal */}
-      {navigatingDoc && (
-        <DoctorNavigationModal
-          doctor={navigatingDoc}
-          onClose={() => setNavigatingDoc(null)}
-        />
       )}
     </div>
   );

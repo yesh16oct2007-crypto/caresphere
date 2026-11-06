@@ -26,7 +26,7 @@ export function createAppointment(req: AuthenticatedRequest, res: Response): voi
 
     // Verify doctor is approved
     const doctor = db.prepare(`
-      SELECT dp.id, dp.department_id, dp.verification_status, u.id as doctor_user_id, u.name as doctor_name, u.preferred_language as doctor_lang
+      SELECT dp.id, dp.department_id, dp.hospital_id, dp.verification_status, u.id as doctor_user_id, u.name as doctor_name, u.preferred_language as doctor_lang
       FROM doctor_profiles dp
       JOIN users u ON dp.user_id = u.id
       WHERE dp.id = ?
@@ -66,9 +66,9 @@ export function createAppointment(req: AuthenticatedRequest, res: Response): voi
 
       const insertStmt = db.prepare(`
         INSERT INTO appointments (
-          reference_no, patient_id, doctor_id, department_id,
+          reference_no, patient_id, doctor_id, department_id, hospital_id,
           appointment_date, appointment_time, status, patient_notes
-        ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)
       `);
 
       const result = insertStmt.run(
@@ -76,6 +76,7 @@ export function createAppointment(req: AuthenticatedRequest, res: Response): voi
         req.user!.id,
         doctor_id,
         targetDeptId,
+        doctor.hospital_id || 1,
         appointment_date,
         appointment_time,
         patient_notes || null

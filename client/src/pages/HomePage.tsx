@@ -27,7 +27,6 @@ import {
   FileCheck
 } from 'lucide-react';
 import { Department, DoctorProfile, Facility, FAQ, Announcement } from '../types/index.js';
-import { DoctorNavigationModal } from '../components/DoctorNavigationModal.js';
 import { apiUrl } from '../services/api.js';
 
 export const HomePage: React.FC = () => {
@@ -40,7 +39,6 @@ export const HomePage: React.FC = () => {
   const [doctorSearch, setDoctorSearch] = useState('');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [navigatingDoc, setNavigatingDoc] = useState<DoctorProfile | null>(null);
 
   useEffect(() => {
     async function loadHomeData() {
@@ -338,7 +336,7 @@ export const HomePage: React.FC = () => {
                   <div className="mt-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-[11px] space-y-1">
                     <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate">
                       <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
-                      <span className="truncate">{doc.hospital_name || 'CareSphere Super Specialty Hospital'}</span>
+                      <span className="truncate">{doc.hospital_name || 'Participating Network Hospital'}</span>
                     </div>
                     {doc.hospital_location && (
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
@@ -348,20 +346,15 @@ export const HomePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Room & Navigation chip */}
+                  {/* Verification Status */}
                   <div className="mt-2 flex items-center justify-between text-[11px]">
-                    <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                      <MapPin className="w-3 h-3 text-teal-600" />
-                      <span>{doc.room_number || 'OPD Chamber'}</span>
+                    <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Verified Specialist</span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setNavigatingDoc(doc)}
-                      className="text-brand-600 dark:text-brand-400 hover:underline font-bold inline-flex items-center gap-0.5"
-                    >
-                      <Navigation className="w-3 h-3" />
-                      <span>Map</span>
-                    </button>
+                    <span className="text-brand-600 dark:text-brand-400 font-semibold">
+                      Outpatient OPD
+                    </span>
                   </div>
 
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
@@ -371,7 +364,7 @@ export const HomePage: React.FC = () => {
 
                 <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-700/60">
                   <Link
-                    to={`/book?doctor_id=${doc.id || doc.doctor_id}&dept_id=${doc.department_id}`}
+                    to={`/book?doctor_id=${doc.id || doc.doctor_id}&dept_id=${doc.department_id}&hospital_id=${doc.hospital_id || ''}`}
                     className="w-full py-2 px-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <Calendar className="w-3.5 h-3.5" />
@@ -411,7 +404,7 @@ export const HomePage: React.FC = () => {
                 {dept.description}
               </p>
               <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                <span>{dept.floor}</span>
+                <span>Multi-Hospital Network</span>
                 <Link
                   to={`/doctors?department_id=${dept.id}`}
                   className="text-brand-600 dark:text-brand-400 font-semibold hover:underline flex items-center gap-1"
@@ -558,14 +551,6 @@ export const HomePage: React.FC = () => {
           })}
         </div>
       </section>
-
-      {/* Hospital Indoor Navigation Modal */}
-      {navigatingDoc && (
-        <DoctorNavigationModal
-          doctor={navigatingDoc}
-          onClose={() => setNavigatingDoc(null)}
-        />
-      )}
     </div>
   );
 };

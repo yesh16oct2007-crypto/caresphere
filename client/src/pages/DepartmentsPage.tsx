@@ -28,7 +28,7 @@ export const DepartmentsPage: React.FC = () => {
           Specialized Clinical Departments
         </h1>
         <p className="text-sm text-slate-500 max-w-2xl mt-1">
-          Each clinical department at CareSphere is led by senior specialist consultants and supported by specialized diagnostic equipment and dedicated nursing wings.
+          Each clinical department across CareSphere&apos;s participating hospital network is led by senior specialist consultants and supported by specialized diagnostic equipment.
         </p>
       </div>
 
@@ -65,7 +65,7 @@ export const DepartmentsPage: React.FC = () => {
 
                 <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div><strong>Head of Dept:</strong> {dept.head_of_department}</div>
-                  <div><strong>Location:</strong> {dept.floor}</div>
+                  <div><strong>Clinical Network:</strong> Multi-Hospital Outpatient Coverage</div>
                   <div><strong>Phone Ext:</strong> {dept.phone_extension}</div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
 
 export function getApprovedDoctors(req: Request, res: Response): void {
   try {
-    const { department_id, search, limit = 50 } = req.query;
+    const { department_id, hospital_id, search, limit = 50 } = req.query;
 
     let query = `
       SELECT 
@@ -14,8 +14,10 @@ export function getApprovedDoctors(req: Request, res: Response): void {
         u.email,
         u.phone,
         u.preferred_language,
-        dp.hospital_name,
-        dp.hospital_location,
+        dp.hospital_id,
+        COALESCE(h.name, dp.hospital_name) as hospital_name,
+        COALESCE(h.location, dp.hospital_location) as hospital_location,
+        COALESCE(h.city, 'Bengaluru') as hospital_city,
         dp.registration_number,
         dp.state_medical_council,
         dp.specialization,
@@ -30,18 +32,14 @@ export function getApprovedDoctors(req: Request, res: Response): void {
         dp.id_proof_url,
         dp.verification_status,
         dp.verification_checklist,
-        dp.room_number,
-        dp.floor as doctor_floor,
-        dp.wing as doctor_wing,
         dp.current_presence_status,
-        dp.navigation_instructions,
         d.id as department_id,
         d.name as department_name,
-        d.code as department_code,
-        d.floor as department_floor
+        d.code as department_code
       FROM doctor_profiles dp
       JOIN users u ON dp.user_id = u.id
       JOIN departments d ON dp.department_id = d.id
+      LEFT JOIN hospitals h ON dp.hospital_id = h.id
       WHERE dp.verification_status IN ('approved', 'verified')
     `;
 
@@ -52,8 +50,13 @@ export function getApprovedDoctors(req: Request, res: Response): void {
       params.push(department_id);
     }
 
+    if (hospital_id) {
+      query += ` AND dp.hospital_id = ?`;
+      params.push(Number(hospital_id));
+    }
+
     if (search) {
-      query += ` AND (u.name LIKE ? OR dp.specialization LIKE ? OR d.name LIKE ? OR dp.hospital_name LIKE ? OR dp.hospital_location LIKE ?)`;
+      query += ` AND (u.name LIKE ? OR dp.specialization LIKE ? OR d.name LIKE ? OR COALESCE(h.name, dp.hospital_name) LIKE ? OR COALESCE(h.location, dp.hospital_location) LIKE ?)`;
       const term = `%${search}%`;
       params.push(term, term, term, term, term);
     }
@@ -81,8 +84,10 @@ export function getDoctorById(req: Request, res: Response): void {
         u.email,
         u.phone,
         u.preferred_language,
-        dp.hospital_name,
-        dp.hospital_location,
+        dp.hospital_id,
+        COALESCE(h.name, dp.hospital_name) as hospital_name,
+        COALESCE(h.location, dp.hospital_location) as hospital_location,
+        COALESCE(h.city, 'Bengaluru') as hospital_city,
         dp.registration_number,
         dp.state_medical_council,
         dp.specialization,
@@ -97,18 +102,14 @@ export function getDoctorById(req: Request, res: Response): void {
         dp.id_proof_url,
         dp.verification_status,
         dp.verification_checklist,
-        dp.room_number,
-        dp.floor as doctor_floor,
-        dp.wing as doctor_wing,
         dp.current_presence_status,
-        dp.navigation_instructions,
         d.id as department_id,
         d.name as department_name,
-        d.code as department_code,
-        d.floor as department_floor
+        d.code as department_code
       FROM doctor_profiles dp
       JOIN users u ON dp.user_id = u.id
       JOIN departments d ON dp.department_id = d.id
+      LEFT JOIN hospitals h ON dp.hospital_id = h.id
       WHERE dp.id = ?
     `).get(id) as any;
 
