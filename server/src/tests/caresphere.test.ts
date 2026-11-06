@@ -128,6 +128,25 @@ describe('CareSphere Healthcare Platform API Tests', () => {
       expect(meRes.status).toBe(200);
       expect(meRes.body.user.preferred_language).toBe('hi');
     });
+
+    it('allows a hospital administrator to register and links them to their hospital', async () => {
+      const email = `admin.hosp.${Date.now()}@hospital.health`;
+      const res = await request(app)
+        .post('/api/auth/register-hospital-admin')
+        .send({
+          name: 'Hospital Administrator Test',
+          email,
+          phone: '+91-9876543299',
+          password: 'HospitalAdmin@12345',
+          hospital_id: 1,
+          preferred_language: 'en'
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.token).toBeDefined();
+      expect(res.body.user.role).toBe('hospital_admin');
+      expect(res.body.user.hospital_id).toBe(1);
+    });
   });
 
   describe('3. Role-Based Access Control (RBAC) & Doctor Approval Process', () => {

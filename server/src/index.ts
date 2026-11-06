@@ -12,6 +12,7 @@ import { authenticateToken, requireRole } from './middleware/authMiddleware.js';
 import {
   registerPatient,
   registerDoctor,
+  registerHospitalAdmin,
   login,
   getCurrentUser,
   updateLanguagePreference,
@@ -239,6 +240,7 @@ app.get('/api/health', (req, res) => {
 // ----------------- AUTHENTICATION -----------------
 app.post('/api/auth/register', simpleRateLimiter(15, 60000), registerPatient);
 app.post('/api/auth/register-doctor', simpleRateLimiter(10, 60000), registerDoctor);
+app.post('/api/auth/register-hospital-admin', simpleRateLimiter(10, 60000), registerHospitalAdmin);
 app.post('/api/auth/login', simpleRateLimiter(20, 60000), login);
 app.get('/api/auth/me', authenticateToken, getCurrentUser);
 app.put('/api/auth/update-language', authenticateToken, updateLanguagePreference);

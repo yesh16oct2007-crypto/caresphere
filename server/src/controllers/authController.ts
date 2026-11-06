@@ -233,6 +233,144 @@ export function registerDoctor(req: Request, res: Response): void {
   }
 }
 
+export function registerHospitalAdmin(req: Request, res: Response): void {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      password,
+      preferred_language = 'en',
+      hospital_id,
+      new_hospital_name,
+      new_hospital_code,
+      new_hospital_city,
+      new_hospital_location,
+      new_hospital_hotline
+    } = req.body;
+
+    if (!name || !email || !password) {
+      res.status(400).json({ error: 'Name, official work email, and password are required.' });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+      return;
+    }
+
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      res.status(409).json({ error: 'An account with this email address already exists.' });
+      return;
+    }
+
+    let targetHospitalId: number | null = hospital_id ? Number(hospital_id) : null;
+
+    // Concurrency-safe atomic transaction
+    const insertAdminTransaction = db.transaction(() => {
+      // If registering a brand new hospital
+      if (!targetHospitalId && new_hospital_name && new_hospital_city) {
+        const cleanName = new_hospital_name.trim();
+        const cleanCity = new_hospital_city.trim();
+        const baseCode = (new_hospital_code || cleanName.replace(/[^A-Za-z]/g, '').slice(0, 4)).toUpperCase();
+        const finalCode = `${baseCode}-${Date.now().toString().slice(-4)}`;
+
+        const insHosp = db.prepare(`
+          INSERT INTO hospitals (name, code, location, city, emergency_hotline, is_active)
+          VALUES (?, ?, ?, ?, ?, 1)
+        `);
+        const hResult = insHosp.run(
+          cleanName,
+          finalCode,
+          new_hospital_location?.trim() || `${cleanCity} Main Campus`,
+          cleanCity,
+          new_hospital_hotline?.trim() || '+91-80-CARE-911'
+        );
+        targetHospitalId = Number(hResult.lastInsertRowid);
+
+        // Auto-create default hospital resources
+        const defaultResources = [
+          { type: 'general_beds', total: 200, avail: 80, occ: 120 },
+          { type: 'icu_beds', total: 30, avail: 8, occ: 22 },
+          { type: 'emergency_beds', total: 20, avail: 6, occ: 14 },
+          { type: 'ambulances', total: 6, avail: 4, occ: 2 },
+          { type: 'blood_bank', total: 100, avail: 78, occ: 22 },
+          { type: 'lab_services', total: 1, avail: 1, occ: 0 },
+          { type: 'pharmacy', total: 1, avail: 1, occ: 0 },
+          { type: 'emergency_dept', total: 1, avail: 1, occ: 0 }
+        ];
+
+        const insertRes = db.prepare(`
+          INSERT INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status, updated_at)
+          VALUES (?, ?, ?, ?, ?, 'available', datetime('now'))
+        `);
+        defaultResources.forEach(r => insertRes.run(targetHospitalId, r.type, r.total, r.avail, r.occ));
+      }
+
+      if (!targetHospitalId) {
+        const firstHosp = db.prepare('SELECT id FROM hospitals ORDER BY id ASC LIMIT 1').get() as any;
+        targetHospitalId = firstHosp?.id || 1;
+      }
+
+      const passwordHash = bcrypt.hashSync(password, 10);
+      const userStmt = db.prepare(`
+        INSERT INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id)
+        VALUES (?, ?, ?, ?, 'hospital_admin', ?, ?)
+      `);
+      const userResult = userStmt.run(
+        name.trim(),
+        email.trim(),
+        phone?.trim() || null,
+        passwordHash,
+        preferred_language,
+        targetHospitalId
+      );
+
+      return { userId: Number(userResult.lastInsertRowid), hospitalId: targetHospitalId };
+    });
+
+    const { userId, hospitalId } = insertAdminTransaction();
+
+    const hospObj = db.prepare('SELECT id, name, code, location, city FROM hospitals WHERE id = ?').get(hospitalId) as any;
+
+    logAudit(
+      userId,
+      name,
+      'hospital_admin',
+      'REGISTER_HOSPITAL_ADMIN',
+      'USERS',
+      String(userId),
+      `Hospital admin registered for hospital: ${hospObj?.name || hospitalId}`,
+      req.ip
+    );
+
+    const token = jwt.sign(
+      { id: userId, name, email, role: 'hospital_admin', preferred_language, hospital_id: hospitalId },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      message: 'Hospital Administrator account registered successfully.',
+      token,
+      user: {
+        id: userId,
+        name,
+        email,
+        phone,
+        role: 'hospital_admin',
+        preferred_language,
+        hospital_id: hospitalId,
+        hospital: hospObj
+      }
+    });
+  } catch (err: any) {
+    console.error('Register hospital admin error:', err);
+    res.status(500).json({ error: 'Failed to register hospital administrator: ' + err.message });
+  }
+}
+
 export function login(req: Request, res: Response): void {
   try {
     const { email, password } = req.body;

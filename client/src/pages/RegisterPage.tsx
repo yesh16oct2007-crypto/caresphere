@@ -58,8 +58,9 @@ export const RegisterPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<'patient' | 'doctor'>('patient');
+  const [activeTab, setActiveTab] = useState<'patient' | 'doctor' | 'hospital_admin'>('patient');
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [hospitals, setHospitals] = useState<any[]>([]);
 
   // Common Fields
   const [name, setName] = useState('');
@@ -67,6 +68,15 @@ export const RegisterPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState(i18n.language || 'en');
+
+  // Hospital Admin Fields
+  const [selectedHospitalId, setSelectedHospitalId] = useState<number | ''>('');
+  const [isNewHospital, setIsNewHospital] = useState(false);
+  const [newHospitalName, setNewHospitalName] = useState('');
+  const [newHospitalCode, setNewHospitalCode] = useState('');
+  const [newHospitalCity, setNewHospitalCity] = useState('');
+  const [newHospitalLocation, setNewHospitalLocation] = useState('');
+  const [newHospitalHotline, setNewHospitalHotline] = useState('');
 
   // Patient Fields
   const [dob, setDob] = useState('');
@@ -126,6 +136,15 @@ export const RegisterPage: React.FC = () => {
       .then(data => {
         setDepartments(data.departments || []);
         if (data.departments?.[0]) setDepartmentId(data.departments[0].id);
+      })
+      .catch(err => console.error(err));
+
+    fetch(apiUrl('/api/hospitals'))
+      .then(res => res.json())
+      .then(data => {
+        const list = data.hospitals || [];
+        setHospitals(list);
+        if (list.length > 0) setSelectedHospitalId(list[0].id);
       })
       .catch(err => console.error(err));
   }, []);
@@ -241,6 +260,68 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleHospitalAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) {
+      setErrorMsg('Please enter your administrator name, official work email, and password.');
+      return;
+    }
+
+    if (isNewHospital && (!newHospitalName || !newHospitalCity)) {
+      setErrorMsg('Please enter the new hospital facility name and city.');
+      return;
+    }
+
+    if (!isNewHospital && !selectedHospitalId) {
+      setErrorMsg('Please select your affiliated hospital facility.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch(apiUrl('/api/auth/register-hospital-admin'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          password,
+          preferred_language: preferredLanguage,
+          hospital_id: isNewHospital ? null : selectedHospitalId,
+          new_hospital_name: isNewHospital ? newHospitalName : null,
+          new_hospital_code: isNewHospital ? newHospitalCode : null,
+          new_hospital_city: isNewHospital ? newHospitalCity : null,
+          new_hospital_location: isNewHospital ? newHospitalLocation : null,
+          new_hospital_hotline: isNewHospital ? newHospitalHotline : null
+        })
+      });
+
+      const contentType = res.headers.get('content-type');
+      let data: any = {};
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        throw new Error(`Backend server unreachable (HTTP ${res.status}).`);
+      }
+
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Hospital Administrator registration failed.');
+        return;
+      }
+
+      login(data.token, data.user);
+      navigate('/admin');
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (doctorSubmittedSuccess) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
@@ -283,32 +364,45 @@ export const RegisterPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Tab Switcher: Patient vs Doctor */}
-        <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+        {/* Tab Switcher: Patient vs Doctor vs Hospital Admin */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/60 dark:border-slate-700">
           <button
             type="button"
             onClick={() => { setActiveTab('patient'); setErrorMsg(null); }}
-            className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'patient'
                 ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <User className="w-4 h-4" />
-            <span>{t('auth.register_patient_title')}</span>
+            <User className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('auth.register_patient_title')}</span>
           </button>
 
           <button
             type="button"
             onClick={() => { setActiveTab('doctor'); setErrorMsg(null); }}
-            className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'doctor'
                 ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Stethoscope className="w-4 h-4" />
-            <span>{t('auth.register_doctor_title')}</span>
+            <Stethoscope className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('auth.register_doctor_title')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('hospital_admin'); setErrorMsg(null); }}
+            className={`py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'hospital_admin'
+                ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Building2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">Hospital Admin</span>
           </button>
         </div>
 
@@ -885,6 +979,208 @@ export const RegisterPage: React.FC = () => {
               className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
             >
               <span>{isLoading ? 'Submitting Application...' : t('auth.submit_doctor_btn')}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        )}
+
+        {/* 3. Hospital Admin Registration Form */}
+        {activeTab === 'hospital_admin' && (
+          <form onSubmit={handleHospitalAdminSubmit} className="space-y-4 text-xs sm:text-sm">
+            <div className="p-3.5 bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 rounded-2xl flex items-start gap-3">
+              <Building2 className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-brand-900 dark:text-brand-200 leading-relaxed">
+                <strong>Hospital Administrator Access:</strong> Authorizes administrative management for hospital emergency assistance, laboratory test bookings & reports, pharmacy inventory & medicine orders, and live hospital resource availability.
+              </div>
+            </div>
+
+            {/* Hospital Facility Selection */}
+            <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+                  Associated Hospital Facility *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsNewHospital(!isNewHospital)}
+                  className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  {isNewHospital ? '← Select Existing Hospital' : '+ Register New Hospital'}
+                </button>
+              </div>
+
+              {!isNewHospital ? (
+                <div>
+                  <select
+                    value={selectedHospitalId}
+                    onChange={(e) => setSelectedHospitalId(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm font-medium"
+                  >
+                    <option value="">-- Choose Participating Hospital --</option>
+                    {hospitals.map(h => (
+                      <option key={h.id} value={h.id}>
+                        {h.name} ({h.city})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                      Hospital Facility Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Apollo Super Specialty Hospital"
+                      value={newHospitalName}
+                      onChange={(e) => setNewHospitalName(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Bengaluru, Chennai, Mumbai"
+                        value={newHospitalCity}
+                        onChange={(e) => setNewHospitalCity(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Facility Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. APL-BLR-02"
+                        value={newHospitalCode}
+                        onChange={(e) => setNewHospitalCode(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                      Campus / Street Location
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bannerghatta Road Campus"
+                      value={newHospitalLocation}
+                      onChange={(e) => setNewHospitalLocation(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                      Emergency Department Hotline
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 1066 or +91-80-2630-4050"
+                      value={newHospitalHotline}
+                      onChange={(e) => setNewHospitalHotline(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Administrator Account Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Administrator Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rajesh Nair"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Official Work Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@hospital.health"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Contact Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+91-9876543210"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Preferred Language
+                </label>
+                <select
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm font-medium"
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.nativeName} ({lang.name})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Password * (min 6 characters)
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-teal-600 hover:from-brand-700 hover:to-teal-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <span>{isLoading ? 'Creating Administrator Account...' : 'Register as Hospital Administrator'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
