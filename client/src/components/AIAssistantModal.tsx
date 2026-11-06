@@ -354,21 +354,21 @@ export const AIAssistantModal: React.FC = () => {
       {/* Floating Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 bg-gradient-to-r from-brand-600 via-sky-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white px-4 py-3 rounded-full shadow-xl shadow-brand-500/25 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-brand-400 group"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 bg-gradient-to-r from-[#123B5D] via-[#0D9488] to-[#38BDF8] hover:from-[#0e304d] hover:to-[#0f766e] text-white px-4 py-3 rounded-full shadow-glow-teal hover:shadow-glow-brand transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-teal-400 group cursor-pointer border border-white/20"
         aria-label="Open AI Assistant"
       >
         <div className="relative">
-          <Bot className="w-6 h-6" />
+          <Bot className="w-6 h-6 text-white" />
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping" />
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400" />
         </div>
         <div className="hidden sm:flex flex-col text-left">
-          <span className="text-xs font-bold uppercase tracking-wider text-teal-100 flex items-center gap-1">
-            CareSphere AI <Sparkles className="w-3 h-3 text-amber-300" />
+          <span className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1">
+            CareSphere AI <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
           </span>
-          <span className="text-[11px] text-teal-50 flex items-center gap-1">
+          <span className="text-[11px] text-teal-100 flex items-center gap-1">
             <span>Voice & Chat</span>
-            <span className="text-[9px] bg-teal-800/80 px-1 rounded uppercase font-semibold">
+            <span className="text-[9px] bg-white/20 backdrop-blur-xs px-1.5 py-0.5 rounded-full uppercase font-bold text-white">
               {activeLangCode}
             </span>
           </span>
@@ -379,16 +379,16 @@ export const AIAssistantModal: React.FC = () => {
       {isOpen && (
         <div className="fixed bottom-3 right-2.5 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-20px)] sm:w-[440px] max-h-[90vh] sm:max-h-[660px] h-[86vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
-          <div className="p-4 bg-gradient-to-r from-brand-700 via-teal-700 to-medblue-700 text-white flex items-center justify-between shadow-sm">
+          <div className="p-4 bg-gradient-to-r from-[#123B5D] via-[#0D9488] to-[#123B5D] text-white flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xs">
                 <Bot className="w-6 h-6 text-teal-200" />
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
                   {t('ai.title')}
-                  <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                    Live AI
+                  <span className="text-[10px] bg-teal-400/20 text-teal-200 px-2 py-0.5 rounded-full border border-teal-300/30">
+                    Live Assistant
                   </span>
                 </h3>
                 <p className="text-[11px] text-teal-100/90 truncate max-w-[200px]">
@@ -671,7 +671,7 @@ export const AIAssistantModal: React.FC = () => {
             <button
               onClick={() => handleSendMessage()}
               disabled={!inputText.trim() || isLoading}
-              className="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white transition-all shadow-md shrink-0"
+              className="p-2.5 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] disabled:opacity-40 text-white transition-all shadow-md shrink-0 cursor-pointer"
               aria-label="Send message"
             >
               <Send className="w-4 h-4" />

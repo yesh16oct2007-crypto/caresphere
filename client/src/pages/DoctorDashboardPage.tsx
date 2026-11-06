@@ -30,7 +30,8 @@ import {
   FlaskConical,
   Trash2,
   QrCode,
-  ShoppingBag
+  ShoppingBag,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import {
@@ -508,31 +509,31 @@ export const DoctorDashboardPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-brand-700 via-teal-700 to-medblue-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-[#123B5D] via-[#144167] to-[#0D9488] rounded-3xl p-6 sm:p-8 text-white shadow-premium flex flex-col md:flex-row md:items-center justify-between gap-6 border border-white/10">
         <div>
-          <span className="text-xs uppercase tracking-wider font-semibold text-teal-200">
+          <span className="text-xs uppercase tracking-wider font-bold text-teal-200">
             CareSphere Medical Faculty Center
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">
             {t('doctor.welcome')}, {user?.name}!
           </h1>
           <p className="text-xs sm:text-sm text-teal-100 mt-1 max-w-xl">
-            Manage your daily clinic consultations, live teleconsultation rooms, patient shared medical records, and post-discharge remote follow-ups.
+            Manage your daily clinic consultations, live teleconsultation rooms, digital prescriptions, patient shared medical records, and post-discharge follow-ups.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => handleOpenCreatePrescription()}
-            className="px-4 py-2.5 rounded-2xl bg-white text-blue-700 hover:bg-blue-50 font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+            className="px-4 py-2.5 rounded-2xl bg-white text-[#123B5D] hover:bg-teal-50 font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
           >
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-[#0D9488]" />
             <span>Issue Digital Rx</span>
           </button>
 
           <button
             onClick={() => setScheduleFollowupOpen(true)}
-            className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur transition-all"
+            className="px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-2 backdrop-blur transition-all border border-white/20 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-emerald-300" />
             <span>Schedule Follow-Up</span>
@@ -571,34 +572,34 @@ export const DoctorDashboardPage: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('schedule')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'schedule'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              ? 'bg-[#123B5D] text-white shadow-md'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4 text-[#0D9488]" />
           <span>Appointments</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-bold">
             {appointments.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('prescriptions')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'prescriptions'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              ? 'bg-[#123B5D] text-white shadow-md'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          <FileText className="w-4 h-4 text-blue-500" />
+          <FileText className="w-4 h-4 text-[#38BDF8]" />
           <span>Issued Prescriptions</span>
           {doctorPrescriptions.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
               {doctorPrescriptions.length}
             </span>
           )}
@@ -606,16 +607,16 @@ export const DoctorDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('lab_reports')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'lab_reports'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              ? 'bg-[#123B5D] text-white shadow-md'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          <FlaskConical className="w-4 h-4 text-emerald-500" />
+          <FlaskConical className="w-4 h-4 text-emerald-400" />
           <span>Patient Lab Reports</span>
           {hospitalLabBookings.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
               {hospitalLabBookings.length}
             </span>
           )}
@@ -623,13 +624,13 @@ export const DoctorDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('shared_records')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'shared_records'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              ? 'bg-[#123B5D] text-white shadow-md'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          <FileText className="w-4 h-4" />
+          <FileCheck className="w-4 h-4 text-amber-400" />
           <span>Shared Medical Records</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
             {sharedRecords.length}
@@ -638,16 +639,16 @@ export const DoctorDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('followups')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'followups'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              ? 'bg-[#123B5D] text-white shadow-md'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-4 h-4 text-rose-400" />
           <span>Remote Follow-Ups</span>
           {doctorFollowups.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold">
               {doctorFollowups.length}
             </span>
           )}

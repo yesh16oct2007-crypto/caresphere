@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   HeartPulse,
@@ -19,24 +19,28 @@ import {
   ChevronUp,
   ShieldCheck,
   MapPin,
-  Navigation,
   Video,
+  FileCheck,
+  Shield,
+  Pill,
+  FlaskConical,
   Activity,
-  Compass,
-  FileText,
-  FileCheck
+  Globe,
+  Star
 } from 'lucide-react';
 import { Department, DoctorProfile, Facility, FAQ, Announcement } from '../types/index.js';
 import { apiUrl } from '../services/api.js';
 
 export const HomePage: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [doctorSearch, setDoctorSearch] = useState('');
+  const [heroSearchQuery, setHeroSearchQuery] = useState('');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -75,6 +79,15 @@ export const HomePage: React.FC = () => {
     loadHomeData();
   }, []);
 
+  const handleHeroSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (heroSearchQuery.trim()) {
+      navigate(`/doctors?search=${encodeURIComponent(heroSearchQuery.trim())}`);
+    } else {
+      navigate('/doctors');
+    }
+  };
+
   const filteredDoctors = doctors.filter(doc =>
     doc.name?.toLowerCase().includes(doctorSearch.toLowerCase()) ||
     doc.specialization?.toLowerCase().includes(doctorSearch.toLowerCase()) ||
@@ -82,196 +95,278 @@ export const HomePage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-16 lg:space-y-24 pb-16">
-      {/* 1. Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-12 lg:pt-16 lg:pb-20 mesh-gradient-bg">
-        {/* Ambient Gradient Background Glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-brand-500/20 via-sky-400/20 to-indigo-500/20 rounded-full blur-3xl pointer-events-none -z-10" />
+    <div className="space-y-16 lg:space-y-24 pb-20">
+      {/* 1. HERO SECTION WITH PROFESSIONAL HEALTHCARE PHOTOGRAPHY */}
+      <section className="relative overflow-hidden bg-slate-900 text-white rounded-b-[2.5rem] lg:rounded-b-[3.5rem] shadow-premium">
+        {/* Background Image with Deep Navy & Medical Teal Overlays */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=2000&q=80"
+            alt="Modern Hospital Atrium"
+            className="w-full h-full object-cover object-center scale-105 motion-safe:animate-fade-in"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d2a42]/95 via-[#123B5D]/90 to-[#0D9488]/75 backdrop-blur-[1px]" />
+          <div className="absolute inset-0 bg-radial at-center from-transparent via-[#123B5D]/40 to-[#0e2c45]/90" />
+        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16 lg:pt-16 lg:pb-24">
           {/* Active Hospital Announcement (if any) */}
           {announcements.length > 0 && (
-            <div className="mb-8 max-w-3xl mx-auto p-3.5 bg-brand-50/80 dark:bg-slate-900/80 border border-brand-200 dark:border-brand-800 rounded-2xl flex items-center justify-between gap-3 text-xs sm:text-sm text-brand-900 dark:text-brand-200 shadow-sm backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <span className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+            <div className="mb-6 max-w-2xl mx-auto p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between gap-3 text-xs text-white shadow-sm">
+              <div className="flex items-center gap-2 truncate">
+                <span className="bg-[#0D9488] text-white text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full shrink-0">
                   Update
                 </span>
-                <span className="font-semibold">{announcements[0].title}</span>
+                <span className="font-semibold truncate">{announcements[0].title}</span>
               </div>
-              <span className="hidden sm:inline text-xs text-brand-600 dark:text-brand-400 font-medium">
-                CareSphere Hospital Network
+              <span className="hidden sm:inline text-teal-200 text-xs font-semibold shrink-0">
+                Network Notice
               </span>
             </div>
           )}
 
           <div className="text-center max-w-3xl mx-auto space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs sm:text-sm font-semibold shadow-xs">
-              <Sparkles className="w-4 h-4 text-brand-600" />
-              <span>CareSphere Multilingual Healthcare Platform</span>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-teal-200 text-xs sm:text-sm font-semibold shadow-xs">
+              <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>CareSphere Multi-Hospital Technology Network</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
               World-Class Healthcare, Spoken in{' '}
-              <span className="bg-gradient-to-r from-brand-600 via-sky-500 to-indigo-600 dark:from-brand-400 dark:via-sky-300 dark:to-indigo-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-teal-200 via-[#38BDF8] to-white bg-clip-text text-transparent">
                 Your Language
               </span>
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-              {t('home.hero_subtitle')}
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-normal max-w-2xl mx-auto">
+              Connect with top verified doctors across leading hospital facilities, access online video consultations, order medicines from hospital pharmacies, and receive instant AI assistance in 10 Indian languages.
             </p>
 
-            {/* CTA Buttons */}
+            {/* Hero Quick Search Bar */}
+            <form onSubmit={handleHeroSearch} className="max-w-xl mx-auto pt-2">
+              <div className="p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-2 border border-white/40">
+                <div className="relative flex-1 w-full flex items-center pl-3">
+                  <Search className="w-5 h-5 text-slate-400 shrink-0 mr-2" />
+                  <input
+                    type="text"
+                    value={heroSearchQuery}
+                    onChange={(e) => setHeroSearchQuery(e.target.value)}
+                    placeholder="Search doctor, specialty (e.g. Cardiologist), or hospital..."
+                    className="w-full text-xs sm:text-sm text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none py-2"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Find Care</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Primary Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Link
                 to="/book"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 via-sky-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25 hover:shadow-xl transition-all"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#0D9488] to-[#14b8a6] hover:from-[#0f766e] hover:to-[#0D9488] text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 hover:scale-105 active:scale-95 transition-all"
               >
                 <Calendar className="w-5 h-5" />
                 <span>{t('home.book_appointment_btn')}</span>
               </Link>
               <Link
-                to="/doctors"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-bold text-sm sm:text-base border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 shadow-sm transition-all"
+                to="/teleconsult"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-bold text-sm sm:text-base border border-white/25 flex items-center justify-center gap-2 shadow-sm transition-all"
               >
-                <Stethoscope className="w-5 h-5 text-brand-600" />
-                <span>{t('home.find_doctor_title')}</span>
+                <Video className="w-5 h-5 text-teal-300" />
+                <span>Online Video Teleconsult</span>
               </Link>
             </div>
           </div>
 
           {/* Key Metrics / Highlights Bar */}
-          <div className="mt-14 max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-brand-300 transition-all text-center">
-              <div className="text-2xl sm:text-3xl font-black text-brand-600 dark:text-brand-400">100+</div>
-              <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('home.stats_doctors')}</div>
+          <div className="mt-12 max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center hover:bg-white/15 transition-all">
+              <div className="text-2xl sm:text-3xl font-black text-white">100+</div>
+              <div className="text-xs sm:text-sm font-medium text-teal-200 mt-1">{t('home.stats_doctors')}</div>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-teal-300 transition-all text-center">
-              <div className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400">12+</div>
-              <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('home.stats_departments')}</div>
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center hover:bg-white/15 transition-all">
+              <div className="text-2xl sm:text-3xl font-black text-[#38BDF8]">15+</div>
+              <div className="text-xs sm:text-sm font-medium text-slate-200 mt-1">Network Hospitals</div>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-red-300 transition-all text-center">
-              <div className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-400">24/7</div>
-              <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('home.stats_emergency')}</div>
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center hover:bg-white/15 transition-all">
+              <div className="text-2xl sm:text-3xl font-black text-rose-300">24/7</div>
+              <div className="text-xs sm:text-sm font-medium text-rose-200 mt-1">{t('home.stats_emergency')}</div>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-300 transition-all text-center">
-              <div className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400">10</div>
-              <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('home.stats_languages')}</div>
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center hover:bg-white/15 transition-all">
+              <div className="text-2xl sm:text-3xl font-black text-amber-300">10</div>
+              <div className="text-xs sm:text-sm font-medium text-amber-200 mt-1">{t('home.stats_languages')}</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Advanced Healthcare Features Hub */}
+      {/* 2. ADVANCED HEALTHCARE SERVICES GRID WITH REAL IMAGERY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-xs uppercase tracking-wider font-bold text-teal-600 dark:text-teal-400">
-            CareSphere Next-Gen Capabilities
+          <span className="text-xs uppercase tracking-wider font-extrabold text-[#0D9488]">
+            Comprehensive Clinical Capabilities
           </span>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
-            Smart Hospital Services & Patient Assistance
+            Smart Hospital Services & Patient Care
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-2">
-            Integrated digital care: from online specialist video calls to real-time bed tracking and AI report decoding.
+            Integrated digital healthcare: from encrypted teleconsultations and laboratory bookings to hospital-linked pharmacies and emergency response.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Service Card 1: Teleconsult */}
           <Link
             to="/teleconsult"
-            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-teal-500/50 transition-all flex flex-col justify-between"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
           >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-                <Video className="w-6 h-6" />
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80"
+                alt="Doctor Video Consultation"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#0D9488] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Video className="w-3.5 h-3.5" />
+                <span>WebRTC Encrypted</span>
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
-                <span>Online Video Teleconsult</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-teal-600 transition-all" />
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Connect with verified hospital doctors from home via secure WebRTC video calls and receive official digital prescriptions.
-              </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-teal-600">
-              Verified Doctors Available • Encrypted Video
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#0D9488] transition-colors flex items-center justify-between">
+                  <span>Online Teleconsult</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#0D9488] transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Consult verified doctors from home with real-time video audio and instant digital prescription delivery.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0D9488]">
+                Verified Specialists • Direct Booking
+              </div>
             </div>
           </Link>
 
+          {/* Service Card 2: Pharmacy */}
+          <Link
+            to="/pharmacy"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80"
+                alt="Hospital Pharmacy and Medications"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#123B5D] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Pill className="w-3.5 h-3.5" />
+                <span>Hospital Linked</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#123B5D] transition-colors flex items-center justify-between">
+                  <span>Online Pharmacy</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#123B5D] transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Order prescribed medications directly from the pharmacy connected to your consultation hospital.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#123B5D] dark:text-[#38BDF8]">
+                Prescription Refills • Fast Delivery
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 3: Diagnostic Labs */}
+          <Link
+            to="/lab"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80"
+                alt="Diagnostic Laboratory Tests"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#0D9488] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <FlaskConical className="w-3.5 h-3.5" />
+                <span>NABL Accredited</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#0D9488] transition-colors flex items-center justify-between">
+                  <span>Diagnostic Lab Tests</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#0D9488] transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Book doctor-recommended blood tests, radiology, and diagnostics with home sample pickup or hospital visit.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0D9488]">
+                Digital PDF Reports • Rapid Turnaround
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 4: AI Report Explainer */}
           <Link
             to="/ai-report-explainer"
-            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-rose-500/50 transition-all flex flex-col justify-between"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
           >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-                <FileCheck className="w-6 h-6" />
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80"
+                alt="AI Medical Report Analysis"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Multilingual AI</span>
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
-                <span>AI Medical Report Explainer</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-rose-600 transition-all" />
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Upload diagnostic lab tests. Our clinical AI extracts biomarkers, normal ranges, and translates findings in 10 Indian regional languages.
-              </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-rose-600">
-              Available in 10 Languages • Safety Disclaimers
-            </div>
-          </Link>
-
-          <Link
-            to="/insurance"
-            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-amber-500/50 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-                <ShieldCheck className="w-6 h-6" />
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-rose-600 transition-colors flex items-center justify-between">
+                  <span>AI Report Explainer</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-rose-600 transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Decode complex lab values, biomarkers, and clinical findings explained simply in 10 Indian regional languages.
+                </p>
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
-                <span>Health Insurance & TPA Desk</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-all" />
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Check cashless coverage across partner insurers, review mandatory document checklists, and save policy cards in your vault.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-amber-600">
-              100% Cashless Pre-Auth • 24/7 Desk Contacts
-            </div>
-          </Link>
-
-          <Link
-            to="/records"
-            className="group p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-medblue-500/50 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-medblue-50 dark:bg-medblue-950/60 text-medblue-600 dark:text-medblue-300 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6" />
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-rose-600">
+                10 Regional Languages • Clinical Safety
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 flex items-center justify-between">
-                <span>Digital Patient Medical Records</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-medblue-600 transition-all" />
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Securely store prescriptions, discharge summaries, and radiology scans with doctor-sharing consent and access audit trails.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-semibold text-medblue-600">
-              End-to-End Encrypted • Access Audit Logs
             </div>
           </Link>
         </div>
       </section>
 
-      {/* 2. Quick Doctor Directory Section */}
+      {/* 3. VERIFIED DOCTOR SPECIALISTS DIRECTORY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+            <span className="text-xs uppercase tracking-wider font-extrabold text-[#0D9488]">
+              Accredited Medical Faculty
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">
               {t('home.find_doctor_title')}
             </h2>
-            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-              {t('home.find_doctor_sub')}
+            <p className="text-sm text-slate-500 mt-1">
+              Consult experienced consultants across participating multispecialty hospitals.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -282,12 +377,12 @@ export const HomePage: React.FC = () => {
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
                 placeholder={t('doctors.search_placeholder')}
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
               />
             </div>
             <Link
               to="/doctors"
-              className="text-xs sm:text-sm font-semibold text-brand-600 dark:text-brand-400 hover:underline shrink-0 flex items-center gap-1"
+              className="text-xs sm:text-sm font-semibold text-[#0D9488] hover:underline shrink-0 flex items-center gap-1"
             >
               <span>View All</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -303,15 +398,15 @@ export const HomePage: React.FC = () => {
             return (
               <div
                 key={doc.id || doc.doctor_id}
-                className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-5 shadow-xs hover:shadow-md hover:border-brand-300 dark:hover:border-slate-600 transition-all flex flex-col justify-between"
+                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-subtle hover:shadow-premium hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#123B5D] to-[#0D9488] text-white flex items-center justify-center font-bold text-lg shadow-md">
                       {doc.name ? doc.name.replace('Dr. ', '').charAt(0) : 'D'}
                     </div>
                     {isVerified ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-800">
+                      <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-800">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
                         <span>Verified Specialist</span>
                       </span>
@@ -325,7 +420,7 @@ export const HomePage: React.FC = () => {
                   <h3 className="font-bold text-base text-slate-900 dark:text-white leading-snug">
                     {doc.name}
                   </h3>
-                  <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 mt-0.5">
+                  <p className="text-xs font-semibold text-[#0D9488] mt-0.5">
                     {doc.specialization}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
@@ -333,39 +428,29 @@ export const HomePage: React.FC = () => {
                   </p>
 
                   {/* Hospital Affiliation & Location */}
-                  <div className="mt-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-[11px] space-y-1">
+                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-[11px] space-y-1">
                     <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate">
-                      <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                      <Building2 className="w-3.5 h-3.5 text-[#123B5D] shrink-0" />
                       <span className="truncate">{doc.hospital_name || 'Participating Network Hospital'}</span>
                     </div>
                     {doc.hospital_location && (
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate">
-                        <MapPin className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
                         <span className="truncate">{doc.hospital_location}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Verification Status */}
-                  <div className="mt-2 flex items-center justify-between text-[11px]">
-                    <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Verified Specialist</span>
-                    </span>
-                    <span className="text-brand-600 dark:text-brand-400 font-semibold">
-                      Outpatient OPD
-                    </span>
-                  </div>
-
-                  <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
-                    <span>{doc.experience_years} {t('doctors.exp_years')}</span> • <span>Fee: ₹{doc.consultation_fee}</span>
+                  <div className="text-[11px] text-slate-500 mt-3 flex items-center justify-between">
+                    <span>{doc.experience_years} {t('doctors.exp_years')}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">Fee: ₹{doc.consultation_fee}</span>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <Link
                     to={`/book?doctor_id=${doc.id || doc.doctor_id}&dept_id=${doc.department_id}&hospital_id=${doc.hospital_id || ''}`}
-                    className="w-full py-2 px-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-subtle"
                   >
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{t('doctors.book_btn')}</span>
@@ -377,14 +462,55 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. Clinical Departments Section */}
+      {/* 4. EMERGENCY SOS & 24/7 TRAUMA SPOTLIGHT BANNER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl bg-gradient-to-r from-red-700 via-rose-700 to-amber-700 text-white p-6 sm:p-10 shadow-glow-sos flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <div className="relative z-10 space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-white">
+              <ShieldAlert className="w-4 h-4 text-amber-200" />
+              <span>24/7 Rapid Emergency Response Desk</span>
+            </div>
+            <h3 className="text-xl sm:text-3xl font-black tracking-tight">
+              Facing a Medical Emergency? We Are Ready.
+            </h3>
+            <p className="text-xs sm:text-sm text-red-100 leading-relaxed">
+              Instantly dial verified national trauma numbers or send a prioritized emergency request with optional GPS location sharing directly to hospital administrators.
+            </p>
+          </div>
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
+            <a
+              href="tel:108"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white text-red-700 hover:bg-red-50 font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+            >
+              <PhoneCall className="w-4 h-4 text-red-600" />
+              <span>Call 108 (Ambulance)</span>
+            </a>
+            <button
+              onClick={() => {
+                const sosBtn = document.querySelector('button[title*="Emergency SOS"]') as HTMLButtonElement;
+                if (sosBtn) sosBtn.click();
+              }}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-950/40 hover:bg-slate-950/60 backdrop-blur-md text-white font-bold text-sm border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Open SOS Assistance</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. CLINICAL DEPARTMENTS EXCELLENCE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+          <span className="text-xs uppercase tracking-wider font-extrabold text-[#0D9488]">
+            Multi-Disciplinary Centers
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">
             {t('home.departments_title')}
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-            {t('home.departments_sub')}
+          <p className="text-sm text-slate-500 mt-1">
+            Dedicated institutes covering tertiary surgery, cardiology, neurosciences, and primary care.
           </p>
         </div>
 
@@ -392,22 +518,22 @@ export const HomePage: React.FC = () => {
           {departments.map((dept) => (
             <div
               key={dept.id}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-6 shadow-xs hover:shadow-md transition-all group"
+              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-subtle hover:shadow-premium hover:-translate-y-0.5 transition-all group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-[#0D9488] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Building2 className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1 group-hover:text-[#0D9488] transition-colors">
                 {dept.name}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4 line-clamp-2">
                 {dept.description}
               </p>
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 dark:text-slate-500 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center justify-between">
                 <span>Multi-Hospital Network</span>
                 <Link
                   to={`/doctors?department_id=${dept.id}`}
-                  className="text-brand-600 dark:text-brand-400 font-semibold hover:underline flex items-center gap-1"
+                  className="text-[#0D9488] font-semibold hover:underline flex items-center gap-1"
                 >
                   <span>Specialists</span>
                   <ArrowRight className="w-3 h-3" />
@@ -418,14 +544,14 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. AI Assistant Feature Spotlight */}
+      {/* 6. MULTILINGUAL AI ASSISTANT SPOTLIGHT */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-gradient-to-r from-teal-900 via-brand-900 to-slate-900 text-white p-8 sm:p-12 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="rounded-3xl bg-gradient-to-r from-[#0d2a42] via-[#123B5D] to-[#0D9488] text-white p-8 sm:p-12 relative overflow-hidden shadow-premium">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="max-w-2xl space-y-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-teal-200 text-xs font-semibold">
-              <Bot className="w-4 h-4" />
+              <Bot className="w-4 h-4 text-teal-300" />
               <span>CareSphere Multilingual AI Engine</span>
             </div>
 
@@ -437,13 +563,26 @@ export const HomePage: React.FC = () => {
               Have questions about doctor schedules, visiting hours, necessary appointment documents, or hospital facilities? CareSphere AI assistant communicates natively in your chosen language with instant, verified hospital facts and emergency triage detection.
             </p>
 
+            {/* Audio Wave Visualizer Simulation */}
+            <div className="flex items-center gap-2 pt-2 text-xs text-teal-200">
+              <span className="font-semibold">Native Speech Synthesis:</span>
+              <div className="flex items-center gap-1 h-4">
+                <span className="w-1 bg-teal-300 rounded-full h-2 wave-bar-1" />
+                <span className="w-1 bg-teal-400 rounded-full h-4 wave-bar-2" />
+                <span className="w-1 bg-[#38BDF8] rounded-full h-3 wave-bar-3" />
+                <span className="w-1 bg-teal-300 rounded-full h-4 wave-bar-1" />
+                <span className="w-1 bg-white rounded-full h-2 wave-bar-2" />
+              </div>
+              <span className="text-[11px] text-teal-300">Active in 10 Regional Languages</span>
+            </div>
+
             <div className="pt-4 flex flex-wrap gap-3">
               <button
                 onClick={() => {
                   const aiBtn = document.querySelector('button[aria-label="Open AI Assistant"]') as HTMLButtonElement;
                   if (aiBtn) aiBtn.click();
                 }}
-                className="px-6 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm shadow-md transition-all flex items-center gap-2"
+                className="px-6 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Launch Assistant Now</span>
@@ -459,66 +598,17 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 5. Hospital Facilities & Services */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-            {t('home.facilities_title')}
-          </h2>
-          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-            {t('home.facilities_sub')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {facilities.slice(0, 6).map((fac) => (
-            <div
-              key={fac.id}
-              className={`p-6 rounded-2xl border transition-all ${
-                fac.is_emergency_facility
-                  ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  {fac.category}
-                </span>
-                {fac.is_emergency_facility === 1 && (
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
-                    24/7 Critical
-                  </span>
-                )}
-              </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2">
-                {fac.name}
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-                {fac.description}
-              </p>
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-brand-600" />
-                  <span>{fac.timing}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <PhoneCall className="w-3.5 h-3.5 text-teal-600" />
-                  <span>{fac.contact_number}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 6. Frequently Asked Questions Accordion */}
+      {/* 7. FREQUENTLY ASKED QUESTIONS ACCORDION */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+          <span className="text-xs uppercase tracking-wider font-extrabold text-[#0D9488]">
+            Patient Support
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">
             {t('home.faqs_title')}
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-            {t('home.faqs_sub')}
+          <p className="text-sm text-slate-500 mt-1">
+            Common queries about booking, hospital admission, cashless insurance, and pharmacy orders.
           </p>
         </div>
 
@@ -528,11 +618,11 @@ export const HomePage: React.FC = () => {
             return (
               <div
                 key={faq.id}
-                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 overflow-hidden shadow-xs transition-all"
+                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-subtle transition-all"
               >
                 <button
                   onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                  className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                  className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100 hover:text-[#0D9488] transition-colors cursor-pointer"
                 >
                   <span>{faq.question}</span>
                   {isOpen ? (
@@ -542,7 +632,7 @@ export const HomePage: React.FC = () => {
                   )}
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-100 dark:border-slate-700/60 pt-3 animate-in fade-in duration-150">
+                  <div className="px-5 pb-5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-3 animate-in fade-in duration-150">
                     {faq.answer}
                   </div>
                 )}

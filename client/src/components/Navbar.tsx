@@ -13,17 +13,13 @@ import {
   Moon,
   ShieldCheck,
   Stethoscope,
-  Building2,
   Video,
-  FileText,
-  Activity,
-  Compass,
   FileCheck,
   Shield,
   FlaskConical,
   Pill,
-  AlertOctagon,
-  ShieldAlert
+  ShieldAlert,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
@@ -47,24 +43,23 @@ export const Navbar: React.FC = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
-
-  const isAdminRole = role === 'admin' || role === 'hospital_admin' || role === 'superadmin';
+  const isAdminRole = role === 'admin' || role === 'hospital_admin' || role === 'superadmin' || role === 'lab_staff' || role === 'pharmacy_staff';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 transition-colors shadow-subtle">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-3 shrink-0 group">
-          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-teal-500 to-medblue-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-            <HeartPulse className="w-6 h-6" />
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-[#123B5D] via-[#0D9488] to-[#38BDF8] flex items-center justify-center text-white shadow-md shadow-[#123B5D]/20 group-hover:scale-105 transition-all duration-300">
+            <HeartPulse className="w-6 h-6 text-white" />
             <Sparkles className="w-3.5 h-3.5 text-amber-300 absolute -top-1 -right-1 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-brand-700 via-teal-700 to-medblue-600 dark:from-brand-300 dark:via-teal-300 dark:to-medblue-400 bg-clip-text text-transparent">
-                CareSphere
+              <span className="font-extrabold text-lg sm:text-xl tracking-tight text-[#123B5D] dark:text-white">
+                Care<span className="text-[#0D9488] dark:text-[#38BDF8]">Sphere</span>
               </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700 hidden sm:inline-block">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hidden sm:inline-block">
                 AI Health
               </span>
             </div>
@@ -78,10 +73,10 @@ export const Navbar: React.FC = () => {
         <nav className="hidden lg:flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <Link
             to="/doctors"
-            className={`px-3 py-2 rounded-xl transition-colors ${
+            className={`px-3 py-2 rounded-xl transition-all duration-200 ${
               isActive('/doctors')
-                ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                ? 'text-[#123B5D] dark:text-teal-300 font-bold bg-teal-50/70 dark:bg-slate-800 shadow-2xs'
+                : 'hover:text-[#123B5D] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
           >
             {t('nav.doctors')}
@@ -89,22 +84,46 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/teleconsult"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+            className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
               isActive('/teleconsult')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                ? 'text-[#0D9488] dark:text-teal-300 font-bold bg-teal-50/80 dark:bg-slate-800'
+                : 'hover:text-[#0D9488] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Video className="w-3.5 h-3.5 text-teal-600" />
+            <Video className="w-3.5 h-3.5 text-[#0D9488]" />
             <span>Teleconsult</span>
           </Link>
 
           <Link
+            to="/pharmacy"
+            className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
+              isActive('/pharmacy')
+                ? 'text-[#123B5D] dark:text-[#38BDF8] font-bold bg-sky-50 dark:bg-slate-800'
+                : 'hover:text-[#123B5D] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Pill className="w-3.5 h-3.5 text-sky-600" />
+            <span>Pharmacy</span>
+          </Link>
+
+          <Link
+            to="/lab"
+            className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
+              isActive('/lab')
+                ? 'text-[#0D9488] dark:text-teal-300 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-[#0D9488] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <FlaskConical className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Lab Tests</span>
+          </Link>
+
+          <Link
             to="/insurance"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+            className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
               isActive('/insurance')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                ? 'text-[#0D9488] dark:text-teal-300 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
           >
             <Shield className="w-3.5 h-3.5 text-amber-500" />
@@ -113,48 +132,24 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/ai-report-explainer"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+            className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
               isActive('/ai-report-explainer')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                ? 'text-[#0D9488] dark:text-teal-300 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-rose-500" />
             <span>AI Explainer</span>
           </Link>
 
-          <Link
-            to="/pharmacy"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
-              isActive('/pharmacy')
-                ? 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            <Pill className="w-3.5 h-3.5 text-blue-600" />
-            <span>Pharmacy</span>
-          </Link>
-
-          <Link
-            to="/lab"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
-              isActive('/lab')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
-            <span>Lab Tests</span>
-          </Link>
-
           {/* Role specific dashboard link */}
           {isAuthenticated && role === 'patient' && (
             <Link
               to="/dashboard/patient"
-              className={`px-3 py-2 rounded-xl transition-colors ${
+              className={`px-3 py-2 rounded-xl transition-all duration-200 ${
                 isActive('/dashboard/patient')
-                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
-                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  ? 'text-[#123B5D] dark:text-white font-bold bg-brand-50/70 dark:bg-slate-800'
+                  : 'hover:text-[#123B5D] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
               }`}
             >
               {t('nav.patient_dashboard')}
@@ -164,13 +159,13 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && role === 'doctor' && (
             <Link
               to="/dashboard/doctor"
-              className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
                 isActive('/dashboard/doctor')
-                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
-                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  ? 'text-[#123B5D] dark:text-white font-bold bg-brand-50/70 dark:bg-slate-800'
+                  : 'hover:text-[#123B5D] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Stethoscope className="w-4 h-4 text-brand-600" />
+              <Stethoscope className="w-4 h-4 text-[#0D9488]" />
               <span>{t('nav.doctor_dashboard')}</span>
             </Link>
           )}
@@ -178,19 +173,19 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && isAdminRole && (
             <Link
               to="/dashboard/admin"
-              className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${
                 isActive('/dashboard/admin')
-                  ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/60 dark:bg-slate-800'
-                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  ? 'text-[#123B5D] dark:text-white font-bold bg-brand-50/70 dark:bg-slate-800'
+                  : 'hover:text-[#123B5D] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-brand-600" />
+              <ShieldCheck className="w-4 h-4 text-[#123B5D] dark:text-[#38BDF8]" />
               <span>{t('nav.admin_dashboard')}</span>
             </Link>
           )}
         </nav>
 
-        {/* Right Action Tools: Language, Theme, Notifications, Auth */}
+        {/* Right Action Tools: Language, Theme, SOS, Appointments, Auth */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Language Selector Dropdown */}
           <LanguageSelector />
@@ -207,12 +202,16 @@ export const Navbar: React.FC = () => {
           {/* Notification Bell */}
           {isAuthenticated && <NotificationDropdown />}
 
-          {/* Emergency SOS High-Alert Button */}
+          {/* Emergency SOS High-Visibility Alert Button */}
           <button
             onClick={() => setSosModalOpen(true)}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-extrabold shadow-md shadow-red-500/30 animate-pulse transition-all cursor-pointer"
+            className="relative flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-black shadow-glow-sos transition-all cursor-pointer hover:scale-105 active:scale-95"
             title="Emergency SOS Assistance Desk"
           >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+            </span>
             <ShieldAlert className="w-4 h-4 text-white" />
             <span>SOS</span>
           </button>
@@ -220,7 +219,7 @@ export const Navbar: React.FC = () => {
           {/* Primary Action Button: Book Appointment */}
           <Link
             to="/book"
-            className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-brand-600 to-teal-600 hover:from-brand-700 hover:to-teal-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-brand-500/20 hover:shadow-lg transition-all"
+            className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-[#123B5D]/20 hover:shadow-lg transition-all"
           >
             <Calendar className="w-4 h-4" />
             <span>{t('nav.book_appointment')}</span>
@@ -233,7 +232,7 @@ export const Navbar: React.FC = () => {
                 to={role === 'doctor' ? '/dashboard/doctor' : isAdminRole ? '/dashboard/admin' : '/dashboard/patient'}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
-                <User className="w-3.5 h-3.5 text-brand-600" />
+                <User className="w-3.5 h-3.5 text-[#0D9488]" />
                 <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
               </Link>
               <button
@@ -254,7 +253,7 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link
                 to="/register"
-                className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition-opacity"
+                className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#123B5D] text-white hover:bg-[#0e304d] dark:bg-white dark:text-[#123B5D] dark:hover:bg-slate-100 transition-colors shadow-subtle"
               >
                 {t('nav.register')}
               </Link>
@@ -274,7 +273,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden px-4 pt-2 pb-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1.5 animate-in slide-in-from-top-2 duration-150 text-xs">
+        <div className="lg:hidden px-4 pt-2 pb-6 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md space-y-1.5 animate-in slide-in-from-top-2 duration-150 text-xs">
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -297,19 +296,41 @@ export const Navbar: React.FC = () => {
             Online Video Teleconsult
           </Link>
           <Link
+            to="/pharmacy"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-slate-800"
+          >
+            Hospital Pharmacy & Medicine Orders
+          </Link>
+          <Link
+            to="/lab"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
+          >
+            Laboratory Tests & Diagnostic Booking
+          </Link>
+          <Link
             to="/insurance"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Health Insurance & TPA Desk
           </Link>
+          <Link
+            to="/ai-report-explainer"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            AI Medical Report Explainer
+          </Link>
+
           {/* Mobile Emergency SOS Button */}
           <button
             onClick={() => {
               setSosModalOpen(true);
               setMobileMenuOpen(false);
             }}
-            className="w-full text-left px-3.5 py-2.5 rounded-xl font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 flex items-center justify-between shadow-md shadow-red-500/20"
+            className="w-full text-left px-3.5 py-2.5 rounded-xl font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 flex items-center justify-between shadow-glow-sos"
           >
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4" />
@@ -319,43 +340,9 @@ export const Navbar: React.FC = () => {
           </button>
 
           <Link
-            to="/pharmacy"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800"
-          >
-            Hospital Pharmacy & Medicine Orders
-          </Link>
-
-          <Link
-            to="/lab"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
-          >
-            Laboratory Tests & Diagnostic Booking
-          </Link>
-
-          <Link
-            to="/ai-report-explainer"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            AI Medical Report Explainer
-          </Link>
-
-          {isAuthenticated && (
-            <Link
-              to="/records"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800"
-            >
-              Digital Medical Records Vault
-            </Link>
-          )}
-
-          <Link
             to="/book"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300"
+            className="block px-3 py-2 rounded-xl font-semibold bg-gradient-to-r from-[#123B5D] to-[#0D9488] text-white shadow-sm"
           >
             {t('nav.book_appointment')}
           </Link>
@@ -365,7 +352,7 @@ export const Navbar: React.FC = () => {
               <Link
                 to={role === 'doctor' ? '/dashboard/doctor' : isAdminRole ? '/dashboard/admin' : '/dashboard/patient'}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-xl font-semibold text-brand-600 dark:text-brand-400"
+                className="block px-3 py-2 rounded-xl font-semibold text-[#123B5D] dark:text-[#38BDF8]"
               >
                 {role === 'doctor'
                   ? t('nav.doctor_dashboard')
@@ -392,7 +379,7 @@ export const Navbar: React.FC = () => {
               <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 font-semibold rounded-xl bg-brand-600 text-white"
+                className="flex-1 text-center py-2 font-semibold rounded-xl bg-[#123B5D] text-white shadow-sm"
               >
                 {t('nav.register')}
               </Link>

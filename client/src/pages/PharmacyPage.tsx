@@ -257,10 +257,10 @@ export const PharmacyPage: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Pharmacy Banner with Pharmacy Switcher */}
         {pharmacy && (
-          <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-teal-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-500/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="bg-gradient-to-r from-[#123B5D] via-[#144167] to-[#0D9488] rounded-3xl p-6 sm:p-8 text-white shadow-premium flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-white/10">
             <div className="space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-blue-100">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-teal-200 border border-white/20">
                   <Building className="w-3.5 h-3.5" />
                   <span>
                     {pharmacy.pharmacy_type === 'retail_partner'
@@ -282,11 +282,11 @@ export const PharmacyPage: React.FC = () => {
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 {pharmacy.name}
               </h1>
-              <p className="text-sm text-blue-100 max-w-2xl flex items-center gap-2">
-                <MapPin className="w-4 h-4 shrink-0" />
+              <p className="text-sm text-teal-100 max-w-2xl flex items-center gap-2">
+                <MapPin className="w-4 h-4 shrink-0 text-teal-300" />
                 <span>{pharmacy.location} • License: {pharmacy.license_number}</span>
               </p>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-blue-200 pt-1">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-teal-200 pt-1">
                 <span>🕒 {pharmacy.operating_hours}</span>
                 <span>📞 Hotline: {pharmacy.contact_phone}</span>
                 <span>🚚 Delivery Fee: ₹{pharmacy.delivery_fee}</span>
@@ -296,7 +296,7 @@ export const PharmacyPage: React.FC = () => {
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={() => setAddSpecificModalOpen(true)}
-                className="px-4 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
+                className="px-4 py-3 rounded-2xl bg-[#0D9488] hover:bg-[#0f766e] text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Add Specific Medicine</span>
@@ -304,9 +304,9 @@ export const PharmacyPage: React.FC = () => {
 
               <button
                 onClick={() => setCartOpen(true)}
-                className="relative px-5 py-3 rounded-2xl bg-white text-blue-700 font-extrabold text-sm shadow-lg hover:bg-blue-50 flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
+                className="relative px-5 py-3 rounded-2xl bg-white text-[#123B5D] font-extrabold text-sm shadow-lg hover:bg-teal-50 flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
               >
-                <ShoppingCart className="w-5 h-5 text-blue-600" />
+                <ShoppingCart className="w-5 h-5 text-[#0D9488]" />
                 <span>Cart ({cart.reduce((a, b) => a + b.quantity, 0)})</span>
                 {cart.length > 0 && (
                   <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-black animate-bounce">
@@ -456,19 +456,19 @@ export const PharmacyPage: React.FC = () => {
                   </div>
 
                   {inCart ? (
-                    <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 p-1 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/60 p-1 rounded-xl border border-teal-200 dark:border-teal-800">
                       <button
                         onClick={() => updateCartQty(med.id, -1)}
                         className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-white font-black text-sm flex items-center justify-center hover:bg-slate-100 shadow-xs cursor-pointer"
                       >
                         -
                       </button>
-                      <span className="w-6 text-center text-xs font-black text-blue-700 dark:text-blue-300">
+                      <span className="w-6 text-center text-xs font-black text-[#0D9488] dark:text-teal-300">
                         {inCart.quantity}
                       </span>
                       <button
                         onClick={() => updateCartQty(med.id, 1)}
-                        className="w-7 h-7 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center hover:bg-blue-700 shadow-xs cursor-pointer"
+                        className="w-7 h-7 rounded-lg bg-[#0D9488] text-white font-black text-sm flex items-center justify-center hover:bg-[#0f766e] shadow-xs cursor-pointer"
                       >
                         +
                       </button>
@@ -477,7 +477,7 @@ export const PharmacyPage: React.FC = () => {
                     <button
                       onClick={() => addToCart(med)}
                       disabled={(med.stock_quantity ?? 10) === 0}
-                      className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-[#123B5D] hover:bg-[#0D9488] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add to Order</span>

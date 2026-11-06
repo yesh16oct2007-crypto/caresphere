@@ -156,9 +156,9 @@ export const LabBookingPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-teal-700 via-cyan-700 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-teal-500/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="bg-gradient-to-r from-[#123B5D] via-[#144167] to-[#0D9488] rounded-3xl p-6 sm:p-8 text-white shadow-premium flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-white/10">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-teal-100">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-teal-200 border border-white/20">
               <FlaskConical className="w-3.5 h-3.5" />
               <span>NABL & ICMR Accredited Diagnostic Labs</span>
             </div>
@@ -166,7 +166,7 @@ export const LabBookingPage: React.FC = () => {
               Clinical Laboratory & Diagnostic Booking
             </h1>
             <p className="text-sm text-teal-100 max-w-2xl">
-              Schedule clinical pathology, blood biochemistry, and diagnostic imaging. Completed laboratory reports are automatically certified and synced to your Digital Medical Records Vault.
+              Schedule clinical pathology, blood biochemistry, and diagnostic imaging across accredited network hospital laboratories. Completed reports are certified and synced to your records.
             </p>
           </div>
 

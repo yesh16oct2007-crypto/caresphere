@@ -243,12 +243,12 @@ export const BookAppointmentPage: React.FC = () => {
 
       {/* Wizard Progress Steps Bar */}
       {currentStep < 5 && (
-        <div className="mb-8 grid grid-cols-4 gap-2 text-center text-xs font-semibold">
+        <div className="mb-8 grid grid-cols-4 gap-2 text-center text-xs font-bold">
           <div className={`p-2.5 rounded-xl border transition-all ${
             currentStep === 1
-              ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+              ? 'bg-[#123B5D] text-white border-[#123B5D] shadow-md'
               : currentStep > 1
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200'
+              ? 'bg-teal-50 dark:bg-teal-950/60 text-[#0D9488] dark:text-teal-300 border-teal-200 dark:border-teal-800'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
           }`}>
             <span>{t('booking.step_dept')}</span>
@@ -256,9 +256,9 @@ export const BookAppointmentPage: React.FC = () => {
 
           <div className={`p-2.5 rounded-xl border transition-all ${
             currentStep === 2
-              ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+              ? 'bg-[#123B5D] text-white border-[#123B5D] shadow-md'
               : currentStep > 2
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200'
+              ? 'bg-teal-50 dark:bg-teal-950/60 text-[#0D9488] dark:text-teal-300 border-teal-200 dark:border-teal-800'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
           }`}>
             <span>{t('booking.step_doctor')}</span>
@@ -266,9 +266,9 @@ export const BookAppointmentPage: React.FC = () => {
 
           <div className={`p-2.5 rounded-xl border transition-all ${
             currentStep === 3
-              ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+              ? 'bg-[#123B5D] text-white border-[#123B5D] shadow-md'
               : currentStep > 3
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200'
+              ? 'bg-teal-50 dark:bg-teal-950/60 text-[#0D9488] dark:text-teal-300 border-teal-200 dark:border-teal-800'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
           }`}>
             <span>{t('booking.step_datetime')}</span>
@@ -276,7 +276,7 @@ export const BookAppointmentPage: React.FC = () => {
 
           <div className={`p-2.5 rounded-xl border transition-all ${
             currentStep === 4
-              ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+              ? 'bg-[#123B5D] text-white border-[#123B5D] shadow-md'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
           }`}>
             <span>{t('booking.step_confirm')}</span>

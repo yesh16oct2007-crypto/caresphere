@@ -798,23 +798,23 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'analytics'
-              ? 'bg-teal-600 text-white shadow-sm'
+              ? 'bg-[#123B5D] text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <BarChart3 className="w-4 h-4" />
+          <BarChart3 className="w-4 h-4 text-[#38BDF8]" />
           <span>Hospital Analytics & Metrics</span>
         </button>
 
         {/* Feature 1: Emergency SOS Queue Tab */}
         <button
           onClick={() => setActiveTab('emergency')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'emergency'
-              ? 'bg-rose-600 text-white shadow-sm'
-              : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+              ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-glow-sos'
+              : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
           }`}
         >
           <Siren className="w-4 h-4 animate-pulse text-current" />
@@ -824,9 +824,9 @@ export const AdminDashboardPage: React.FC = () => {
         {/* Feature 2: Laboratory Queue Tab */}
         <button
           onClick={() => setActiveTab('laboratory')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'laboratory'
-              ? 'bg-purple-600 text-white shadow-sm'
+              ? 'bg-[#0D9488] text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
@@ -837,21 +837,21 @@ export const AdminDashboardPage: React.FC = () => {
         {/* Feature 3: Pharmacy Orders & Inventory Tab */}
         <button
           onClick={() => setActiveTab('pharmacy')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'pharmacy'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-[#123B5D] text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <Pill className="w-4 h-4" />
+          <Pill className="w-4 h-4 text-[#38BDF8]" />
           <span>Hospital Pharmacy & Inventory</span>
         </button>
 
         <button
           onClick={() => setActiveTab('verification')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'verification'
-              ? 'bg-brand-600 text-white shadow-sm'
+              ? 'bg-[#123B5D] text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
@@ -1007,8 +1007,8 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* SVG Visual Bar Chart */}
-                <div className="h-60 w-full flex items-end justify-between gap-3 pt-6 px-2 border-b border-slate-200 dark:border-slate-700">
+                {/* Visual Chart with Gradient Bars */}
+                <div className="h-64 w-full flex items-end justify-between gap-4 pt-6 px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-4">
                   {[
                     { month: 'Jun', inPerson: 42, online: 18 },
                     { month: 'Jul', inPerson: 58, online: 24 },
@@ -1017,20 +1017,23 @@ export const AdminDashboardPage: React.FC = () => {
                     { month: 'Oct', inPerson: 88, online: 52 },
                     { month: 'Nov', inPerson: 96, online: 68 }
                   ].map((d, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                      <div className="w-full max-w-[40px] flex flex-col gap-1 items-center h-full justify-end">
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                      <div className="text-[10px] font-bold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-xs">
+                        {d.inPerson + d.online} total
+                      </div>
+                      <div className="w-full max-w-[48px] flex items-end gap-1.5 h-full justify-center">
                         <div
-                          className="w-full bg-medblue-500 rounded-t-lg transition-all hover:opacity-80"
-                          style={{ height: `${(d.online / 100) * 160}px` }}
-                          title={`Online: ${d.online}`}
-                        />
-                        <div
-                          className="w-full bg-teal-600 rounded-t-lg transition-all hover:opacity-80"
+                          className="w-1/2 bg-gradient-to-t from-[#0D9488] to-[#14b8a6] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
                           style={{ height: `${(d.inPerson / 100) * 160}px` }}
                           title={`In-Person: ${d.inPerson}`}
                         />
+                        <div
+                          className="w-1/2 bg-gradient-to-t from-[#123B5D] to-[#38BDF8] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
+                          style={{ height: `${(d.online / 100) * 160}px` }}
+                          title={`Online Video: ${d.online}`}
+                        />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-500 mt-2">{d.month}</span>
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-2">{d.month}</span>
                     </div>
                   ))}
                 </div>
