@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { DemonstrationBanner } from './components/DemonstrationBanner.js';
@@ -73,9 +73,9 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route path="/ai-report-explainer" element={<AIReportExplainerPage />} />
-                <Route path="/resources" element={<HospitalResourcesPage />} />
                 <Route path="/insurance" element={<InsuranceAssistancePage />} />
-                <Route path="/indoor-navigation" element={<IndoorNavigationPage />} />
+                <Route path="/resources" element={<Navigate to="/" replace />} />
+                <Route path="/indoor-navigation" element={<Navigate to="/" replace />} />
 
                 {/* Role Protected Dashboard Routes */}
                 <Route

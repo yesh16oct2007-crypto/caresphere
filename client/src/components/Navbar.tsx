@@ -94,30 +94,6 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
-            to="/resources"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
-              isActive('/resources')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            <Activity className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Live Beds</span>
-          </Link>
-
-          <Link
-            to="/indoor-navigation"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
-              isActive('/indoor-navigation')
-                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
-                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Indoor Map</span>
-          </Link>
-
-          <Link
             to="/insurance"
             className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
               isActive('/insurance')
@@ -279,20 +255,6 @@ export const Navbar: React.FC = () => {
             className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
           >
             Online Video Teleconsult
-          </Link>
-          <Link
-            to="/resources"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Live Bed & Resource Status
-          </Link>
-          <Link
-            to="/indoor-navigation"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Hospital Indoor Map
           </Link>
           <Link
             to="/insurance"

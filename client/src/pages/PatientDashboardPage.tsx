@@ -794,28 +794,6 @@ export const PatientDashboardPage: React.FC = () => {
               </Link>
 
               <Link
-                to="/resources"
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-teal-50 dark:bg-slate-900 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-600" />
-                  <span>Live Bed & ICU Status</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              </Link>
-
-              <Link
-                to="/indoor-navigation"
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-teal-50 dark:bg-slate-900 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-indigo-600" />
-                  <span>Indoor Hospital Map</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              </Link>
-
-              <Link
                 to="/insurance"
                 className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-teal-50 dark:bg-slate-900 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors"
               >

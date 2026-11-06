@@ -90,13 +90,22 @@ export function getMyPolicies(req: AuthenticatedRequest, res: Response): void {
       return;
     }
 
-    const policies = db.prepare(`
+    const rawPolicies = db.prepare(`
       SELECT pip.*, ip.name as network_provider_name, ip.toll_free_number
       FROM patient_insurance_policies pip
       LEFT JOIN insurance_providers ip ON pip.insurance_provider_id = ip.id
       WHERE pip.patient_id = ?
       ORDER BY pip.created_at DESC
-    `).all(req.user.id);
+    `).all(req.user.id) as any[];
+
+    const policies = rawPolicies.map(p => ({
+      ...p,
+      status: 'active',
+      provider_name: p.provider_name || p.network_provider_name || 'Health Insurance',
+      valid_to: p.valid_until || 'Ongoing',
+      sum_insured: Number(p.sum_insured || 500000),
+      tpa_name: p.tpa_id || 'Medi Assist TPA'
+    }));
 
     res.json({ policies });
   } catch (err: any) {
@@ -114,17 +123,26 @@ export function saveMyPolicy(req: AuthenticatedRequest, res: Response): void {
     }
 
     const {
-      provider_name,
       insurance_provider_id,
       policy_number,
       policy_holder_name,
-      tpa_id,
-      sum_insured,
-      valid_until
+      sum_insured
     } = req.body;
 
-    if (!provider_name || !policy_number || !policy_holder_name) {
-      res.status(400).json({ error: 'Provider name, policy number, and policy holder name are required.' });
+    let provider_name = req.body.provider_name;
+    if (!provider_name && insurance_provider_id) {
+      const provRow = db.prepare('SELECT name FROM insurance_providers WHERE id = ?').get(Number(insurance_provider_id)) as any;
+      if (provRow) provider_name = provRow.name;
+    }
+    if (!provider_name) {
+      provider_name = 'Comprehensive Health Plan';
+    }
+
+    const tpa_id = req.body.tpa_id || req.body.tpa_name || 'Medi Assist TPA';
+    const valid_until = req.body.valid_until || req.body.valid_to || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    if (!policy_number || !policy_holder_name) {
+      res.status(400).json({ error: 'Policy number and policy holder name are required.' });
       return;
     }
 
@@ -137,13 +155,13 @@ export function saveMyPolicy(req: AuthenticatedRequest, res: Response): void {
 
     const result = stmt.run(
       req.user.id,
-      insurance_provider_id || null,
+      insurance_provider_id ? Number(insurance_provider_id) : null,
       provider_name.trim(),
       policy_number.trim(),
       policy_holder_name.trim(),
-      tpa_id || null,
-      sum_insured ? Number(sum_insured) : null,
-      valid_until || null
+      tpa_id.trim(),
+      sum_insured ? Number(sum_insured) : 500000,
+      valid_until
     );
 
     const policyId = Number(result.lastInsertRowid);
@@ -161,7 +179,17 @@ export function saveMyPolicy(req: AuthenticatedRequest, res: Response): void {
 
     res.status(201).json({
       message: 'Insurance policy saved securely in your patient vault.',
-      policy_id: policyId
+      policy_id: policyId,
+      policy: {
+        id: policyId,
+        provider_name,
+        policy_number,
+        policy_holder_name,
+        sum_insured: sum_insured ? Number(sum_insured) : 500000,
+        valid_to: valid_until,
+        tpa_name: tpa_id,
+        status: 'active'
+      }
     });
   } catch (err: any) {
     console.error('Save policy error:', err);

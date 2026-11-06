@@ -11,7 +11,8 @@ import {
   Lock,
   ExternalLink,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { apiUrl } from '../services/api.js';
@@ -87,20 +88,24 @@ export const InsuranceAssistancePage: React.FC = () => {
     try {
       setSavingPolicy(true);
       setError(null);
-      const res = await fetch(apiUrl('/api/insurance/policies'), {
+      const selectedProv = providers.find((p) => p.id === Number(providerId));
+      const res = await fetch(apiUrl('/api/insurance/my-policies'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          insurance_provider_id: providerId || undefined,
+          insurance_provider_id: providerId ? Number(providerId) : undefined,
+          provider_name: selectedProv?.name || 'Comprehensive Health Plan',
           policy_number: policyNumber,
           policy_holder_name: holderName,
           sum_insured: sumInsured,
           valid_from: validFrom,
           valid_to: validTo,
-          tpa_name: tpaName
+          valid_until: validTo,
+          tpa_name: tpaName,
+          tpa_id: tpaName
         })
       });
 
@@ -116,6 +121,26 @@ export const InsuranceAssistancePage: React.FC = () => {
       setError(err.message || 'Saving policy failed');
     } finally {
       setSavingPolicy(false);
+    }
+  };
+
+  const handleDeletePolicy = async (policyId: number) => {
+    if (!token || !confirm('Are you sure you want to remove this policy from your vault?')) return;
+    try {
+      const res = await fetch(apiUrl(`/api/insurance/my-policies/${policyId}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setSuccessMsg('Policy removed from vault.');
+        fetchUserPolicies();
+        setTimeout(() => setSuccessMsg(null), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || 'Failed to remove policy');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove policy');
     }
   };
 
@@ -482,9 +507,18 @@ export const InsuranceAssistancePage: React.FC = () => {
                       <span className="text-xs font-bold text-teal-300 tracking-wider uppercase">
                         {pol.provider_name || 'Health Insurance'}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        {pol.status.toUpperCase()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          {(pol.status || 'active').toUpperCase()}
+                        </span>
+                        <button
+                          onClick={() => handleDeletePolicy(pol.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition-colors"
+                          title="Remove policy"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <p className="text-xs text-slate-400">Policy Number</p>
@@ -495,7 +529,7 @@ export const InsuranceAssistancePage: React.FC = () => {
                         <span className="text-slate-400">Holder:</span> {pol.policy_holder_name}
                       </p>
                       <p>
-                        <span className="text-slate-400">Sum Insured:</span> ₹{pol.sum_insured.toLocaleString()}
+                        <span className="text-slate-400">Sum Insured:</span> ₹{Number(pol.sum_insured || 0).toLocaleString()}
                       </p>
                       <p>
                         <span className="text-slate-400">TPA:</span> {pol.tpa_name || 'Medi Assist TPA'}
@@ -504,7 +538,7 @@ export const InsuranceAssistancePage: React.FC = () => {
                   </div>
 
                   <div className="pt-4 border-t border-white/10 mt-4 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Valid until: {pol.valid_to}</span>
+                    <span>Valid until: {pol.valid_to || (pol as any).valid_until || 'Ongoing'}</span>
                     <span className="text-teal-300 font-semibold">Cashless Verified</span>
                   </div>
                 </div>

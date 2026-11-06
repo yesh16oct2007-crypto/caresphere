@@ -296,11 +296,15 @@ app.get('/api/medicines/history', authenticateToken, requireRole(['patient']), g
 
 // ----------------- 7. HEALTH INSURANCE ASSISTANCE -----------------
 app.get('/api/insurance/providers', getInsuranceProviders);
+app.get('/api/insurance/hospitals', getInsuranceComparison);
 app.get('/api/insurance/hospital/:hospitalId', getHospitalInsuranceInfo);
 app.get('/api/insurance/comparison', getInsuranceComparison);
 app.get('/api/insurance/my-policies', authenticateToken, requireRole(['patient']), getMyPolicies);
+app.get('/api/insurance/policies', authenticateToken, requireRole(['patient']), getMyPolicies);
 app.post('/api/insurance/my-policies', authenticateToken, requireRole(['patient']), saveMyPolicy);
+app.post('/api/insurance/policies', authenticateToken, requireRole(['patient']), saveMyPolicy);
 app.delete('/api/insurance/my-policies/:id', authenticateToken, requireRole(['patient']), deleteMyPolicy);
+app.delete('/api/insurance/policies/:id', authenticateToken, requireRole(['patient']), deleteMyPolicy);
 
 // ----------------- 8. HOSPITAL INDOOR NAVIGATION -----------------
 app.get('/api/navigation/hospitals', getNavigationHospitals);

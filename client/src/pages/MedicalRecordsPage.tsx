@@ -160,7 +160,10 @@ export const MedicalRecordsPage: React.FC = () => {
       const res = await fetch(apiUrl(`/api/records/${record.id}/download`), {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to retrieve secure document');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || 'Failed to retrieve secure document');
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
