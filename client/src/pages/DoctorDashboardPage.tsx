@@ -26,13 +26,19 @@ import {
   Download,
   Send,
   Plus,
-  AlertCircle
+  AlertCircle,
+  FlaskConical,
+  Trash2,
+  QrCode,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import {
   Appointment,
   MedicalRecord,
-  PatientFollowUp
+  PatientFollowUp,
+  Prescription,
+  LabBooking
 } from '../types/index.js';
 import { DoctorNavigationModal } from '../components/DoctorNavigationModal.js';
 import { apiUrl } from '../services/api.js';
@@ -42,7 +48,33 @@ export const DoctorDashboardPage: React.FC = () => {
   const { user, token } = useAuth();
 
   // Active top tab
-  const [activeTab, setActiveTab] = useState<'schedule' | 'shared_records' | 'followups'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'prescriptions' | 'lab_reports' | 'shared_records' | 'followups'>('schedule');
+
+  // Prescriptions State (Feature 2)
+  const [doctorPrescriptions, setDoctorPrescriptions] = useState<Prescription[]>([]);
+  const [createRxModalOpen, setCreateRxModalOpen] = useState(false);
+  const [rxPatientId, setRxPatientId] = useState<number | ''>('');
+  const [rxPatientName, setRxPatientName] = useState<string>('');
+  const [rxAppointmentId, setRxAppointmentId] = useState<number | null>(null);
+  const [rxDiagnosis, setRxDiagnosis] = useState('');
+  const [rxClinicalNotes, setRxClinicalNotes] = useState('');
+  const [rxVitals, setRxVitals] = useState('BP: 120/80 mmHg, Pulse: 72 bpm');
+  const [rxAdvice, setRxAdvice] = useState('');
+  const [rxFollowupDate, setRxFollowupDate] = useState(
+    new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+  );
+  const [rxMedicines, setRxMedicines] = useState<
+    { medicine_name: string; dosage: string; frequency: string; timing: string; duration: string; instructions: string }[]
+  >([
+    { medicine_name: '', dosage: '500mg', frequency: '1-0-1', timing: 'after_food', duration: '5 Days', instructions: 'Take with warm water' }
+  ]);
+  const [rxLabRecommendations, setRxLabRecommendations] = useState<
+    { test_name: string; test_code: string; instructions: string; urgency: 'routine' | 'urgent' | 'stat' }[]
+  >([]);
+  const [issuingRx, setIssuingRx] = useState(false);
+
+  // Lab Reports State (Feature 2)
+  const [hospitalLabBookings, setHospitalLabBookings] = useState<LabBooking[]>([]);
 
   // Appointments
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -170,11 +202,139 @@ export const DoctorDashboardPage: React.FC = () => {
     }
   };
 
+  // Fetch Doctor Prescriptions
+  const fetchDoctorPrescriptions = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/prescriptions/doctor-prescriptions'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDoctorPrescriptions(data.prescriptions || []);
+      }
+    } catch (err) {
+      console.error('Failed to load doctor prescriptions:', err);
+    }
+  };
+
+  // Fetch Hospital Lab Bookings
+  const fetchHospitalLabBookings = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/lab/hospital-bookings'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHospitalLabBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Failed to load lab bookings:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSchedule();
     fetchSharedRecords();
     fetchDoctorFollowups();
+    fetchDoctorPrescriptions();
+    fetchHospitalLabBookings();
   }, [token]);
+
+  const handleOpenCreatePrescription = (appt?: any) => {
+    if (appt) {
+      setRxAppointmentId(appt.id);
+      setRxPatientId(appt.patient_id);
+      setRxPatientName(appt.patient_name || 'Patient');
+      setRxDiagnosis(appt.patient_notes ? `Clinical evaluation for ${appt.patient_notes}` : 'Acute outpatient consultation');
+    } else {
+      setRxAppointmentId(null);
+      setRxPatientId(appointments.length > 0 && appointments[0].patient_id ? appointments[0].patient_id : '');
+      setRxPatientName(appointments.length > 0 ? (appointments[0] as any).patient_name || 'Patient' : '');
+      setRxDiagnosis('');
+    }
+    setCreateRxModalOpen(true);
+  };
+
+  const handleAddMedicineRow = () => {
+    setRxMedicines((prev) => [
+      ...prev,
+      { medicine_name: '', dosage: '500mg', frequency: '1-0-1', timing: 'after_food', duration: '5 Days', instructions: 'Take with warm water' }
+    ]);
+  };
+
+  const handleRemoveMedicineRow = (idx: number) => {
+    setRxMedicines((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleUpdateMedicineRow = (idx: number, field: string, val: string) => {
+    setRxMedicines((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [field]: val } : m))
+    );
+  };
+
+  const handleAddLabRecRow = () => {
+    setRxLabRecommendations((prev) => [
+      ...prev,
+      { test_name: '', test_code: '', instructions: 'Fasting 10-12 hrs', urgency: 'routine' }
+    ]);
+  };
+
+  const handleRemoveLabRecRow = (idx: number) => {
+    setRxLabRecommendations((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleUpdateLabRecRow = (idx: number, field: string, val: string) => {
+    setRxLabRecommendations((prev) =>
+      prev.map((l, i) => (i === idx ? { ...l, [field]: val } : l))
+    );
+  };
+
+  const handleSubmitPrescription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !rxPatientId || !rxDiagnosis || rxMedicines.length === 0) {
+      alert('Patient ID, diagnosis, and at least one medicine are required.');
+      return;
+    }
+
+    setIssuingRx(true);
+    try {
+      const res = await fetch(apiUrl('/api/prescriptions'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          patient_id: Number(rxPatientId),
+          appointment_id: rxAppointmentId,
+          diagnosis: rxDiagnosis,
+          clinical_notes: rxClinicalNotes,
+          vitals_summary: rxVitals,
+          advice: rxAdvice,
+          followup_date: rxFollowupDate,
+          medicines: rxMedicines.filter((m) => m.medicine_name.trim()),
+          lab_recommendations: rxLabRecommendations.filter((l) => l.test_name.trim())
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Prescription ${data.prescription_number} issued and finalized!`);
+        setCreateRxModalOpen(false);
+        fetchDoctorPrescriptions();
+        fetchSchedule();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to issue prescription.');
+      }
+    } catch (err) {
+      console.error('Prescription error:', err);
+    } finally {
+      setIssuingRx(false);
+    }
+  };
 
   const handleUpdatePresence = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,6 +523,14 @@ export const DoctorDashboardPage: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           <button
+            onClick={() => handleOpenCreatePrescription()}
+            className="px-4 py-2.5 rounded-2xl bg-white text-blue-700 hover:bg-blue-50 font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+          >
+            <FileText className="w-4 h-4 text-blue-600" />
+            <span>Issue Digital Rx</span>
+          </button>
+
+          <button
             onClick={() => setScheduleFollowupOpen(true)}
             className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur transition-all"
           >
@@ -406,29 +574,63 @@ export const DoctorDashboardPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveTab('schedule')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'schedule'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Clinic & Teleconsult Appointments</span>
+          <span>Appointments</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
             {appointments.length}
           </span>
         </button>
 
         <button
+          onClick={() => setActiveTab('prescriptions')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            activeTab === 'prescriptions'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-blue-500" />
+          <span>Issued Prescriptions</span>
+          {doctorPrescriptions.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold">
+              {doctorPrescriptions.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('lab_reports')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            activeTab === 'lab_reports'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <FlaskConical className="w-4 h-4 text-emerald-500" />
+          <span>Patient Lab Reports</span>
+          {hospitalLabBookings.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+              {hospitalLabBookings.length}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab('shared_records')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'shared_records'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Patient Shared Medical Records</span>
+          <span>Shared Medical Records</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
             {sharedRecords.length}
           </span>
@@ -436,14 +638,14 @@ export const DoctorDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('followups')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'followups'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <Activity className="w-4 h-4" />
-          <span>Remote Patient Follow-Ups</span>
+          <span>Remote Follow-Ups</span>
           {doctorFollowups.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
               {doctorFollowups.length}
@@ -533,6 +735,14 @@ export const DoctorDashboardPage: React.FC = () => {
                           )}
 
                           <button
+                            onClick={() => handleOpenCreatePrescription(appt)}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-blue-200 dark:border-blue-800"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Issue Digital Rx</span>
+                          </button>
+
+                          <button
                             onClick={() => {
                               setEditingApptId(appt.id);
                               setEditStatus(appt.status);
@@ -593,6 +803,166 @@ export const DoctorDashboardPage: React.FC = () => {
                             </button>
                           </div>
                         </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: ISSUED DIGITAL PRESCRIPTIONS (FEATURE 2) */}
+          {activeTab === 'prescriptions' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Issued Digital Prescriptions ({doctorPrescriptions.length})
+                  </h3>
+                  <span className="text-xs text-slate-400">Official finalized medical prescriptions with digital seal</span>
+                </div>
+                <button
+                  onClick={() => handleOpenCreatePrescription()}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Issue New Prescription</span>
+                </button>
+              </div>
+
+              {doctorPrescriptions.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center text-xs text-slate-400">
+                  No prescriptions issued yet. Click "Issue New Prescription" or prescribe from an active consultation.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {doctorPrescriptions.map((rx) => (
+                    <div
+                      key={rx.id}
+                      className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs space-y-3 text-xs"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-black text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950 px-2 py-0.5 rounded">
+                            {rx.prescription_number}
+                          </span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            Patient: {rx.patient_name || 'Patient'}
+                          </span>
+                        </div>
+                        <div className="text-slate-500">
+                          Date: <span className="font-semibold">{rx.consultation_date}</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 space-y-1">
+                        <div><strong className="text-slate-900 dark:text-white">Diagnosis:</strong> {rx.diagnosis}</div>
+                        {rx.vitals_summary && <div className="text-slate-500"><strong>Vitals:</strong> {rx.vitals_summary}</div>}
+                      </div>
+
+                      {/* Prescribed Medicines */}
+                      <div>
+                        <div className="font-extrabold uppercase text-[10px] text-slate-400 tracking-wider mb-1.5">
+                          Prescribed Medicines ({rx.medicines?.length || 0}):
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {rx.medicines?.map((m: any, mIdx: number) => (
+                            <div key={mIdx} className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                              <div className="font-bold text-slate-900 dark:text-white">{m.medicine_name} ({m.dosage})</div>
+                              <div className="text-slate-500 text-[11px]">{m.frequency} • {m.timing?.replace('_', ' ')} • {m.duration}</div>
+                              {m.instructions && <div className="text-teal-600 dark:text-teal-400 text-[10px] italic">"{m.instructions}"</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Recommended Lab Tests */}
+                      {rx.lab_recommendations && rx.lab_recommendations.length > 0 && (
+                        <div>
+                          <div className="font-extrabold uppercase text-[10px] text-amber-600 tracking-wider mb-1">
+                            Recommended Lab Investigations:
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {rx.lab_recommendations.map((lab: any, lIdx: number) => (
+                              <span key={lIdx} className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-semibold text-[11px]">
+                                {lab.test_name} ({lab.urgency})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2">
+                        <a
+                          href={`/api/prescriptions/${rx.id}/download`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Download Signed PDF</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: PATIENT LAB REPORTS (FEATURE 2) */}
+          {activeTab === 'lab_reports' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Patient Pathology & Diagnostic Reports ({hospitalLabBookings.length})
+                  </h3>
+                  <span className="text-xs text-slate-400">Real-time status of diagnostic investigations</span>
+                </div>
+              </div>
+
+              {hospitalLabBookings.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center text-xs text-slate-400">
+                  No patient laboratory bookings found.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {hospitalLabBookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-teal-600">{b.booking_reference}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            b.status === 'completed'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {b.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-white mt-1">
+                          {b.test_name}
+                        </div>
+                        <div className="text-slate-500">
+                          Patient: {b.patient_name || 'Patient'} • Scheduled: {b.booking_date} at {b.booking_time}
+                        </div>
+                      </div>
+
+                      {b.status === 'completed' && (
+                        <a
+                          href={`/api/lab/bookings/${b.id}/report`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>View Lab Report</span>
+                        </a>
                       )}
                     </div>
                   ))}
@@ -1007,6 +1377,252 @@ export const DoctorDashboardPage: React.FC = () => {
                   className="px-4 py-2 text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow disabled:opacity-50"
                 >
                   {schedulingFollowup ? 'Scheduling...' : 'Confirm Schedule'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Digital Prescription Modal (Feature 2) */}
+      {createRxModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-blue-500/30 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                  Issue Certified Digital Prescription
+                </h3>
+              </div>
+              <button
+                onClick={() => setCreateRxModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPrescription} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Patient Name / ID *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={rxPatientName}
+                    onChange={(e) => setRxPatientName(e.target.value)}
+                    placeholder="Patient Name"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Consultation Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    defaultValue={new Date().toISOString().slice(0, 10)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Primary Clinical Diagnosis *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Essential Hypertension (Stage 1), Type 2 Diabetes, Acute Bronchitis..."
+                  value={rxDiagnosis}
+                  onChange={(e) => setRxDiagnosis(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Recorded Patient Vitals
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="BP, Pulse, SpO2, Temperature..."
+                    value={rxVitals}
+                    onChange={(e) => setRxVitals(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Recommended Follow-Up Date
+                  </label>
+                  <input
+                    type="date"
+                    value={rxFollowupDate}
+                    onChange={(e) => setRxFollowupDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Prescribed Medicines (Dynamic rows) */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-blue-50/50 dark:bg-slate-800/80 border border-blue-200 dark:border-blue-900">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold uppercase text-[11px] text-blue-900 dark:text-blue-200 tracking-wider">
+                    Prescribed Medicines ({rxMedicines.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddMedicineRow}
+                    className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Medicine</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {rxMedicines.map((m, idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          required
+                          placeholder="Medicine Name (e.g. Telma 40, Pan 40)"
+                          value={m.medicine_name}
+                          onChange={(e) => handleUpdateMedicineRow(idx, 'medicine_name', e.target.value)}
+                          className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Dosage (e.g. 40mg)"
+                          value={m.dosage}
+                          onChange={(e) => handleUpdateMedicineRow(idx, 'dosage', e.target.value)}
+                          className="w-24 px-2 py-1.5 rounded-lg border text-xs"
+                        />
+                        {rxMedicines.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedicineRow(idx)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Frequency (1-0-1)"
+                          value={m.frequency}
+                          onChange={(e) => handleUpdateMedicineRow(idx, 'frequency', e.target.value)}
+                          className="px-2 py-1 rounded border text-xs"
+                        />
+                        <select
+                          value={m.timing}
+                          onChange={(e) => handleUpdateMedicineRow(idx, 'timing', e.target.value)}
+                          className="px-2 py-1 rounded border text-xs"
+                        >
+                          <option value="after_food">After Food</option>
+                          <option value="before_food">Before Food</option>
+                          <option value="with_food">With Food</option>
+                          <option value="bedtime">At Bedtime</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Duration (e.g. 14 Days)"
+                          value={m.duration}
+                          onChange={(e) => handleUpdateMedicineRow(idx, 'duration', e.target.value)}
+                          className="px-2 py-1 rounded border text-xs"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recommended Lab Tests (Dynamic rows) */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-amber-50/50 dark:bg-slate-800/80 border border-amber-200 dark:border-amber-900">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold uppercase text-[11px] text-amber-900 dark:text-amber-200 tracking-wider">
+                    Recommended Lab Tests ({rxLabRecommendations.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddLabRecRow}
+                    className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Recommend Lab Test</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {rxLabRecommendations.map((lab, idx) => (
+                    <div key={idx} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Test Name (e.g. Lipid Profile, HbA1c, ECG)"
+                        value={lab.test_name}
+                        onChange={(e) => handleUpdateLabRecRow(idx, 'test_name', e.target.value)}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs"
+                      />
+                      <select
+                        value={lab.urgency}
+                        onChange={(e) => handleUpdateLabRecRow(idx, 'urgency', e.target.value)}
+                        className="w-28 px-2 py-1.5 rounded-lg border text-xs"
+                      >
+                        <option value="routine">Routine</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="stat">STAT</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLabRecRow(idx)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  General Dietary Advice & Lifestyle Instructions
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Low sodium DASH diet, hydrate adequately, 30 min daily walking..."
+                  value={rxAdvice}
+                  onChange={(e) => setRxAdvice(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCreateRxModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={issuingRx}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 flex items-center gap-1.5"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>{issuingRx ? 'Finalizing Prescription...' : 'Finalize & Sign Clinical Prescription'}</span>
                 </button>
               </div>
             </form>

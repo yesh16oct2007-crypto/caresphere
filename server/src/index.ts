@@ -120,6 +120,47 @@ import {
   createHospital,
   updateHospital
 } from './controllers/hospitalMgmtController.js';
+import {
+  getEmergencyHotlines,
+  findNearbyHospitals,
+  getMyEmergencyContacts,
+  addEmergencyContact,
+  updateEmergencyContact,
+  deleteEmergencyContact,
+  submitEmergencyRequest,
+  getMyEmergencyRequests,
+  getHospitalEmergencyRequests,
+  updateEmergencyRequestStatus
+} from './controllers/emergencyController.js';
+import {
+  createPrescription,
+  getPrescriptionById,
+  getMyPrescriptions,
+  getDoctorPrescriptions,
+  downloadPrescriptionPdf
+} from './controllers/prescriptionController.js';
+import {
+  getLabCatalogue,
+  getRecommendedLabTests,
+  bookLabTest,
+  getMyLabBookings,
+  getHospitalLabBookings,
+  updateLabBookingStatus,
+  uploadLabReport,
+  downloadLabReport
+} from './controllers/laboratoryController.js';
+import {
+  getPatientHospitalPharmacy,
+  getMedicines,
+  getPrescriptionMedicineAvailability,
+  createPharmacyOrder,
+  getMyPharmacyOrders,
+  getPharmacyOrders,
+  updateOrderStatus,
+  getPharmacyInventory,
+  updateInventoryStock,
+  getPharmacySalesReport
+} from './controllers/pharmacyController.js';
 
 dotenv.config();
 
@@ -322,6 +363,47 @@ app.put('/api/followups/:id/review', authenticateToken, requireRole(['doctor']),
 app.get('/api/hospitals', getAllHospitals);
 app.post('/api/admin/hospitals', authenticateToken, requireRole(['admin', 'superadmin']), createHospital);
 app.put('/api/admin/hospitals/:id', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), updateHospital);
+
+// ----------------- 11. EMERGENCY SOS & CONTACT SYSTEM -----------------
+app.get('/api/emergency/hotlines', getEmergencyHotlines);
+app.get('/api/emergency/nearby-hospitals', findNearbyHospitals);
+app.get('/api/emergency/contacts', authenticateToken, requireRole(['patient']), getMyEmergencyContacts);
+app.post('/api/emergency/contacts', authenticateToken, requireRole(['patient']), addEmergencyContact);
+app.put('/api/emergency/contacts/:id', authenticateToken, requireRole(['patient']), updateEmergencyContact);
+app.delete('/api/emergency/contacts/:id', authenticateToken, requireRole(['patient']), deleteEmergencyContact);
+app.post('/api/emergency/request', submitEmergencyRequest);
+app.get('/api/emergency/my-requests', authenticateToken, requireRole(['patient']), getMyEmergencyRequests);
+app.get('/api/emergency/hospital-requests', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), getHospitalEmergencyRequests);
+app.put('/api/emergency/requests/:id/status', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), updateEmergencyRequestStatus);
+
+// ----------------- 12. DIGITAL PRESCRIPTIONS -----------------
+app.post('/api/prescriptions', authenticateToken, requireRole(['doctor']), createPrescription);
+app.get('/api/prescriptions/my-prescriptions', authenticateToken, requireRole(['patient']), getMyPrescriptions);
+app.get('/api/prescriptions/doctor-prescriptions', authenticateToken, requireRole(['doctor']), getDoctorPrescriptions);
+app.get('/api/prescriptions/:id', authenticateToken, getPrescriptionById);
+app.get('/api/prescriptions/:id/download', authenticateToken, downloadPrescriptionPdf);
+
+// ----------------- 13. LABORATORY DIAGNOSTIC SYSTEM -----------------
+app.get('/api/lab/catalogue', getLabCatalogue);
+app.get('/api/lab/recommended', authenticateToken, requireRole(['patient']), getRecommendedLabTests);
+app.post('/api/lab/book', authenticateToken, requireRole(['patient']), bookLabTest);
+app.get('/api/lab/my-bookings', authenticateToken, requireRole(['patient']), getMyLabBookings);
+app.get('/api/lab/hospital-bookings', authenticateToken, requireRole(['lab_staff', 'hospital_admin', 'admin', 'superadmin']), getHospitalLabBookings);
+app.put('/api/lab/bookings/:id/status', authenticateToken, requireRole(['lab_staff', 'hospital_admin', 'admin', 'superadmin']), updateLabBookingStatus);
+app.post('/api/lab/bookings/:id/upload-report', authenticateToken, requireRole(['lab_staff', 'hospital_admin', 'admin', 'superadmin']), uploadReport.single('file'), uploadLabReport);
+app.get('/api/lab/bookings/:id/report', authenticateToken, downloadLabReport);
+
+// ----------------- 14. ONLINE PHARMACY & MEDICINE ORDERS -----------------
+app.get('/api/pharmacy/hospital-pharmacy', getPatientHospitalPharmacy);
+app.get('/api/pharmacy/medicines', getMedicines);
+app.get('/api/pharmacy/prescription-availability/:id', authenticateToken, getPrescriptionMedicineAvailability);
+app.post('/api/pharmacy/orders', authenticateToken, requireRole(['patient']), createPharmacyOrder);
+app.get('/api/pharmacy/my-orders', authenticateToken, requireRole(['patient']), getMyPharmacyOrders);
+app.get('/api/pharmacy/hospital-orders', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), getPharmacyOrders);
+app.put('/api/pharmacy/orders/:id/status', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), updateOrderStatus);
+app.get('/api/pharmacy/inventory', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), getPharmacyInventory);
+app.put('/api/pharmacy/inventory/:id', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), updateInventoryStock);
+app.get('/api/pharmacy/sales-report', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), getPharmacySalesReport);
 
 // ----------------- SERVE STATIC FRONTEND (IN PRODUCTION) -----------------
 const clientDistCandidates = [

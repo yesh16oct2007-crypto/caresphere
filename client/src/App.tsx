@@ -29,6 +29,8 @@ import { AIReportExplainerPage } from './pages/AIReportExplainerPage.js';
 import { HospitalResourcesPage } from './pages/HospitalResourcesPage.js';
 import { InsuranceAssistancePage } from './pages/InsuranceAssistancePage.js';
 import { IndoorNavigationPage } from './pages/IndoorNavigationPage.js';
+import { PharmacyPage } from './pages/PharmacyPage.js';
+import { LabBookingPage } from './pages/LabBookingPage.js';
 
 export const App: React.FC = () => {
   return (
@@ -74,6 +76,8 @@ export const App: React.FC = () => {
                 />
                 <Route path="/ai-report-explainer" element={<AIReportExplainerPage />} />
                 <Route path="/insurance" element={<InsuranceAssistancePage />} />
+                <Route path="/pharmacy" element={<PharmacyPage />} />
+                <Route path="/lab" element={<LabBookingPage />} />
                 <Route path="/resources" element={<Navigate to="/" replace />} />
                 <Route path="/indoor-navigation" element={<Navigate to="/" replace />} />
 

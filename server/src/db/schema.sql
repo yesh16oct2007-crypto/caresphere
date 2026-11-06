@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin', 'hospital_admin', 'superadmin')),
+  role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin', 'hospital_admin', 'superadmin', 'pharmacy_staff', 'lab_staff')),
   preferred_language TEXT NOT NULL DEFAULT 'en',
   hospital_id INTEGER REFERENCES hospitals(id),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -358,6 +358,246 @@ CREATE TABLE IF NOT EXISTS patient_followups (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================================
+-- FEATURE 1: EMERGENCY SOS & EMERGENCY CONTACT SYSTEM
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS emergency_contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  relationship TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  is_primary INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS emergency_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reference_no TEXT UNIQUE NOT NULL,
+  patient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  patient_name TEXT NOT NULL,
+  contact_phone TEXT NOT NULL,
+  hospital_id INTEGER REFERENCES hospitals(id),
+  emergency_type TEXT NOT NULL,
+  latitude REAL,
+  longitude REAL,
+  address TEXT,
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'received' CHECK(status IN ('received', 'acknowledged', 'assistance_arranged', 'resolved', 'cancelled')),
+  triage_level TEXT DEFAULT 'RED' CHECK(triage_level IN ('RED', 'YELLOW', 'GREEN')),
+  dispatched_service TEXT,
+  assigned_staff_id INTEGER REFERENCES users(id),
+  resolution_notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- FEATURE 2: DIGITAL PRESCRIPTIONS & LABORATORY BOOKING WORKFLOW
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS prescriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prescription_number TEXT UNIQUE NOT NULL,
+  appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
+  patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+  hospital_id INTEGER NOT NULL REFERENCES hospitals(id),
+  consultation_date TEXT NOT NULL,
+  diagnosis TEXT NOT NULL,
+  clinical_notes TEXT,
+  vitals_summary TEXT,
+  advice TEXT,
+  followup_date TEXT,
+  is_finalized INTEGER DEFAULT 1,
+  pdf_path TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS prescription_medicines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prescription_id INTEGER NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+  medicine_name TEXT NOT NULL,
+  dosage TEXT NOT NULL,
+  frequency TEXT NOT NULL,
+  timing TEXT DEFAULT 'after_food',
+  duration TEXT NOT NULL,
+  instructions TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS prescription_lab_recommendations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prescription_id INTEGER NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+  test_name TEXT NOT NULL,
+  test_code TEXT,
+  instructions TEXT,
+  urgency TEXT DEFAULT 'routine' CHECK(urgency IN ('routine', 'urgent', 'stat')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS prescription_audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prescription_id INTEGER NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  performed_by INTEGER NOT NULL REFERENCES users(id),
+  performer_role TEXT NOT NULL,
+  details TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS lab_tests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  test_code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  sample_type TEXT NOT NULL,
+  fasting_required INTEGER DEFAULT 0,
+  preparation_instructions TEXT,
+  turnaround_hours INTEGER DEFAULT 24,
+  base_price INTEGER NOT NULL DEFAULT 400,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS hospital_lab_tests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hospital_id INTEGER NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+  test_id INTEGER NOT NULL REFERENCES lab_tests(id) ON DELETE CASCADE,
+  price INTEGER NOT NULL,
+  is_available INTEGER DEFAULT 1,
+  slot_capacity_per_day INTEGER DEFAULT 30,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(hospital_id, test_id)
+);
+
+CREATE TABLE IF NOT EXISTS lab_bookings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  booking_reference TEXT UNIQUE NOT NULL,
+  patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hospital_id INTEGER NOT NULL REFERENCES hospitals(id),
+  test_id INTEGER NOT NULL REFERENCES lab_tests(id),
+  prescription_id INTEGER REFERENCES prescriptions(id),
+  appointment_id INTEGER REFERENCES appointments(id),
+  booking_date TEXT NOT NULL,
+  booking_time TEXT NOT NULL,
+  price INTEGER NOT NULL,
+  payment_status TEXT NOT NULL DEFAULT 'paid' CHECK(payment_status IN ('pending', 'paid', 'refunded')),
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK(status IN ('scheduled', 'sample_collected', 'processing', 'completed', 'cancelled')),
+  sample_collected_at DATETIME,
+  report_uploaded_at DATETIME,
+  report_file_path TEXT,
+  report_file_name TEXT,
+  medical_record_id INTEGER REFERENCES medical_records(id),
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- FEATURE 3: HOSPITAL-LINKED ONLINE PHARMACY & MEDICINE ORDERS
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS pharmacies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hospital_id INTEGER NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  license_number TEXT NOT NULL,
+  location TEXT NOT NULL,
+  contact_phone TEXT NOT NULL,
+  email TEXT,
+  operating_hours TEXT DEFAULT '24x7 Open',
+  offers_delivery INTEGER DEFAULT 1,
+  delivery_fee INTEGER DEFAULT 50,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS medicines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  brand_name TEXT NOT NULL,
+  generic_name TEXT NOT NULL,
+  strength TEXT NOT NULL,
+  dosage_form TEXT NOT NULL,
+  manufacturer TEXT NOT NULL,
+  category TEXT NOT NULL,
+  prescription_required INTEGER DEFAULT 1,
+  description TEXT,
+  side_effects TEXT,
+  storage_instructions TEXT DEFAULT 'Store in a cool, dry place away from direct sunlight',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pharmacy_inventory (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pharmacy_id INTEGER NOT NULL REFERENCES pharmacies(id) ON DELETE CASCADE,
+  medicine_id INTEGER NOT NULL REFERENCES medicines(id) ON DELETE CASCADE,
+  batch_number TEXT NOT NULL,
+  expiry_date TEXT NOT NULL,
+  mrp_price REAL NOT NULL,
+  selling_price REAL NOT NULL,
+  stock_quantity INTEGER NOT NULL DEFAULT 100,
+  low_stock_threshold INTEGER DEFAULT 15,
+  is_available INTEGER DEFAULT 1,
+  last_stock_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(pharmacy_id, medicine_id)
+);
+
+CREATE TABLE IF NOT EXISTS pharmacy_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_number TEXT UNIQUE NOT NULL,
+  patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hospital_id INTEGER NOT NULL REFERENCES hospitals(id),
+  pharmacy_id INTEGER NOT NULL REFERENCES pharmacies(id),
+  appointment_id INTEGER REFERENCES appointments(id),
+  prescription_id INTEGER REFERENCES prescriptions(id),
+  fulfillment_type TEXT NOT NULL DEFAULT 'hospital_pickup' CHECK(fulfillment_type IN ('hospital_pickup', 'home_delivery')),
+  delivery_address TEXT,
+  contact_phone TEXT NOT NULL,
+  total_items INTEGER NOT NULL,
+  subtotal REAL NOT NULL,
+  delivery_fee REAL DEFAULT 0,
+  total_amount REAL NOT NULL,
+  payment_method TEXT DEFAULT 'online_card',
+  payment_status TEXT NOT NULL DEFAULT 'paid' CHECK(payment_status IN ('pending', 'paid', 'refunded')),
+  payment_transaction_id TEXT,
+  prescription_verified INTEGER DEFAULT 0,
+  verified_by INTEGER REFERENCES users(id),
+  verification_notes TEXT,
+  status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('pending', 'prescription_verification', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled')),
+  cancellation_reason TEXT,
+  pickup_code TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pharmacy_order_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL REFERENCES pharmacy_orders(id) ON DELETE CASCADE,
+  medicine_id INTEGER NOT NULL REFERENCES medicines(id),
+  medicine_name TEXT NOT NULL,
+  strength TEXT,
+  dosage_form TEXT,
+  prescribed_dosage TEXT,
+  quantity INTEGER NOT NULL,
+  unit_price REAL NOT NULL,
+  total_price REAL NOT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_hospital ON emergency_requests(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_status ON emergency_requests(status);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_doctor ON prescriptions(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_hospital ON prescriptions(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_lab_bookings_patient ON lab_bookings(patient_id);
+CREATE INDEX IF NOT EXISTS idx_lab_bookings_hospital ON lab_bookings(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_orders_patient ON pharmacy_orders(patient_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_orders_hospital ON pharmacy_orders(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_orders_pharmacy ON pharmacy_orders(pharmacy_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_inventory_pharmacy ON pharmacy_inventory(pharmacy_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);

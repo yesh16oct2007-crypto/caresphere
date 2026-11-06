@@ -219,7 +219,7 @@ export const ConsultationRoomPage: React.FC = () => {
     e.preventDefault();
     if (!roomId) return;
 
-    const validMedicines = medicines.filter((m) => m.name.trim().length > 0);
+    const validMedicines = medicines.filter((m) => ((m.name || m.medicine_name || '').trim().length > 0));
     if (!diagnosis.trim()) {
       setError('Please provide a clinical diagnosis before completing consultation.');
       return;

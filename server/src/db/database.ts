@@ -101,9 +101,9 @@ export function initDatabase(): void {
       db.exec("ALTER TABLE users ADD COLUMN hospital_id INTEGER REFERENCES hospitals(id)");
     }
 
-    // Check if users table needs constraint upgrade for hospital_admin / superadmin
+    // Check if users table needs constraint upgrade for hospital_admin / superadmin / pharmacy_staff / lab_staff
     const userSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql: string } | undefined;
-    if (userSqlRow && userSqlRow.sql && !userSqlRow.sql.includes('hospital_admin')) {
+    if (userSqlRow && userSqlRow.sql && (!userSqlRow.sql.includes('pharmacy_staff') || !userSqlRow.sql.includes('lab_staff'))) {
       db.exec("PRAGMA foreign_keys=OFF;");
       db.exec(`
         CREATE TABLE users_migrated (
@@ -112,7 +112,7 @@ export function initDatabase(): void {
           email TEXT UNIQUE NOT NULL,
           phone TEXT,
           password_hash TEXT NOT NULL,
-          role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin', 'hospital_admin', 'superadmin')),
+          role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin', 'hospital_admin', 'superadmin', 'pharmacy_staff', 'lab_staff')),
           preferred_language TEXT NOT NULL DEFAULT 'en',
           hospital_id INTEGER REFERENCES hospitals(id),
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -648,6 +648,8 @@ export function seedDatabase() {
   `);
 
   const blrHospId = hospRows['CS-BLR-01'] || 1;
+  const chnHospId = hospRows['CS-CHN-01'] || 2;
+  const hydHospId = hospRows['CS-HYD-01'] || 3;
   insertFloor.run(blrHospId, 0, 'Ground Floor - Main Atrium & Diagnostics', JSON.stringify({ wing: 'Main Atrium', zone_count: 8 }));
   insertFloor.run(blrHospId, 1, '1st Floor - Clinical Outpatient (OPD)', JSON.stringify({ wing: 'Clinical OPD', zone_count: 6 }));
   insertFloor.run(blrHospId, 2, '2nd Floor - Orthopedics, Radiology & Daycare', JSON.stringify({ wing: 'Specialty Wing', zone_count: 5 }));
@@ -868,6 +870,226 @@ export function seedDatabase() {
       INSERT OR IGNORE INTO patient_feedback (hospital_id, patient_id, doctor_id, rating, review)
       VALUES (?, ?, 1, 5, 'Dr. Rajesh Sharma was thorough, patient, and explained everything clearly in Hindi and English. Hospital staff was courteous.')
     `).run(blrHospId, patientRavi.id);
+
+    // 19. Emergency Contacts for Ravi Kumar
+    db.prepare(`
+      INSERT OR IGNORE INTO emergency_contacts (patient_id, name, relationship, phone, is_primary)
+      VALUES (?, 'Meera Kumar', 'Spouse / Wife', '+91-9876543212', 1)
+    `).run(patientRavi.id);
+    db.prepare(`
+      INSERT OR IGNORE INTO emergency_contacts (patient_id, name, relationship, phone, is_primary)
+      VALUES (?, 'Suresh Kumar', 'Brother', '+91-9876543213', 0)
+    `).run(patientRavi.id);
+
+    // 20. Hospital Pharmacies
+    const insertPharm = db.prepare(`
+      INSERT OR IGNORE INTO pharmacies (
+        hospital_id, name, license_number, location, contact_phone, email, operating_hours, offers_delivery, delivery_fee
+      ) VALUES (?, ?, ?, ?, ?, ?, '24x7 Open', 1, 50)
+    `);
+
+    insertPharm.run(blrHospId, 'CareSphere Central Pharmacy - Bellandur', 'DL-KA-BLR-2024-8849', 'Ground Floor, Block A Atrium, Bengaluru', '+91-80-4920-1199', 'pharmacy.blr@caresphere.health');
+    insertPharm.run(chnHospId, 'CareSphere Express Pharmacy - Greams Road', 'DL-TN-CHN-2024-3912', 'Block B Pharmacy Wing, Chennai', '+91-44-2829-0299', 'pharmacy.chn@caresphere.health');
+    insertPharm.run(hydHospId, 'CareSphere Cyber Gateway Pharmacy', 'DL-TG-HYD-2024-7714', 'Ground Floor Pavilion, Hyderabad', '+91-40-6712-4499', 'pharmacy.hyd@caresphere.health');
+
+    const blrPharm = db.prepare('SELECT id FROM pharmacies WHERE hospital_id = ?').get(blrHospId) as any;
+    const chnPharm = db.prepare('SELECT id FROM pharmacies WHERE hospital_id = ?').get(chnHospId) as any;
+    const hydPharm = db.prepare('SELECT id FROM pharmacies WHERE hospital_id = ?').get(hydHospId) as any;
+
+    // Staff Users: Pharmacy Staff and Lab Staff
+    const staffPassword = bcrypt.hashSync('Staff@12345', 10);
+    db.prepare(`
+      INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run('Ananya Rao (Chief Pharmacist)', 'blr.pharmacy@caresphere.health', '+91-9876543293', staffPassword, 'pharmacy_staff', 'en', blrHospId);
+
+    db.prepare(`
+      INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run('Karthik Nambiar (Senior Pathologist)', 'blr.lab@caresphere.health', '+91-9876543294', staffPassword, 'lab_staff', 'en', blrHospId);
+
+    // 21. Real Medicines Database (25+ Medicines)
+    const medicinesData = [
+      { name: 'Telmisartan 40mg', brand: 'Telma 40', generic: 'Telmisartan', strength: '40 mg', form: 'Tablet', mfr: 'Glenmark Pharmaceuticals', cat: 'Cardiology', rx: 1, mrp: 145.0, price: 122.0 },
+      { name: 'Metformin 500mg ER', brand: 'Glycomet 500 SR', generic: 'Metformin Hydrochloride', strength: '500 mg', form: 'Tablet', mfr: 'USV Private Limited', cat: 'Diabetology', rx: 1, mrp: 58.0, price: 46.0 },
+      { name: 'Atorvastatin 10mg', brand: 'Atorva 10', generic: 'Atorvastatin Calcium', strength: '10 mg', form: 'Tablet', mfr: 'Zydus Cadila', cat: 'Cardiology', rx: 1, mrp: 120.0, price: 98.0 },
+      { name: 'Pantoprazole 40mg', brand: 'Pan 40', generic: 'Pantoprazole Sodium', strength: '40 mg', form: 'Tablet', mfr: 'Alkem Laboratories', cat: 'Gastroenterology', rx: 1, mrp: 165.0, price: 135.0 },
+      { name: 'Amoxicillin + Clavulanate 625mg', brand: 'Augmentin 625 Duo', generic: 'Amoxicillin & Potassium Clavulanate', strength: '625 mg', form: 'Tablet', mfr: 'GlaxoSmithKline', cat: 'Antibiotics', rx: 1, mrp: 225.0, price: 195.0 },
+      { name: 'Paracetamol 650mg', brand: 'Dolo 650', generic: 'Paracetamol', strength: '650 mg', form: 'Tablet', mfr: 'Micro Labs Ltd', cat: 'Analgesics & Antipyretics', rx: 0, mrp: 34.0, price: 30.0 },
+      { name: 'Azithromycin 500mg', brand: 'Azee 500', generic: 'Azithromycin', strength: '500 mg', form: 'Tablet', mfr: 'Cipla Ltd', cat: 'Antibiotics', rx: 1, mrp: 138.0, price: 115.0 },
+      { name: 'Montelukast + Levocetirizine', brand: 'Montair LC', generic: 'Montelukast Sodium & Levocetirizine', strength: '10mg/5mg', form: 'Tablet', mfr: 'Cipla Ltd', cat: 'Respiratory', rx: 1, mrp: 210.0, price: 175.0 },
+      { name: 'Cetirizine 10mg', brand: 'Cetzine 10', generic: 'Cetirizine Dihydrochloride', strength: '10 mg', form: 'Tablet', mfr: 'Dr. Reddy Laboratories', cat: 'Allergy', rx: 0, mrp: 45.0, price: 38.0 },
+      { name: 'Ibuprofen 400mg', brand: 'Brufen 400', generic: 'Ibuprofen', strength: '400 mg', form: 'Tablet', mfr: 'Abbott Healthcare', cat: 'Pain Relief', rx: 0, mrp: 28.0, price: 24.0 },
+      { name: 'Amlodipine 5mg', brand: 'Amlong 5', generic: 'Amlodipine Besylate', strength: '5 mg', form: 'Tablet', mfr: 'Micro Labs Ltd', cat: 'Cardiology', rx: 1, mrp: 42.0, price: 35.0 },
+      { name: 'Glimepiride 2mg', brand: 'Amaryl 2', generic: 'Glimepiride', strength: '2 mg', form: 'Tablet', mfr: 'Sanofi India', cat: 'Diabetology', rx: 1, mrp: 178.0, price: 152.0 },
+      { name: 'Vitamin D3 60,000 IU', brand: 'Uprise D3 60K', generic: 'Cholecalciferol', strength: '60000 IU', form: 'Capsule', mfr: 'Alkem Laboratories', cat: 'Vitamins & Supplements', rx: 0, mrp: 150.0, price: 125.0 },
+      { name: 'B-Complex + Zinc', brand: 'Becozym C Forte', generic: 'Vitamin B Complex with Vitamin C & Zinc', strength: 'Standard', form: 'Tablet', mfr: 'Bayer Pharmaceuticals', cat: 'Vitamins & Supplements', rx: 0, mrp: 62.0, price: 52.0 },
+      { name: 'Omeprazole 20mg', brand: 'Omez 20', generic: 'Omeprazole', strength: '20 mg', form: 'Capsule', mfr: 'Dr. Reddy Laboratories', cat: 'Gastroenterology', rx: 1, mrp: 75.0, price: 62.0 },
+      { name: 'Losartan 50mg', brand: 'Losar 50', generic: 'Losartan Potassium', strength: '50 mg', form: 'Tablet', mfr: 'Unichem Laboratories', cat: 'Cardiology', rx: 1, mrp: 110.0, price: 92.0 },
+      { name: 'Ciprofloxacin 500mg', brand: 'Ciplox 500', generic: 'Ciprofloxacin Hydrochloride', strength: '500 mg', form: 'Tablet', mfr: 'Cipla Ltd', cat: 'Antibiotics', rx: 1, mrp: 68.0, price: 56.0 },
+      { name: 'Budesonide Inhaler 200mcg', brand: 'Budecort 200 Inhaler', generic: 'Budesonide', strength: '200 mcg', form: 'Inhaler', mfr: 'Cipla Ltd', cat: 'Respiratory', rx: 1, mrp: 385.0, price: 335.0 },
+      { name: 'Levothyroxine 50mcg', brand: 'Thyronorm 50', generic: 'Thyroxine Sodium', strength: '50 mcg', form: 'Tablet', mfr: 'Abbott Healthcare', cat: 'Endocrinology', rx: 1, mrp: 155.0, price: 130.0 },
+      { name: 'Clopidogrel 75mg', brand: 'Clopilet 75', generic: 'Clopidogrel Bisulphate', strength: '75 mg', form: 'Tablet', mfr: 'Sun Pharma', cat: 'Cardiology', rx: 1, mrp: 125.0, price: 105.0 },
+      { name: 'Rosuvastatin 10mg', brand: 'Rosuvas 10', generic: 'Rosuvastatin Calcium', strength: '10 mg', form: 'Tablet', mfr: 'Sun Pharma', cat: 'Cardiology', rx: 1, mrp: 215.0, price: 180.0 },
+      { name: 'Domperidone + Rabeprazole', brand: 'Razo-D', generic: 'Rabeprazole Sodium & Domperidone', strength: '20mg/30mg', form: 'Capsule', mfr: 'Dr. Reddy Laboratories', cat: 'Gastroenterology', rx: 1, mrp: 245.0, price: 205.0 },
+      { name: 'Salbutamol Inhaler 100mcg', brand: 'Asthalin Inhaler', generic: 'Salbutamol Sulphate', strength: '100 mcg', form: 'Inhaler', mfr: 'Cipla Ltd', cat: 'Respiratory', rx: 1, mrp: 175.0, price: 148.0 },
+      { name: 'Iron + Folic Acid', brand: 'Autrin', generic: 'Ferrous Fumarate with Folic Acid & Vitamin B12', strength: 'Standard', form: 'Capsule', mfr: 'Pfizer India', cat: 'Hematology', rx: 0, mrp: 185.0, price: 155.0 },
+      { name: 'Calcium + Vitamin D3', brand: 'Shelcal 500', generic: 'Calcium Carbonate with Vitamin D3', strength: '500 mg', form: 'Tablet', mfr: 'Torrent Pharmaceuticals', cat: 'Supplements', rx: 0, mrp: 130.0, price: 110.0 },
+      { name: 'Diclofenac Sodium Gel', brand: 'Volini Gel', generic: 'Diclofenac Diethylamine', strength: '30g Tube', form: 'Gel', mfr: 'Sun Pharma', cat: 'Pain Relief', rx: 0, mrp: 165.0, price: 140.0 }
+    ];
+
+    const insertMed = db.prepare(`
+      INSERT OR IGNORE INTO medicines (
+        name, brand_name, generic_name, strength, dosage_form, manufacturer, category, prescription_required, description
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    medicinesData.forEach(m => {
+      insertMed.run(
+        m.name,
+        m.brand,
+        m.generic,
+        m.strength,
+        m.form,
+        m.mfr,
+        m.cat,
+        m.rx,
+        `${m.brand} (${m.generic} ${m.strength}) manufactured by ${m.mfr}. Indicated for ${m.cat.toLowerCase()} management.`
+      );
+    });
+
+    // Populate Inventory for each pharmacy
+    const allMeds = db.prepare('SELECT id, name, brand_name FROM medicines').all() as any[];
+    const insertInv = db.prepare(`
+      INSERT OR IGNORE INTO pharmacy_inventory (
+        pharmacy_id, medicine_id, batch_number, expiry_date, mrp_price, selling_price, stock_quantity, low_stock_threshold, is_available
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 15, 1)
+    `);
+
+    [blrPharm?.id, chnPharm?.id, hydPharm?.id].filter(Boolean).forEach((pharmId, pIdx) => {
+      allMeds.forEach((m, mIdx) => {
+        const medMeta = medicinesData.find(md => md.name === m.name) || medicinesData[0];
+        const batch = `CS-PH-${2024 + (mIdx % 3)}-${1000 + mIdx}`;
+        const expiry = `202${7 + (mIdx % 2)}-0${1 + (mIdx % 9)}-28`;
+        const stock = 40 + ((mIdx * 7 + pIdx * 11) % 120);
+        insertInv.run(pharmId, m.id, batch, expiry, medMeta.mrp, medMeta.price, stock);
+      });
+    });
+
+    // 22. Diagnostic Laboratory Tests (12+ Real Tests)
+    const labTestsData = [
+      { code: 'CBC-001', name: 'Complete Blood Count (CBC) with ESR', cat: 'Hematology', desc: 'Evaluates red cells, white cells, platelets, hemoglobin, and ESR for infection or anemia.', sample: 'Blood (EDTA)', fasting: 0, prep: 'No special preparation or fasting required.', turnaround: 6, price: 350 },
+      { code: 'LIP-002', name: 'Comprehensive Lipid Profile', cat: 'Biochemistry', desc: 'Measures Total Cholesterol, Triglycerides, HDL, LDL, and VLDL for cardiovascular risk assessment.', sample: 'Blood (Serum)', fasting: 1, prep: 'Strict 10-12 hours overnight fasting required. Water is permitted.', turnaround: 12, price: 650 },
+      { code: 'LFT-003', name: 'Liver Function Test (LFT)', cat: 'Biochemistry', desc: 'Assesses Bilirubin (Total & Direct), SGOT/AST, SGPT/ALT, Alkaline Phosphatase, and Protein levels.', sample: 'Blood (Serum)', fasting: 1, prep: 'Overnight fasting of 8-10 hours recommended. Avoid alcohol 24 hours prior.', turnaround: 12, price: 750 },
+      { code: 'KFT-004', name: 'Kidney Function Test (KFT/RFT) with Electrolytes', cat: 'Biochemistry', desc: 'Measures Blood Urea, Serum Creatinine, Uric Acid, Sodium, Potassium, and Chloride.', sample: 'Blood (Serum)', fasting: 0, prep: 'Maintain normal hydration. Avoid strenuous exercise immediately before test.', turnaround: 8, price: 800 },
+      { code: 'HBA-005', name: 'HbA1c (Glycosylated Hemoglobin)', cat: 'Diabetology', desc: 'Gold standard measure of average blood glucose control over previous 90 days.', sample: 'Blood (EDTA)', fasting: 0, prep: 'Fasting not required. Can be done anytime during the day.', turnaround: 4, price: 450 },
+      { code: 'THY-006', name: 'Thyroid Panel (Total T3, Total T4, Ultrasensitive TSH)', cat: 'Endocrinology', desc: 'Screens for hyperthyroidism and hypothyroidism gland dysfunction.', sample: 'Blood (Serum)', fasting: 1, prep: 'Morning sample preferred. Fasting 8 hours recommended.', turnaround: 12, price: 600 },
+      { code: 'VITD-007', name: 'Vitamin D (25-Hydroxy Cholecalciferol)', cat: 'Vitamins', desc: 'Evaluates bone health, calcium absorption capability, and immune wellness.', sample: 'Blood (Serum)', fasting: 0, prep: 'No specific fasting required.', turnaround: 24, price: 1100 },
+      { code: 'VITB-008', name: 'Vitamin B12 (Cyanocobalamin)', cat: 'Vitamins', desc: 'Detects deficiency causing neuropathy, memory fatigue, and megaloblastic anemia.', sample: 'Blood (Serum)', fasting: 1, prep: 'Overnight fasting of 8-10 hours recommended.', turnaround: 24, price: 950 },
+      { code: 'URI-009', name: 'Urine Routine & Microscopic Examination', cat: 'Clinical Pathology', desc: 'Screens for urinary tract infections, proteinuria, microscopic hematuria, and renal casts.', sample: 'Urine (Mid-stream)', fasting: 0, prep: 'Collect clean-catch first-morning midstream urine sample in sterile container provided.', turnaround: 4, price: 250 },
+      { code: 'CXR-010', name: 'Digital Chest X-Ray PA View', cat: 'Radiology', desc: 'High-resolution digital radiography of lungs, pleura, cardiac silhouette, and thoracic ribcage.', sample: 'Imaging', fasting: 0, prep: 'Remove metallic items, necklaces, and bra with underwire.', turnaround: 2, price: 500 },
+      { code: 'ECG-011', name: '12-Lead Resting Digital ECG', cat: 'Cardiology Diagnostics', desc: 'Diagnostic electrical tracing of myocardial rhythm, conduction defects, and ischemia.', sample: 'Non-invasive Trace', fasting: 0, prep: 'Wear two-piece loose clothing. Avoid applying oily lotions on chest.', turnaround: 1, price: 300 },
+      { code: 'USG-012', name: 'Ultrasound Whole Abdomen & Pelvis', cat: 'Radiology & Imaging', desc: 'Ultrasound evaluation of liver, gall bladder, pancreas, kidneys, spleen, and bladder.', sample: 'Ultrasound Scan', fasting: 1, prep: 'Strict 6 hours fasting for upper abdomen. Drink 1 liter water 1 hour prior for full bladder.', turnaround: 3, price: 1400 }
+    ];
+
+    const insertLab = db.prepare(`
+      INSERT OR IGNORE INTO lab_tests (
+        test_code, name, category, description, sample_type, fasting_required, preparation_instructions, turnaround_hours, base_price
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    labTestsData.forEach(lt => {
+      insertLab.run(lt.code, lt.name, lt.cat, lt.desc, lt.sample, lt.fasting, lt.prep, lt.turnaround, lt.price);
+    });
+
+    // Populate Hospital-specific lab test pricing
+    const allLabTests = db.prepare('SELECT id, test_code, base_price FROM lab_tests').all() as any[];
+    const insertHospLab = db.prepare(`
+      INSERT OR IGNORE INTO hospital_lab_tests (hospital_id, test_id, price, is_available)
+      VALUES (?, ?, ?, 1)
+    `);
+
+    [blrHospId, chnHospId, hydHospId].forEach(hId => {
+      allLabTests.forEach(lt => {
+        insertHospLab.run(hId, lt.id, lt.base_price);
+      });
+    });
+
+    // 23. Demo Digital Prescription for Ravi Kumar
+    const rxRef = `RX-20261106-4921`;
+    const rxRes = db.prepare(`
+      INSERT OR IGNORE INTO prescriptions (
+        prescription_number, patient_id, doctor_id, hospital_id, consultation_date,
+        diagnosis, clinical_notes, vitals_summary, advice, followup_date, is_finalized
+      ) VALUES (?, ?, 1, ?, '2026-11-04', 'Essential Systemic Hypertension (Stage 1) with Dyslipidemia',
+        'Patient reports mild episodic occipital headaches. Normal ECG. Lipid levels borderline elevated. Cardio-protective regimen initiated.',
+        'BP: 138/88 mmHg, Heart Rate: 76 bpm, SpO2: 98%, BMI: 25.4',
+        'Adopt low-sodium DASH diet. Walk briskly 30 minutes daily. Avoid fried and processed snacks. Measure morning BP daily.',
+        '2026-11-18', 1
+      )
+    `).run(rxRef, patientRavi.id, blrHospId);
+
+    const seededRx = db.prepare('SELECT id FROM prescriptions WHERE prescription_number = ?').get(rxRef) as any;
+    if (seededRx) {
+      // Medicines for prescription
+      const insertRxMed = db.prepare(`
+        INSERT OR IGNORE INTO prescription_medicines (prescription_id, medicine_name, dosage, frequency, timing, duration, instructions)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertRxMed.run(seededRx.id, 'Telmisartan 40mg', '1 Tablet', '1-0-0 (Morning)', 'after_food', '30 Days', 'Take with warm water every morning at 8:00 AM');
+      insertRxMed.run(seededRx.id, 'Atorvastatin 10mg', '1 Tablet', '0-0-1 (Night)', 'after_food', '30 Days', 'Take after dinner before bedtime');
+      insertRxMed.run(seededRx.id, 'Pan 40 (Pantoprazole)', '1 Tablet', '1-0-0 (Morning)', 'before_food', '14 Days', 'Take 30 minutes before breakfast');
+
+      // Recommended lab tests for prescription
+      const insertRxLab = db.prepare(`
+        INSERT OR IGNORE INTO prescription_lab_recommendations (prescription_id, test_name, test_code, instructions, urgency)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      insertRxLab.run(seededRx.id, 'Comprehensive Lipid Profile', 'LIP-002', '12 hours fasting required before morning blood draw', 'routine');
+      insertRxLab.run(seededRx.id, 'Kidney Function Test (KFT/RFT) with Electrolytes', 'KFT-004', 'Check baseline serum creatinine and electrolytes on Telmisartan', 'routine');
+
+      // Audit log
+      db.prepare(`
+        INSERT OR IGNORE INTO prescription_audit_logs (prescription_id, action, performed_by, performer_role, details)
+        VALUES (?, 'CREATED_AND_FINALIZED', 2, 'doctor', 'Digital prescription generated during outpatient cardiac consultation')
+      `).run(seededRx.id);
+    }
+
+    // 24. Demo Lab Booking for Ravi Kumar
+    const labBookingRef = `LAB-20261106-8812`;
+    const lipidTest = db.prepare('SELECT id FROM lab_tests WHERE test_code = ?').get('LIP-002') as any;
+    if (lipidTest) {
+      db.prepare(`
+        INSERT OR IGNORE INTO lab_bookings (
+          booking_reference, patient_id, hospital_id, test_id, prescription_id,
+          booking_date, booking_time, price, payment_status, status, notes
+        ) VALUES (?, ?, ?, ?, ?, '2026-11-08', '08:30 AM', 650, 'paid', 'scheduled', 'Overnight 12 hours fasting booked.')
+      `).run(labBookingRef, patientRavi.id, blrHospId, lipidTest.id, seededRx?.id || null);
+    }
+
+    // 25. Demo Pharmacy Order for Ravi Kumar
+    const pharmacyOrderRef = `RXO-20261106-9923`;
+    const orderRes = db.prepare(`
+      INSERT OR IGNORE INTO pharmacy_orders (
+        order_number, patient_id, hospital_id, pharmacy_id, prescription_id, fulfillment_type,
+        contact_phone, total_items, subtotal, delivery_fee, total_amount, payment_method,
+        payment_status, payment_transaction_id, prescription_verified, status, pickup_code
+      ) VALUES (?, ?, ?, ?, ?, 'hospital_pickup', '+91-9876543210', 2, 220.0, 0, 220.0, 'online_upi',
+        'paid', 'UPI-TXN-20261106-8812', 1, 'ready_for_pickup', 'PK-7491'
+      )
+    `).run(pharmacyOrderRef, patientRavi.id, blrHospId, blrPharm?.id || 1, seededRx?.id || null);
+
+    const seededOrder = db.prepare('SELECT id FROM pharmacy_orders WHERE order_number = ?').get(pharmacyOrderRef) as any;
+    if (seededOrder) {
+      db.prepare(`
+        INSERT OR IGNORE INTO pharmacy_order_items (order_id, medicine_id, medicine_name, strength, dosage_form, prescribed_dosage, quantity, unit_price, total_price)
+        VALUES (?, 1, 'Telmisartan 40mg', '40 mg', 'Tablet', '1 Tablet daily', 1, 122.0, 122.0)
+      `).run(seededOrder.id);
+      db.prepare(`
+        INSERT OR IGNORE INTO pharmacy_order_items (order_id, medicine_id, medicine_name, strength, dosage_form, prescribed_dosage, quantity, unit_price, total_price)
+        VALUES (?, 3, 'Atorvastatin 10mg', '10 mg', 'Tablet', '1 Tablet night', 1, 98.0, 98.0)
+      `).run(seededOrder.id);
+    }
   }
 
   // 19. Initial Audit Log

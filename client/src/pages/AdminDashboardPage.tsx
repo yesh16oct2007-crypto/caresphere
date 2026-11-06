@@ -33,16 +33,29 @@ import {
   Truck,
   Droplet,
   HeartPulse,
-  DollarSign
+  DollarSign,
+  Siren,
+  FlaskConical,
+  Pill,
+  PhoneCall,
+  RefreshCw,
+  Upload,
+  PackageCheck,
+  Check,
+  X,
+  ShieldAlert,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
-import { User, Appointment, AuditLog } from '../types/index.js';
+import { User, Appointment, AuditLog, EmergencyRequest, LabBooking, PharmacyOrder } from '../types/index.js';
 import { apiUrl } from '../services/api.js';
 
 export const AdminDashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { user, token } = useAuth();
   const isHospitalAdmin = user?.role === 'hospital_admin';
+  const isLabStaff = user?.role === 'lab_staff';
+  const isPharmacyStaff = user?.role === 'pharmacy_staff';
 
   const [stats, setStats] = useState<any>(null);
   const [allDoctors, setAllDoctors] = useState<any[]>([]);
@@ -55,11 +68,14 @@ export const AdminDashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Active section tab
-  const [activeTab, setActiveTab] = useState<'analytics' | 'verification' | 'appointments' | 'users' | 'logs' | 'announcements'>('analytics');
+  const initialTab = isPharmacyStaff ? 'pharmacy' : isLabStaff ? 'laboratory' : 'analytics';
+  const [activeTab, setActiveTab] = useState<
+    'analytics' | 'verification' | 'appointments' | 'users' | 'logs' | 'announcements' | 'emergency' | 'laboratory' | 'pharmacy'
+  >(initialTab);
 
   // Feature 3: Hospital Analytics State
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | 'all'>(
-    isHospitalAdmin && user?.hospital_id ? user.hospital_id : 'all'
+    (isHospitalAdmin || isLabStaff || isPharmacyStaff) && user?.hospital_id ? user.hospital_id : 'all'
   );
   const [adminHospitals, setAdminHospitals] = useState<any[]>([]);
   const [analyticsOverview, setAnalyticsOverview] = useState<any>(null);
@@ -68,6 +84,44 @@ export const AdminDashboardPage: React.FC = () => {
   const [analyticsDateRange, setAnalyticsDateRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [analyticsDeptFilter, setAnalyticsDeptFilter] = useState('all');
   const [exportingCsv, setExportingCsv] = useState(false);
+
+  // ---------------- FEATURE 1: EMERGENCY SOS QUEUE STATE ----------------
+  const [emergencyRequests, setEmergencyRequests] = useState<EmergencyRequest[]>([]);
+  const [loadingEmergency, setLoadingEmergency] = useState(false);
+  const [selectedEmergency, setSelectedEmergency] = useState<EmergencyRequest | null>(null);
+  const [emergencyTriageFilter, setEmergencyTriageFilter] = useState<string>('all');
+  const [emergencyStatusFilter, setEmergencyStatusFilter] = useState<string>('all');
+  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
+  const [updatingEmergencyStatus, setUpdatingEmergencyStatus] = useState<string>('acknowledged');
+  const [dispatchService, setDispatchService] = useState('');
+  const [emergencyResolutionNotes, setEmergencyResolutionNotes] = useState('');
+  const [emergencySubmitting, setEmergencySubmitting] = useState(false);
+
+  // ---------------- FEATURE 2: LABORATORY DIAGNOSTIC STATE ----------------
+  const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
+  const [loadingLab, setLoadingLab] = useState(false);
+  const [labStatusFilter, setLabStatusFilter] = useState<string>('all');
+  const [labSearch, setLabSearch] = useState('');
+  const [uploadReportModalOpen, setUploadReportModalOpen] = useState(false);
+  const [selectedLabBooking, setSelectedLabBooking] = useState<LabBooking | null>(null);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [reportNotes, setReportNotes] = useState('');
+
+  // ---------------- FEATURE 3: PHARMACY & MEDICINE ORDERS STATE ----------------
+  const [pharmacyOrders, setPharmacyOrders] = useState<PharmacyOrder[]>([]);
+  const [pharmacyInventory, setPharmacyInventory] = useState<any[]>([]);
+  const [pharmacySales, setPharmacySales] = useState<any>(null);
+  const [loadingPharmacy, setLoadingPharmacy] = useState(false);
+  const [pharmacySection, setPharmacySection] = useState<'orders' | 'inventory' | 'sales'>('orders');
+  const [pharmacyStatusFilter, setPharmacyStatusFilter] = useState<string>('all');
+  const [pharmacySearch, setPharmacySearch] = useState('');
+  const [verifyingOrder, setVerifyingOrder] = useState<PharmacyOrder | null>(null);
+  const [verifyRxNotes, setVerifyRxNotes] = useState('');
+  const [stockModalItem, setStockModalItem] = useState<any | null>(null);
+  const [newStockQty, setNewStockQty] = useState<number>(0);
+  const [newSellingPrice, setNewSellingPrice] = useState<number>(0);
+  const [updatingStock, setUpdatingStock] = useState(false);
 
   // Authoritative Verification Checklist Modal State
   const [verifyingDoc, setVerifyingDoc] = useState<any | null>(null);
@@ -173,10 +227,268 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // ---------------- FETCH HANDLERS FOR NEW FEATURES ----------------
+  const fetchEmergencyRequests = async () => {
+    if (!token) return;
+    try {
+      setLoadingEmergency(true);
+      const url = apiUrl(
+        selectedHospitalId !== 'all'
+          ? `/api/emergency/hospital-requests?hospital_id=${selectedHospitalId}`
+          : '/api/emergency/hospital-requests'
+      );
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setEmergencyRequests(data.requests || []);
+      }
+    } catch (err) {
+      console.error('Failed to load emergency requests:', err);
+    } finally {
+      setLoadingEmergency(false);
+    }
+  };
+
+  const fetchLabBookings = async () => {
+    if (!token) return;
+    try {
+      setLoadingLab(true);
+      const url = apiUrl(
+        selectedHospitalId !== 'all'
+          ? `/api/lab/hospital-bookings?hospital_id=${selectedHospitalId}`
+          : '/api/lab/hospital-bookings'
+      );
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setLabBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Failed to load lab bookings:', err);
+    } finally {
+      setLoadingLab(false);
+    }
+  };
+
+  const fetchPharmacyData = async () => {
+    if (!token) return;
+    try {
+      setLoadingPharmacy(true);
+      const hospParam = selectedHospitalId !== 'all' ? `?hospital_id=${selectedHospitalId}` : '';
+      const [ordersRes, invRes, salesRes] = await Promise.all([
+        fetch(apiUrl(`/api/pharmacy/hospital-orders${hospParam}`), { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(apiUrl(`/api/pharmacy/inventory${hospParam}`), { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(apiUrl(`/api/pharmacy/sales-report${selectedHospitalId !== 'all' ? `?pharmacy_id=${selectedHospitalId}` : ''}`), {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      if (ordersRes.ok) {
+        const oData = await ordersRes.json();
+        setPharmacyOrders(oData.orders || []);
+      }
+      if (invRes.ok) {
+        const iData = await invRes.json();
+        setPharmacyInventory(iData.medicines || []);
+      }
+      if (salesRes.ok) {
+        const sData = await salesRes.json();
+        setPharmacySales(sData.sales_report || null);
+      }
+    } catch (err) {
+      console.error('Failed to load pharmacy data:', err);
+    } finally {
+      setLoadingPharmacy(false);
+    }
+  };
+
   useEffect(() => {
     fetchAdminData();
     fetchAnalytics();
-  }, [token, selectedHospitalId]);
+    if (activeTab === 'emergency') fetchEmergencyRequests();
+    if (activeTab === 'laboratory') fetchLabBookings();
+    if (activeTab === 'pharmacy') fetchPharmacyData();
+  }, [token, selectedHospitalId, activeTab]);
+
+  // Emergency status updater
+  const handleUpdateEmergencyStatus = async () => {
+    if (!selectedEmergency || !token) return;
+    try {
+      setEmergencySubmitting(true);
+      const res = await fetch(apiUrl(`/api/emergency/requests/${selectedEmergency.id}/status`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: updatingEmergencyStatus,
+          dispatched_service: dispatchService || null,
+          resolution_notes: emergencyResolutionNotes || null
+        })
+      });
+
+      if (res.ok) {
+        setDispatchModalOpen(false);
+        setSelectedEmergency(null);
+        setDispatchService('');
+        setEmergencyResolutionNotes('');
+        await fetchEmergencyRequests();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to update emergency status');
+      }
+    } catch (err) {
+      alert('Network error updating emergency');
+    } finally {
+      setEmergencySubmitting(false);
+    }
+  };
+
+  // Lab Quick Status
+  const handleQuickLabStatus = async (bookingId: number, status: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/lab/bookings/${bookingId}/status`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchLabBookings();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update lab booking status');
+      }
+    } catch (e) {
+      alert('Network error updating lab booking');
+    }
+  };
+
+  // Upload Lab Report
+  const handleUploadLabReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLabBooking || !token) return;
+    try {
+      setUploadingReport(true);
+      const formData = new FormData();
+      if (reportFile) {
+        formData.append('file', reportFile);
+      }
+      if (reportNotes) {
+        formData.append('notes', reportNotes);
+      }
+
+      const res = await fetch(apiUrl(`/api/lab/bookings/${selectedLabBooking.id}/upload-report`), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        setUploadReportModalOpen(false);
+        setSelectedLabBooking(null);
+        setReportFile(null);
+        setReportNotes('');
+        alert('Diagnostic report uploaded successfully and automatically ingested into patient Digital Medical Records!');
+        fetchLabBookings();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to upload report');
+      }
+    } catch (e) {
+      alert('Network error uploading lab report');
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
+  // Pharmacy update order status
+  const handleUpdateOrderStatus = async (orderId: number, status: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/pharmacy/orders/${orderId}/status`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchPharmacyData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update order status');
+      }
+    } catch (e) {
+      alert('Network error updating pharmacy order');
+    }
+  };
+
+  // Pharmacy verify prescription
+  const handleVerifyPrescription = async (orderId: number, approved: boolean) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/pharmacy/orders/${orderId}/status`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: approved ? 'confirmed' : 'cancelled',
+          prescription_verified: approved ? 1 : 0,
+          verification_notes: verifyRxNotes || (approved ? 'Prescription verified by clinical pharmacist.' : 'Prescription rejected.')
+        })
+      });
+      if (res.ok) {
+        setVerifyingOrder(null);
+        setVerifyRxNotes('');
+        fetchPharmacyData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to verify prescription');
+      }
+    } catch (e) {
+      alert('Network error during verification');
+    }
+  };
+
+  // Pharmacy update stock
+  const handleUpdateStock = async () => {
+    if (!stockModalItem || !token) return;
+    try {
+      setUpdatingStock(true);
+      const res = await fetch(apiUrl(`/api/pharmacy/inventory/${stockModalItem.id}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          stock_quantity: Number(newStockQty),
+          selling_price: Number(newSellingPrice)
+        })
+      });
+      if (res.ok) {
+        setStockModalItem(null);
+        fetchPharmacyData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update stock');
+      }
+    } catch (e) {
+      alert('Network error updating inventory');
+    } finally {
+      setUpdatingStock(false);
+    }
+  };
 
   const openReviewModal = (doc: any) => {
     setVerifyingDoc(doc);
@@ -431,6 +743,46 @@ export const AdminDashboardPage: React.FC = () => {
           <BarChart3 className="w-4 h-4" />
           <span>Hospital Analytics & Metrics</span>
         </button>
+
+        {/* Feature 1: Emergency SOS Queue Tab */}
+        <button
+          onClick={() => setActiveTab('emergency')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === 'emergency'
+              ? 'bg-rose-600 text-white shadow-sm'
+              : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+          }`}
+        >
+          <Siren className="w-4 h-4 animate-pulse text-current" />
+          <span>Emergency SOS Queue ({emergencyRequests.filter((r) => r.status !== 'resolved' && r.status !== 'cancelled').length})</span>
+        </button>
+
+        {/* Feature 2: Laboratory Queue Tab */}
+        <button
+          onClick={() => setActiveTab('laboratory')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === 'laboratory'
+              ? 'bg-purple-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <FlaskConical className="w-4 h-4" />
+          <span>Diagnostic Lab ({labBookings.length})</span>
+        </button>
+
+        {/* Feature 3: Pharmacy Orders & Inventory Tab */}
+        <button
+          onClick={() => setActiveTab('pharmacy')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === 'pharmacy'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Pill className="w-4 h-4" />
+          <span>Hospital Pharmacy & Inventory</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('verification')}
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
@@ -439,7 +791,7 @@ export const AdminDashboardPage: React.FC = () => {
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          Doctor Credential Verification ({pendingDoctors.length} Pending / {allDoctors.length} Total)
+          Doctor Verification ({pendingDoctors.length} Pending / {allDoctors.length} Total)
         </button>
         <button
           onClick={() => setActiveTab('appointments')}
@@ -1323,6 +1675,1204 @@ export const AdminDashboardPage: React.FC = () => {
               <span>Publish Now</span>
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FEATURE 1: EMERGENCY SOS MANAGEMENT DASHBOARD */}
+      {/* ========================================================================= */}
+      {activeTab === 'emergency' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Siren className="w-5 h-5 text-rose-600 animate-pulse" />
+                <span>Emergency SOS Response & Ambulance Dispatch Queue</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Real-time emergency assistance requests triaged by severity. Respond immediately and log authorized ambulance units.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchEmergencyRequests}
+                disabled={loadingEmergency}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingEmergency ? 'animate-spin' : ''}`} />
+                <span>Refresh Requests</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-rose-50 dark:bg-rose-950/40 p-4 rounded-2xl border border-rose-200 dark:border-rose-900">
+              <div className="text-xs font-bold text-rose-700 dark:text-rose-300">Critical Red Triage</div>
+              <div className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
+                {emergencyRequests.filter((r) => r.triage_level === 'RED' && r.status !== 'resolved').length}
+              </div>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-2xl border border-amber-200 dark:border-amber-900">
+              <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Urgent Yellow Triage</div>
+              <div className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
+                {emergencyRequests.filter((r) => r.triage_level === 'YELLOW' && r.status !== 'resolved').length}
+              </div>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-900">
+              <div className="text-xs font-bold text-blue-700 dark:text-blue-300">Active / In Progress</div>
+              <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+                {emergencyRequests.filter((r) => ['received', 'acknowledged', 'assistance_arranged'].includes(r.status)).length}
+              </div>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900">
+              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Resolved Cases</div>
+              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                {emergencyRequests.filter((r) => r.status === 'resolved').length}
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
+            <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Triage:</span>
+            {['all', 'RED', 'YELLOW', 'GREEN'].map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => setEmergencyTriageFilter(lvl)}
+                className={`px-3 py-1.5 rounded-lg font-bold capitalize transition-colors ${
+                  emergencyTriageFilter === lvl
+                    ? lvl === 'RED'
+                      ? 'bg-rose-600 text-white'
+                      : lvl === 'YELLOW'
+                      ? 'bg-amber-500 text-white'
+                      : lvl === 'GREEN'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+            <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Status:</span>
+            {['all', 'received', 'acknowledged', 'assistance_arranged', 'resolved', 'cancelled'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setEmergencyStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                  emergencyStatusFilter === st
+                    ? 'bg-brand-600 text-white font-bold'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                {st.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+
+          {/* Emergency Requests List */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="p-3.5">Ref # & Time</th>
+                    <th className="p-3.5">Patient Details</th>
+                    <th className="p-3.5">Emergency Type & Triage</th>
+                    <th className="p-3.5">Hospital & Location</th>
+                    <th className="p-3.5">Status & Dispatch</th>
+                    <th className="p-3.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {emergencyRequests
+                    .filter((r) => (emergencyTriageFilter === 'all' ? true : r.triage_level === emergencyTriageFilter))
+                    .filter((r) => (emergencyStatusFilter === 'all' ? true : r.status === emergencyStatusFilter))
+                    .map((req) => (
+                      <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="p-3.5 align-top">
+                          <span className="font-mono font-bold text-brand-600 dark:text-brand-400 block">
+                            {req.reference_no}
+                          </span>
+                          <span className="text-[11px] text-slate-400">{req.created_at}</span>
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="font-bold text-slate-800 dark:text-slate-100">{req.patient_name}</div>
+                          <a
+                            href={`tel:${req.contact_phone}`}
+                            className="inline-flex items-center gap-1 text-teal-600 dark:text-teal-400 hover:underline font-mono text-[11px] mt-0.5"
+                          >
+                            <PhoneCall className="w-3 h-3" />
+                            <span>{req.contact_phone}</span>
+                          </a>
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                req.triage_level === 'RED'
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-300'
+                                  : req.triage_level === 'YELLOW'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                            >
+                              {req.triage_level}
+                            </span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                              {req.emergency_type.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          {req.notes && (
+                            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 max-w-xs">{req.notes}</p>
+                          )}
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            {req.hospital_name || 'Nearest Participating Emergency ER'}
+                          </div>
+                          {req.latitude && req.longitude ? (
+                            <a
+                              href={`https://maps.google.com/?q=${req.latitude},${req.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-brand-600 hover:underline mt-1"
+                            >
+                              <MapPin className="w-3 h-3 text-rose-500" />
+                              <span>View GPS Location</span>
+                            </a>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Location not shared</span>
+                          )}
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              req.status === 'received'
+                                ? 'bg-rose-100 text-rose-700'
+                                : req.status === 'acknowledged'
+                                ? 'bg-amber-100 text-amber-700'
+                                : req.status === 'assistance_arranged'
+                                ? 'bg-blue-100 text-blue-700'
+                                : req.status === 'resolved'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {req.status.replace(/_/g, ' ')}
+                          </span>
+                          {req.dispatched_service && (
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300 font-mono mt-1">
+                              Unit: {req.dispatched_service}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3.5 align-top text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedEmergency(req);
+                              setUpdatingEmergencyStatus(req.status);
+                              setDispatchService(req.dispatched_service || '');
+                              setEmergencyResolutionNotes(req.resolution_notes || '');
+                              setDispatchModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 font-bold text-xs transition-colors"
+                          >
+                            Manage / Dispatch
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {emergencyRequests.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-400">
+                        No active emergency requests in this view.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FEATURE 2: LABORATORY DIAGNOSTIC MANAGEMENT */}
+      {/* ========================================================================= */}
+      {activeTab === 'laboratory' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-purple-600" />
+                <span>Hospital Diagnostic Laboratory & Pathology Bookings</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage sample collections, test progress, and securely upload completed diagnostic reports with automatic ingestion into Digital Medical Records.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchLabBookings}
+                disabled={loadingLab}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingLab ? 'animate-spin' : ''}`} />
+                <span>Refresh Bookings</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-2xl border border-purple-200 dark:border-purple-900">
+              <div className="text-xs font-bold text-purple-700 dark:text-purple-300">Total Diagnostic Bookings</div>
+              <div className="text-2xl font-black text-purple-700 dark:text-purple-400 mt-1">
+                {labBookings.length}
+              </div>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-2xl border border-amber-200 dark:border-amber-900">
+              <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Scheduled / Sample Pending</div>
+              <div className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
+                {labBookings.filter((b) => b.status === 'scheduled').length}
+              </div>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-900">
+              <div className="text-xs font-bold text-blue-700 dark:text-blue-300">Processing in Lab</div>
+              <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+                {labBookings.filter((b) => ['sample_collected', 'processing'].includes(b.status)).length}
+              </div>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900">
+              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Completed & Ingested</div>
+              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                {labBookings.filter((b) => b.status === 'completed').length}
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+              <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Filter:</span>
+              {['all', 'scheduled', 'sample_collected', 'processing', 'completed'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setLabStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-lg font-bold capitalize whitespace-nowrap transition-colors ${
+                    labStatusFilter === st
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {st.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-w-[220px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search patient or test..."
+                value={labSearch}
+                onChange={(e) => setLabSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+              />
+            </div>
+          </div>
+
+          {/* Lab Bookings Table */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="p-3.5">Ref # & Date</th>
+                    <th className="p-3.5">Patient Details</th>
+                    <th className="p-3.5">Test Details</th>
+                    <th className="p-3.5">Hospital</th>
+                    <th className="p-3.5">Price & Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {labBookings
+                    .filter((b) => (labStatusFilter === 'all' ? true : b.status === labStatusFilter))
+                    .filter((b) =>
+                      labSearch === ''
+                        ? true
+                        : (b.patient_name || '').toLowerCase().includes(labSearch.toLowerCase()) ||
+                          (b.test_name || '').toLowerCase().includes(labSearch.toLowerCase()) ||
+                          (b.booking_reference || '').toLowerCase().includes(labSearch.toLowerCase())
+                    )
+                    .map((booking) => (
+                      <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="p-3.5 align-top">
+                          <span className="font-mono font-bold text-purple-600 dark:text-purple-400 block">
+                            {booking.booking_reference}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {booking.booking_date} ({booking.booking_time})
+                          </span>
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="font-bold text-slate-800 dark:text-slate-100">{booking.patient_name}</div>
+                          {booking.patient_phone && (
+                            <a
+                              href={`tel:${booking.patient_phone}`}
+                              className="text-[11px] text-slate-500 hover:text-teal-600 block mt-0.5 font-mono"
+                            >
+                              {booking.patient_phone}
+                            </a>
+                          )}
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="font-bold text-slate-800 dark:text-slate-200">{booking.test_name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-400">
+                              {booking.sample_type || 'Blood'}
+                            </span>
+                            {booking.prescription_number && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono">
+                                Rx: {booking.prescription_number}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                            {booking.hospital_name}
+                          </span>
+                        </td>
+                        <td className="p-3.5 align-top">
+                          <div className="font-bold text-slate-900 dark:text-slate-100">₹{booking.price}</div>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase mt-1 ${
+                              booking.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : booking.status === 'processing'
+                                ? 'bg-blue-100 text-blue-800'
+                                : booking.status === 'sample_collected'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {booking.status.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="p-3.5 align-top text-right">
+                          <div className="flex flex-col items-end gap-1.5">
+                            {booking.status === 'scheduled' && (
+                              <button
+                                onClick={() => handleQuickLabStatus(booking.id, 'sample_collected')}
+                                className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[11px] border border-purple-200"
+                              >
+                                Mark Sample Collected
+                              </button>
+                            )}
+                            {booking.status === 'sample_collected' && (
+                              <button
+                                onClick={() => handleQuickLabStatus(booking.id, 'processing')}
+                                className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200"
+                              >
+                                Mark Processing
+                              </button>
+                            )}
+                            {booking.status !== 'completed' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedLabBooking(booking);
+                                  setUploadReportModalOpen(true);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs flex items-center gap-1"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Upload Certified Report</span>
+                              </button>
+                            )}
+                            {booking.status === 'completed' && (
+                              <a
+                                href={apiUrl(`/api/lab/bookings/${booking.id}/report`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Report Ingested (View)</span>
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  {labBookings.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-400">
+                        No laboratory bookings registered in this view.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FEATURE 3: HOSPITAL PHARMACY & INVENTORY MANAGEMENT */}
+      {/* ========================================================================= */}
+      {activeTab === 'pharmacy' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Pill className="w-5 h-5 text-emerald-600" />
+                <span>Hospital Pharmacy, Prescription Orders & Inventory Management</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage prescription verification, express counter pickups, home deliveries, and live medicine inventory stock.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchPharmacyData}
+                disabled={loadingPharmacy}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingPharmacy ? 'animate-spin' : ''}`} />
+                <span>Refresh Pharmacy</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sub Navigation */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+            <button
+              onClick={() => setPharmacySection('orders')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                pharmacySection === 'orders'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Prescription Orders ({pharmacyOrders.length})
+            </button>
+            <button
+              onClick={() => setPharmacySection('inventory')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                pharmacySection === 'inventory'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Medicine Inventory ({pharmacyInventory.length})
+            </button>
+            <button
+              onClick={() => setPharmacySection('sales')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                pharmacySection === 'sales'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Sales & Revenue Report
+            </button>
+          </div>
+
+          {/* SECTION 1: ORDERS */}
+          {pharmacySection === 'orders' && (
+            <div className="space-y-4">
+              {/* Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900">
+                  <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Total Pharmacy Orders</div>
+                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                    {pharmacyOrders.length}
+                  </div>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-2xl border border-amber-200 dark:border-amber-900">
+                  <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Needs Rx Review</div>
+                  <div className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
+                    {pharmacyOrders.filter((o) => o.status === 'prescription_verification' || (o.prescription_id && !o.prescription_verified)).length}
+                  </div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-900">
+                  <div className="text-xs font-bold text-blue-700 dark:text-blue-300">Counter Pickup Ready</div>
+                  <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+                    {pharmacyOrders.filter((o) => o.status === 'ready_for_pickup').length}
+                  </div>
+                </div>
+                <div className="bg-teal-50 dark:bg-teal-950/40 p-4 rounded-2xl border border-teal-200 dark:border-teal-900">
+                  <div className="text-xs font-bold text-teal-700 dark:text-teal-300">Delivered / Dispensed</div>
+                  <div className="text-2xl font-black text-teal-700 dark:text-teal-400 mt-1">
+                    {pharmacyOrders.filter((o) => o.status === 'delivered').length}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status filter */}
+              <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
+                <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Filter:</span>
+                {['all', 'pending', 'prescription_verification', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setPharmacyStatusFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg font-bold capitalize transition-colors ${
+                      pharmacyStatusFilter === st
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    {st.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+
+              {/* Orders Table */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="p-3.5">Order # & Time</th>
+                        <th className="p-3.5">Patient Details</th>
+                        <th className="p-3.5">Fulfillment & Pickup Code</th>
+                        <th className="p-3.5">Medicines Ordered</th>
+                        <th className="p-3.5">Amount & Rx Review</th>
+                        <th className="p-3.5 text-right">Workflow Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {pharmacyOrders
+                        .filter((o) => (pharmacyStatusFilter === 'all' ? true : o.status === pharmacyStatusFilter))
+                        .map((order) => (
+                          <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <td className="p-3.5 align-top">
+                              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
+                                {order.order_number}
+                              </span>
+                              <span className="text-[11px] text-slate-400">{order.created_at}</span>
+                            </td>
+                            <td className="p-3.5 align-top">
+                              <div className="font-bold text-slate-800 dark:text-slate-100">{order.patient_name}</div>
+                              <a
+                                href={`tel:${order.contact_phone}`}
+                                className="inline-flex items-center gap-1 text-[11px] text-teal-600 hover:underline font-mono mt-0.5"
+                              >
+                                <PhoneCall className="w-3 h-3" />
+                                <span>{order.contact_phone}</span>
+                              </a>
+                            </td>
+                            <td className="p-3.5 align-top">
+                              {order.fulfillment_type === 'hospital_pickup' ? (
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px] uppercase">
+                                    Express Counter Pickup
+                                  </span>
+                                  {order.pickup_code && (
+                                    <div className="mt-1 font-mono font-black text-xs text-brand-700 dark:text-brand-300">
+                                      Token: {order.pickup_code}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] uppercase">
+                                    Home Delivery
+                                  </span>
+                                  <div className="text-[11px] text-slate-500 mt-1 max-w-xs truncate">
+                                    {order.delivery_address || 'Address on record'}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3.5 align-top">
+                              <div className="space-y-1">
+                                {(order.items || []).map((item) => (
+                                  <div key={item.id} className="text-[11px] text-slate-700 dark:text-slate-300">
+                                    <span className="font-bold">{item.medicine_name}</span> ({item.strength}) x {item.quantity}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3.5 align-top">
+                              <div className="font-bold text-slate-900 dark:text-white">₹{order.total_amount}</div>
+                              <div className="mt-1">
+                                {order.prescription_id ? (
+                                  order.prescription_verified ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                      <Check className="w-3 h-3" />
+                                      <span>Rx Verified</span>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => setVerifyingOrder(order)}
+                                      className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold"
+                                    >
+                                      Verify Rx
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">OTC Order</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3.5 align-top text-right">
+                              <div className="flex flex-col items-end gap-1.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                    order.status === 'delivered'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : order.status === 'ready_for_pickup' || order.status === 'out_for_delivery'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : order.status === 'preparing'
+                                      ? 'bg-purple-100 text-purple-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}
+                                >
+                                  {order.status.replace(/_/g, ' ')}
+                                </span>
+
+                                {order.status === 'confirmed' && (
+                                  <button
+                                    onClick={() => handleUpdateOrderStatus(order.id, 'preparing')}
+                                    className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[11px] border border-purple-200"
+                                  >
+                                    Mark Preparing
+                                  </button>
+                                )}
+                                {order.status === 'preparing' && order.fulfillment_type === 'hospital_pickup' && (
+                                  <button
+                                    onClick={() => handleUpdateOrderStatus(order.id, 'ready_for_pickup')}
+                                    className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200"
+                                  >
+                                    Ready for Pickup
+                                  </button>
+                                )}
+                                {order.status === 'preparing' && order.fulfillment_type === 'home_delivery' && (
+                                  <button
+                                    onClick={() => handleUpdateOrderStatus(order.id, 'out_for_delivery')}
+                                    className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200"
+                                  >
+                                    Dispatch for Delivery
+                                  </button>
+                                )}
+                                {(order.status === 'ready_for_pickup' || order.status === 'out_for_delivery') && (
+                                  <button
+                                    onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
+                                  >
+                                    Mark Dispensed / Delivered
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      {pharmacyOrders.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400">
+                            No pharmacy orders in this queue.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 2: INVENTORY */}
+          {pharmacySection === 'inventory' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">
+                    Total SKU in Stock: {pharmacyInventory.length}
+                  </span>
+                </div>
+                <div className="relative min-w-[240px]">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search medicine brand, generic..."
+                    value={pharmacySearch}
+                    onChange={(e) => setPharmacySearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="p-3.5">Medicine Name</th>
+                        <th className="p-3.5">Brand & Manufacturer</th>
+                        <th className="p-3.5">Dosage Form & Strength</th>
+                        <th className="p-3.5">Category</th>
+                        <th className="p-3.5">Stock Status</th>
+                        <th className="p-3.5">Price</th>
+                        <th className="p-3.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {pharmacyInventory
+                        .filter((item) =>
+                          pharmacySearch === ''
+                            ? true
+                            : (item.name || '').toLowerCase().includes(pharmacySearch.toLowerCase()) ||
+                              (item.brand_name || '').toLowerCase().includes(pharmacySearch.toLowerCase()) ||
+                              (item.category || '').toLowerCase().includes(pharmacySearch.toLowerCase())
+                        )
+                        .map((item) => {
+                          const isLowStock = item.stock_quantity <= item.low_stock_threshold;
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                              <td className="p-3.5 align-top">
+                                <div className="font-bold text-slate-800 dark:text-slate-100">{item.name}</div>
+                                {item.prescription_required === 1 && (
+                                  <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 text-[10px] font-bold">
+                                    Rx Required
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5 align-top">
+                                <div className="font-semibold text-slate-700 dark:text-slate-300">{item.brand_name}</div>
+                                <div className="text-[11px] text-slate-400">{item.manufacturer}</div>
+                              </td>
+                              <td className="p-3.5 align-top">
+                                <div className="font-medium text-slate-800 dark:text-slate-200">{item.strength}</div>
+                                <div className="text-[11px] text-slate-400 capitalize">{item.dosage_form}</div>
+                              </td>
+                              <td className="p-3.5 align-top">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
+                                  {item.category}
+                                </span>
+                              </td>
+                              <td className="p-3.5 align-top">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`font-black text-sm ${
+                                      isLowStock ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'
+                                    }`}
+                                  >
+                                    {item.stock_quantity} units
+                                  </span>
+                                  {isLowStock && (
+                                    <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[9px] uppercase tracking-wider animate-pulse">
+                                      Low Stock
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-400">Reorder at &le; {item.low_stock_threshold}</div>
+                              </td>
+                              <td className="p-3.5 align-top">
+                                <div className="font-bold text-slate-900 dark:text-slate-100">₹{item.selling_price}</div>
+                                {item.mrp_price && (
+                                  <div className="text-[10px] text-slate-400 line-through">MRP: ₹{item.mrp_price}</div>
+                                )}
+                              </td>
+                              <td className="p-3.5 align-top text-right">
+                                <button
+                                  onClick={() => {
+                                    setStockModalItem(item);
+                                    setNewStockQty(item.stock_quantity);
+                                    setNewSellingPrice(item.selling_price);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200"
+                                >
+                                  Update Stock
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 3: SALES & REVENUE REPORT */}
+          {pharmacySection === 'sales' && pharmacySales && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900">
+                  <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Total Pharmacy Revenue</div>
+                  <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-2">
+                    ₹{pharmacySales.total_revenue || 0}
+                  </div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950/40 p-5 rounded-2xl border border-blue-200 dark:border-blue-900">
+                  <div className="text-xs font-bold text-blue-700 dark:text-blue-300">Total Orders Fulfilled</div>
+                  <div className="text-3xl font-black text-blue-700 dark:text-blue-400 mt-2">
+                    {pharmacySales.completed_orders || 0}
+                  </div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-950/40 p-5 rounded-2xl border border-purple-200 dark:border-purple-900">
+                  <div className="text-xs font-bold text-purple-700 dark:text-purple-300">Express Counter Pickups</div>
+                  <div className="text-3xl font-black text-purple-700 dark:text-purple-400 mt-2">
+                    {pharmacySales.counter_pickups || 0}
+                  </div>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/40 p-5 rounded-2xl border border-amber-200 dark:border-amber-900">
+                  <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Low Stock SKUs Requiring Reorder</div>
+                  <div className="text-3xl font-black text-amber-700 dark:text-amber-400 mt-2">
+                    {pharmacySales.low_stock_items || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: EMERGENCY RESPONSE & DISPATCH MODAL */}
+      {/* ========================================================================= */}
+      {dispatchModalOpen && selectedEmergency && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">
+                  Emergency Dispatcher Console
+                </span>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Siren className="w-5 h-5 text-rose-600" />
+                  <span>Update Emergency Request #{selectedEmergency.reference_no}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setDispatchModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="font-bold text-slate-800 dark:text-slate-100">
+                  Patient: {selectedEmergency.patient_name}
+                </div>
+                <div className="text-slate-500 font-mono">Contact: {selectedEmergency.contact_phone}</div>
+                <div className="text-slate-500 capitalize">
+                  Emergency: {selectedEmergency.emergency_type.replace(/_/g, ' ')} ({selectedEmergency.triage_level})
+                </div>
+                {selectedEmergency.notes && (
+                  <div className="text-slate-600 dark:text-slate-300 italic mt-1">"{selectedEmergency.notes}"</div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Update Status:</label>
+                <select
+                  value={updatingEmergencyStatus}
+                  onChange={(e) => setUpdatingEmergencyStatus(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
+                >
+                  <option value="received">Received</option>
+                  <option value="acknowledged">Acknowledged</option>
+                  <option value="assistance_arranged">Assistance Arranged (Ambulance Dispatched)</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Dispatched Service / Ambulance Unit:
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BLR-AMB-108-04 / Paramedic Team Alpha"
+                  value={dispatchService}
+                  onChange={(e) => setDispatchService(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Resolution / Clinical Notes:
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Notes on triage, ETA, responder actions, or case resolution..."
+                  value={emergencyResolutionNotes}
+                  onChange={(e) => setEmergencyResolutionNotes(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+              <a
+                href={`tel:${selectedEmergency.contact_phone}`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs"
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Call Patient</span>
+              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDispatchModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={emergencySubmitting}
+                  onClick={handleUpdateEmergencyStatus}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md"
+                >
+                  {emergencySubmitting ? 'Updating...' : 'Save & Dispatch'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: UPLOAD DIAGNOSTIC LAB REPORT MODAL */}
+      {/* ========================================================================= */}
+      {uploadReportModalOpen && selectedLabBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">
+                  Diagnostic Pathology Sign-off
+                </span>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-purple-600" />
+                  <span>Upload Certified Report #{selectedLabBooking.booking_reference}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setUploadReportModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUploadLabReport} className="space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 space-y-1">
+                <div className="font-bold text-purple-900 dark:text-purple-200">
+                  {selectedLabBooking.test_name}
+                </div>
+                <div className="text-purple-700 dark:text-purple-300">
+                  Patient: {selectedLabBooking.patient_name} | Hospital: {selectedLabBooking.hospital_name}
+                </div>
+                <div className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold">
+                  Automatic Integration: This report will be immediately signed, certified, and ingested into the patient's Digital Medical Records Vault.
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Upload Lab Report PDF (Optional - system generates certified PDF if omitted):
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={(e) => setReportFile(e.target.files ? e.target.files[0] : null)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Pathologist Clinical Findings / Remarks:
+                </label>
+                <textarea
+                  rows={3}
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="e.g. All hematological parameters normal. Platelet count adequate. No atypical cells detected."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setUploadReportModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingReport}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md flex items-center gap-1.5"
+                >
+                  <PackageCheck className="w-3.5 h-3.5" />
+                  <span>{uploadingReport ? 'Uploading & Ingesting...' : 'Complete & Ingest Report'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: PRESCRIPTION VERIFICATION MODAL */}
+      {/* ========================================================================= */}
+      {verifyingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                  Clinical Pharmacist Review
+                </span>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <span>Verify Prescription Order #{verifyingOrder.order_number}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setVerifyingOrder(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="font-bold text-slate-800 dark:text-slate-100">
+                  Patient: {verifyingOrder.patient_name}
+                </div>
+                <div className="text-slate-500 font-mono">Prescription ID: #{verifyingOrder.prescription_id}</div>
+                <div className="mt-2 space-y-1">
+                  <span className="font-bold text-slate-600 dark:text-slate-400">Prescribed Medicines:</span>
+                  {(verifyingOrder.items || []).map((it) => (
+                    <div key={it.id} className="text-slate-700 dark:text-slate-300">
+                      • {it.medicine_name} ({it.strength}) x {it.quantity}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Pharmacist Verification Notes:
+                </label>
+                <textarea
+                  rows={3}
+                  value={verifyRxNotes}
+                  onChange={(e) => setVerifyRxNotes(e.target.value)}
+                  placeholder="e.g. Valid digital prescription verified against hospital database. Dosages confirmed safe."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={() => handleVerifyPrescription(verifyingOrder.id, false)}
+                className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs"
+              >
+                Reject Order
+              </button>
+              <button
+                onClick={() => handleVerifyPrescription(verifyingOrder.id, true)}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
+              >
+                Approve & Confirm Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: INVENTORY STOCK & PRICE UPDATE MODAL */}
+      {/* ========================================================================= */}
+      {stockModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                  Inventory Stock Control
+                </span>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                  Update {stockModalItem.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setStockModalItem(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Current Stock Quantity (units):
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newStockQty}
+                  onChange={(e) => setNewStockQty(Number(e.target.value))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Selling Price (₹):
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={newSellingPrice}
+                  onChange={(e) => setNewSellingPrice(Number(e.target.value))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={() => setStockModalItem(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={updatingStock}
+                onClick={handleUpdateStock}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
+              >
+                {updatingStock ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

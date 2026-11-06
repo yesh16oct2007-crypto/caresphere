@@ -27,16 +27,27 @@ import {
   ChevronRight,
   TrendingUp,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  FlaskConical,
+  ShoppingBag,
+  ShieldAlert,
+  CreditCard,
+  QrCode,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import {
   Appointment,
   MedicineReminder,
   MedicineLog,
-  PatientFollowUp
+  PatientFollowUp,
+  Prescription,
+  LabBooking,
+  PharmacyOrder,
+  Pharmacy
 } from '../types/index.js';
 import { DoctorNavigationModal } from '../components/DoctorNavigationModal.js';
+import { EmergencySOSModal } from '../components/EmergencySOSModal.js';
 import { apiUrl } from '../services/api.js';
 
 export const PatientDashboardPage: React.FC = () => {
@@ -45,8 +56,15 @@ export const PatientDashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Navigation tab state
-  const [dashboardTab, setDashboardTab] = useState<'appointments' | 'medicines' | 'followups'>('appointments');
+  const [dashboardTab, setDashboardTab] = useState<'appointments' | 'prescriptions' | 'lab' | 'pharmacy' | 'medicines' | 'followups'>('appointments');
   const [activeApptTab, setActiveApptTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [sosModalOpen, setSosModalOpen] = useState(false);
+
+  // Feature 1, 2, 3 Data State
+  const [myPrescriptions, setMyPrescriptions] = useState<Prescription[]>([]);
+  const [myLabBookings, setMyLabBookings] = useState<LabBooking[]>([]);
+  const [myPharmacyOrders, setMyPharmacyOrders] = useState<PharmacyOrder[]>([]);
+  const [hospitalPharmacy, setHospitalPharmacy] = useState<Pharmacy | null>(null);
 
   // Appointments
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -151,10 +169,66 @@ export const PatientDashboardPage: React.FC = () => {
     }
   };
 
+  // Fetch Prescriptions (Feature 2)
+  const fetchPrescriptions = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/prescriptions/my-prescriptions'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMyPrescriptions(data.prescriptions || []);
+      }
+    } catch (err) {
+      console.error('Failed to load prescriptions:', err);
+    }
+  };
+
+  // Fetch Lab Bookings (Feature 2)
+  const fetchLabBookings = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/lab/my-bookings'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMyLabBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Failed to load lab bookings:', err);
+    }
+  };
+
+  // Fetch Pharmacy Orders & Hospital Pharmacy Info (Feature 3)
+  const fetchPharmacyData = async () => {
+    if (!token) return;
+    try {
+      const [ordRes, pharmRes] = await Promise.all([
+        fetch(apiUrl('/api/pharmacy/my-orders'), { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(apiUrl('/api/pharmacy/hospital-pharmacy'), { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      if (ordRes.ok) {
+        const ordData = await ordRes.json();
+        setMyPharmacyOrders(ordData.orders || []);
+      }
+      if (pharmRes.ok) {
+        const pharmData = await pharmRes.json();
+        setHospitalPharmacy(pharmData.pharmacy || null);
+      }
+    } catch (err) {
+      console.error('Failed to load pharmacy data:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAppointments();
     fetchMedicines();
     fetchFollowups();
+    fetchPrescriptions();
+    fetchLabBookings();
+    fetchPharmacyData();
   }, [token]);
 
   // Log dose as taken or skipped
@@ -336,6 +410,14 @@ export const PatientDashboardPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setSosModalOpen(true)}
+            className="px-4 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-red-500/25 animate-pulse transition-all cursor-pointer"
+          >
+            <ShieldAlert className="w-4 h-4 text-white" />
+            <span>EMERGENCY SOS</span>
+          </button>
+
           <Link
             to="/teleconsult"
             className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur transition-all"
@@ -366,29 +448,80 @@ export const PatientDashboardPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
         <button
           onClick={() => setDashboardTab('appointments')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             dashboardTab === 'appointments'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Appointments & Teleconsult</span>
+          <span>Appointments</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
             {upcomingAppointments.length}
           </span>
         </button>
 
         <button
+          onClick={() => setDashboardTab('prescriptions')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            dashboardTab === 'prescriptions'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-blue-500" />
+          <span>My Prescriptions</span>
+          {myPrescriptions.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold">
+              {myPrescriptions.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setDashboardTab('lab')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            dashboardTab === 'lab'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <FlaskConical className="w-4 h-4 text-emerald-500" />
+          <span>Lab Bookings & Reports</span>
+          {myLabBookings.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+              {myLabBookings.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setDashboardTab('pharmacy')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+            dashboardTab === 'pharmacy'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4 text-indigo-500" />
+          <span>Pharmacy Orders</span>
+          {myPharmacyOrders.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-400 font-bold">
+              {myPharmacyOrders.length}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setDashboardTab('medicines')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             dashboardTab === 'medicines'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <Pill className="w-4 h-4" />
-          <span>Medicine Schedule & Adherence</span>
+          <span>Reminders</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
             {adherenceRate}%
           </span>
@@ -396,14 +529,14 @@ export const PatientDashboardPage: React.FC = () => {
 
         <button
           onClick={() => setDashboardTab('followups')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             dashboardTab === 'followups'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
           }`}
         >
           <Activity className="w-4 h-4" />
-          <span>Remote Follow-Ups & Vitals</span>
+          <span>Follow-Ups</span>
           {followups.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
               {followups.length}
@@ -413,10 +546,10 @@ export const PatientDashboardPage: React.FC = () => {
 
         <Link
           to="/records"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 transition-colors ml-auto"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-teal-600 transition-colors ml-auto whitespace-nowrap"
         >
           <FileText className="w-4 h-4 text-teal-600" />
-          <span>Medical Vault</span>
+          <span>Vault</span>
         </Link>
       </div>
 
@@ -539,6 +672,15 @@ export const PatientDashboardPage: React.FC = () => {
                             </Link>
                           )}
 
+                          <button
+                            onClick={() => setSosModalOpen(true)}
+                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-xl text-[11px] font-bold flex items-center gap-1 border border-red-200 dark:border-red-800"
+                            title="Direct Hospital Emergency Assistance"
+                          >
+                            <ShieldAlert className="w-3 h-3 text-red-600" />
+                            <span>Emergency SOS</span>
+                          </button>
+
                           {appt.status === 'confirmed' && (
                             <div className="flex gap-2">
                               <button
@@ -559,6 +701,413 @@ export const PatientDashboardPage: React.FC = () => {
                               </button>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: MY PRESCRIPTIONS (FEATURE 2) */}
+          {dashboardTab === 'prescriptions' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Clinical Digital Prescriptions
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Official finalized prescriptions signed by verified CareSphere medical doctors.
+                  </p>
+                </div>
+                <Link
+                  to="/pharmacy"
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Order Medicines Online</span>
+                </Link>
+              </div>
+
+              {myPrescriptions.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+                  <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No digital prescriptions issued yet. Consultations with CareSphere doctors will generate certified prescriptions here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {myPrescriptions.map((rx) => (
+                    <div
+                      key={rx.id}
+                      className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-black bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg">
+                            {rx.prescription_number}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
+                            FINALIZED & CERTIFIED
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Consultation Date: {rx.consultation_date}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <div className="font-bold text-sm text-slate-900 dark:text-white">
+                            Dr. {rx.doctor_name}
+                          </div>
+                          <div className="text-teal-600 dark:text-teal-400">
+                            {rx.doctor_specialization} (Reg: {rx.doctor_registration_number || 'NMC-VERIFIED'})
+                          </div>
+                          <div className="text-slate-500 mt-0.5">
+                            {rx.hospital_name}
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/60">
+                          <div className="font-bold text-slate-900 dark:text-white mb-0.5">
+                            Diagnosis / Clinical Assessment:
+                          </div>
+                          <p className="text-slate-700 dark:text-slate-300 font-medium">
+                            {rx.diagnosis}
+                          </p>
+                          {rx.vitals_summary && (
+                            <div className="text-[11px] text-slate-500 mt-1">
+                              Vitals: {rx.vitals_summary}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Prescribed Medicines Table */}
+                      <div>
+                        <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
+                          Prescribed Medicines ({rx.medicines?.length || 0})
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50 dark:bg-slate-900/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
+                                <th className="p-2.5">Medicine Name</th>
+                                <th className="p-2.5">Dosage</th>
+                                <th className="p-2.5">Frequency</th>
+                                <th className="p-2.5">Timing</th>
+                                <th className="p-2.5">Duration</th>
+                                <th className="p-2.5">Instructions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                              {rx.medicines?.map((m: any, mIdx: number) => (
+                                <tr key={mIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                                  <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.medicine_name}</td>
+                                  <td className="p-2.5 font-semibold text-slate-700 dark:text-slate-300">{m.dosage}</td>
+                                  <td className="p-2.5">{m.frequency}</td>
+                                  <td className="p-2.5 capitalize">{m.timing?.replace('_', ' ') || 'After food'}</td>
+                                  <td className="p-2.5 font-semibold text-teal-600">{m.duration}</td>
+                                  <td className="p-2.5 text-slate-500 italic">{m.instructions || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Recommended Lab Tests */}
+                      {rx.lab_recommendations && rx.lab_recommendations.length > 0 && (
+                        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs space-y-1.5">
+                          <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                            <FlaskConical className="w-4 h-4 text-amber-600" />
+                            <span>Recommended Diagnostic Investigations:</span>
+                          </div>
+                          <div className="space-y-1">
+                            {rx.lab_recommendations.map((lab: any, lIdx: number) => (
+                              <div key={lIdx} className="text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                                <span>• {lab.test_name} {lab.instructions ? `(${lab.instructions})` : ''}</span>
+                                <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900">
+                                  {lab.urgency}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Doctor Advice & Followup */}
+                      {rx.advice && (
+                        <div className="text-xs p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                          <span className="font-bold text-slate-900 dark:text-white">Doctor Advice: </span>
+                          {rx.advice}
+                          {rx.followup_date && (
+                            <span className="block pt-1 font-semibold text-teal-600">
+                              Follow-up Date: {rx.followup_date}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                        <a
+                          href={`/api/prescriptions/${rx.id}/download`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Download Official PDF with Seal</span>
+                        </a>
+
+                        <Link
+                          to="/pharmacy"
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>Order Prescribed Medicines via Hospital Pharmacy</span>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: LAB BOOKINGS & REPORTS (FEATURE 2) */}
+          {dashboardTab === 'lab' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Laboratory Diagnostics & Test Reports
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Track sample processing and view verified reports auto-linked to your Medical Records Vault.
+                  </p>
+                </div>
+                <Link
+                  to="/lab"
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  <span>Book Diagnostic Test</span>
+                </Link>
+              </div>
+
+              {myLabBookings.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+                  <FlaskConical className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No diagnostic tests booked. Schedule routine or specialized blood, urine, or imaging investigations.
+                  </p>
+                  <Link
+                    to="/lab"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 mt-4 rounded-xl bg-teal-600 text-white font-bold text-xs shadow hover:bg-teal-700"
+                  >
+                    <span>Browse Lab Catalogue</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myLabBookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg">
+                            {b.booking_reference}
+                          </span>
+                          <span
+                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              b.status === 'completed'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                                : b.status === 'processing'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            }`}
+                          >
+                            {b.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          Scheduled: <span className="font-bold text-slate-800 dark:text-slate-200">{b.booking_date} at {b.booking_time}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row justify-between gap-4 text-xs">
+                        <div className="space-y-1">
+                          <div className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {b.test_name}
+                          </div>
+                          <div className="text-slate-500">
+                            Category: {b.category} • Sample: {b.sample_type} • Hospital: {b.hospital_name}
+                          </div>
+                          {b.fasting_required === 1 && (
+                            <div className="text-amber-600 font-bold text-[11px] flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>Overnight 8-12 hours fasting required before test</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="font-black text-sm text-slate-900 dark:text-white">
+                            ₹{b.price}
+                          </div>
+                          <div className="text-[10px] text-green-600 font-bold">
+                            Payment Confirmed
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Completed Report Link */}
+                      {b.status === 'completed' && (
+                        <div className="p-3.5 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2 text-green-900 dark:text-green-200">
+                            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                            <span>Verified clinical pathology report is ready and automatically ingested into your Medical Records Vault.</span>
+                          </div>
+                          <a
+                            href={`/api/lab/bookings/${b.id}/report`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center gap-1.5 shadow shrink-0"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download Report PDF</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: PHARMACY ORDERS (FEATURE 3) */}
+          {dashboardTab === 'pharmacy' && (
+            <div className="space-y-6">
+              {/* Hospital-Linked Pharmacy Card */}
+              {hospitalPharmacy && (
+                <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full text-blue-100">
+                      Your Appointment Hospital Pharmacy
+                    </span>
+                    <h3 className="text-lg font-extrabold mt-1">
+                      {hospitalPharmacy.name}
+                    </h3>
+                    <p className="text-xs text-blue-100">
+                      {hospitalPharmacy.location} • Hotline: {hospitalPharmacy.contact_phone}
+                    </p>
+                  </div>
+                  <Link
+                    to="/pharmacy"
+                    className="px-4 py-2 rounded-2xl bg-white text-blue-700 font-extrabold text-xs shadow hover:bg-blue-50 shrink-0"
+                  >
+                    Browse Medicines Catalogue
+                  </Link>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Medicine Orders & Counter Pickups
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Express counter pickups at hospital pharmacy desk or door-to-door home delivery.
+                  </p>
+                </div>
+              </div>
+
+              {myPharmacyOrders.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+                  <ShoppingBag className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No active or past medicine orders found. Order your prescribed medicines from your hospital pharmacy.
+                  </p>
+                  <Link
+                    to="/pharmacy"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 mt-4 rounded-xl bg-blue-600 text-white font-bold text-xs shadow hover:bg-blue-700"
+                  >
+                    <span>Order Medicines Online</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myPharmacyOrders.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg">
+                            {ord.order_number}
+                          </span>
+                          <span
+                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              ord.status === 'delivered'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                                : ord.status === 'ready_for_pickup'
+                                ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 animate-pulse'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            }`}
+                          >
+                            {ord.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          Ordered: {new Date(ord.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      {/* Pickup Token Highlight */}
+                      {ord.pickup_code && ord.fulfillment_type === 'hospital_pickup' && (
+                        <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex items-center justify-between text-teal-950 dark:text-teal-200">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold tracking-wider text-teal-700 dark:text-teal-400">
+                              Hospital Express Counter Pickup Token
+                            </div>
+                            <div className="text-2xl font-black text-teal-700 dark:text-teal-300 tracking-wider">
+                              {ord.pickup_code}
+                            </div>
+                            <p className="text-[11px] text-teal-600 dark:text-teal-400">
+                              Present at {ord.pharmacy_name || 'CareSphere Pharmacy Desk'} for immediate collection
+                            </p>
+                          </div>
+                          <QrCode className="w-8 h-8 text-teal-600" />
+                        </div>
+                      )}
+
+                      {/* Items */}
+                      <div className="space-y-1 text-xs">
+                        {ord.items?.map((item) => (
+                          <div key={item.id} className="flex justify-between text-slate-700 dark:text-slate-300">
+                            <span>{item.quantity}x {item.medicine_name} {item.strength ? `(${item.strength})` : ''}</span>
+                            <span className="font-semibold">₹{item.total_price}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center text-xs">
+                        <div className="text-slate-500 capitalize">
+                          Fulfillment: <span className="font-bold text-slate-800 dark:text-slate-200">{ord.fulfillment_type.replace('_', ' ')}</span>
+                        </div>
+                        <div className="font-black text-sm text-slate-900 dark:text-white">
+                          Total: ₹{ord.total_amount} <span className="text-[10px] text-green-600 font-bold">(Paid)</span>
                         </div>
                       </div>
                     </div>
@@ -1152,6 +1701,8 @@ export const PatientDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Emergency SOS Modal */}
+      <EmergencySOSModal isOpen={sosModalOpen} onClose={() => setSosModalOpen(false)} />
     </div>
   );
 };

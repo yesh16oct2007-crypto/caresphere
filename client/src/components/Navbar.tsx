@@ -19,18 +19,24 @@ import {
   Activity,
   Compass,
   FileCheck,
-  Shield
+  Shield,
+  FlaskConical,
+  Pill,
+  AlertOctagon,
+  ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
 import { LanguageSelector } from './LanguageSelector.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
+import { EmergencySOSModal } from './EmergencySOSModal.js';
 
 export const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated, logout, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sosModalOpen, setSosModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -117,6 +123,30 @@ export const Navbar: React.FC = () => {
             <span>AI Explainer</span>
           </Link>
 
+          <Link
+            to="/pharmacy"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/pharmacy')
+                ? 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Pill className="w-3.5 h-3.5 text-blue-600" />
+            <span>Pharmacy</span>
+          </Link>
+
+          <Link
+            to="/lab"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1 ${
+              isActive('/lab')
+                ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-slate-800'
+                : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
+            <span>Lab Tests</span>
+          </Link>
+
           {/* Role specific dashboard link */}
           {isAuthenticated && role === 'patient' && (
             <Link
@@ -176,6 +206,16 @@ export const Navbar: React.FC = () => {
 
           {/* Notification Bell */}
           {isAuthenticated && <NotificationDropdown />}
+
+          {/* Emergency SOS High-Alert Button */}
+          <button
+            onClick={() => setSosModalOpen(true)}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-extrabold shadow-md shadow-red-500/30 animate-pulse transition-all cursor-pointer"
+            title="Emergency SOS Assistance Desk"
+          >
+            <ShieldAlert className="w-4 h-4 text-white" />
+            <span>SOS</span>
+          </button>
 
           {/* Primary Action Button: Book Appointment */}
           <Link
@@ -263,6 +303,37 @@ export const Navbar: React.FC = () => {
           >
             Health Insurance & TPA Desk
           </Link>
+          {/* Mobile Emergency SOS Button */}
+          <button
+            onClick={() => {
+              setSosModalOpen(true);
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left px-3.5 py-2.5 rounded-xl font-extrabold text-white bg-gradient-to-r from-red-600 to-rose-600 flex items-center justify-between shadow-md shadow-red-500/20"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" />
+              <span>EMERGENCY SOS ASSISTANCE</span>
+            </div>
+            <span className="text-[10px] bg-white text-red-700 px-2 py-0.5 rounded-full font-black">24x7</span>
+          </button>
+
+          <Link
+            to="/pharmacy"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800"
+          >
+            Hospital Pharmacy & Medicine Orders
+          </Link>
+
+          <Link
+            to="/lab"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
+          >
+            Laboratory Tests & Diagnostic Booking
+          </Link>
+
           <Link
             to="/ai-report-explainer"
             onClick={() => setMobileMenuOpen(false)}
@@ -329,6 +400,9 @@ export const Navbar: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Emergency SOS High-Alert Modal */}
+      <EmergencySOSModal isOpen={sosModalOpen} onClose={() => setSosModalOpen(false)} />
     </header>
   );
 };

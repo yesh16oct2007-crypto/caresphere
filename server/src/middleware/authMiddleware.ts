@@ -8,7 +8,7 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin' | 'pharmacy_staff' | 'lab_staff';
   preferred_language: string;
   hospital_id?: number | null;
 }
@@ -44,7 +44,7 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   }
 }
 
-export function requireRole(allowedRoles: ('patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin')[]) {
+export function requireRole(allowedRoles: ('patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin' | 'pharmacy_staff' | 'lab_staff')[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required.' });

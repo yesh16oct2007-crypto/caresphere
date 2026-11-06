@@ -1,4 +1,4 @@
-export type Role = 'patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin';
+export type Role = 'patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin' | 'pharmacy_staff' | 'lab_staff';
 
 export interface User {
   id: number;
@@ -260,14 +260,6 @@ export interface ConsultationRoom {
   prescription_url?: string;
 }
 
-export interface PrescriptionMedicine {
-  name: string;
-  dosage: string;
-  timing: string;
-  duration_days: number;
-  instructions: string;
-}
-
 export interface PrescriptionData {
   prescription_id: string;
   appointment_id: number;
@@ -458,5 +450,251 @@ export interface AnalyticsOverview {
     occupancy_rate: number;
     rating: number;
   }[];
+}
+
+// ============================================================================
+// FEATURE 1: EMERGENCY SOS & EMERGENCY CONTACT SYSTEM
+// ============================================================================
+export interface EmergencyContact {
+  id: number;
+  patient_id: number;
+  name: string;
+  relationship: string;
+  phone: string;
+  is_primary: number;
+  created_at: string;
+}
+
+export interface EmergencyRequest {
+  id: number;
+  reference_no: string;
+  patient_id?: number | null;
+  patient_name: string;
+  contact_phone: string;
+  hospital_id?: number | null;
+  hospital_name?: string;
+  hospital_location?: string;
+  emergency_hotline?: string;
+  emergency_type: 'cardiac' | 'accident_trauma' | 'breathing_distress' | 'stroke_neuro' | 'burns_fire' | 'pregnancy_delivery' | 'other' | string;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  notes?: string | null;
+  status: 'received' | 'acknowledged' | 'assistance_arranged' | 'resolved' | 'cancelled';
+  triage_level: 'RED' | 'YELLOW' | 'GREEN';
+  dispatched_service?: string | null;
+  assigned_staff_id?: number | null;
+  assigned_staff_name?: string | null;
+  resolution_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// FEATURE 2: DIGITAL PRESCRIPTIONS & LAB WORKFLOW
+// ============================================================================
+export interface PrescriptionMedicine {
+  id?: number;
+  prescription_id?: number;
+  name?: string;
+  medicine_name?: string;
+  dosage: string;
+  frequency?: string;
+  timing?: string;
+  duration?: string;
+  duration_days?: number;
+  instructions?: string;
+  // Pharmacy matching helpers
+  medicine_id?: number;
+  available_in_pharmacy?: boolean;
+  unit_price?: number;
+  stock_quantity?: number;
+}
+
+export interface PrescriptionLabRecommendation {
+  id?: number;
+  prescription_id?: number;
+  test_name: string;
+  test_code?: string;
+  instructions?: string;
+  urgency: 'routine' | 'urgent' | 'stat';
+  // Booking helper
+  test_id?: number;
+  base_price?: number;
+}
+
+export interface Prescription {
+  id: number;
+  prescription_number: string;
+  appointment_id?: number | null;
+  appointment_ref?: string | null;
+  patient_id: number;
+  patient_name?: string;
+  patient_age?: number;
+  patient_gender?: string;
+  patient_phone?: string;
+  patient_email?: string;
+  doctor_id: number;
+  doctor_name?: string;
+  doctor_specialization?: string;
+  doctor_registration_number?: string;
+  doctor_council?: string;
+  hospital_id: number;
+  hospital_name?: string;
+  hospital_location?: string;
+  hospital_phone?: string;
+  consultation_date: string;
+  diagnosis: string;
+  clinical_notes?: string;
+  vitals_summary?: string;
+  advice?: string;
+  followup_date?: string;
+  is_finalized: number;
+  pdf_path?: string;
+  medicines: PrescriptionMedicine[];
+  lab_recommendations: PrescriptionLabRecommendation[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LabTest {
+  id: number;
+  test_code: string;
+  name: string;
+  category: string;
+  description: string;
+  sample_type: string;
+  fasting_required: number;
+  preparation_instructions?: string;
+  turnaround_hours: number;
+  base_price: number;
+  hospital_price?: number;
+  is_available?: number;
+  is_active: number;
+}
+
+export interface LabBooking {
+  id: number;
+  booking_reference: string;
+  patient_id: number;
+  patient_name?: string;
+  patient_phone?: string;
+  patient_email?: string;
+  hospital_id: number;
+  hospital_name?: string;
+  hospital_location?: string;
+  test_id: number;
+  test_name?: string;
+  test_code?: string;
+  category?: string;
+  sample_type?: string;
+  fasting_required?: number;
+  prescription_id?: number | null;
+  prescription_number?: string | null;
+  appointment_id?: number | null;
+  booking_date: string;
+  booking_time: string;
+  price: number;
+  payment_status: 'pending' | 'paid' | 'refunded';
+  status: 'scheduled' | 'sample_collected' | 'processing' | 'completed' | 'cancelled';
+  sample_collected_at?: string;
+  report_uploaded_at?: string;
+  report_file_path?: string;
+  report_file_name?: string;
+  medical_record_id?: number;
+  notes?: string;
+  created_at: string;
+}
+
+// ============================================================================
+// FEATURE 3: ONLINE PHARMACY & MEDICINE ORDERS
+// ============================================================================
+export interface Pharmacy {
+  id: number;
+  hospital_id: number;
+  hospital_name?: string;
+  hospital_location?: string;
+  name: string;
+  license_number: string;
+  location: string;
+  contact_phone: string;
+  email?: string;
+  operating_hours: string;
+  offers_delivery: number;
+  delivery_fee: number;
+  is_active: number;
+}
+
+export interface Medicine {
+  id: number;
+  name: string;
+  brand_name: string;
+  generic_name: string;
+  strength: string;
+  dosage_form: string;
+  manufacturer: string;
+  category: string;
+  prescription_required: number;
+  description?: string;
+  side_effects?: string;
+  storage_instructions?: string;
+  // Inventory fields when joined
+  pharmacy_id?: number;
+  batch_number?: string;
+  expiry_date?: string;
+  mrp_price?: number;
+  selling_price?: number;
+  stock_quantity?: number;
+  low_stock_threshold?: number;
+  is_available?: number;
+}
+
+export interface PharmacyOrderItem {
+  id: number;
+  order_id: number;
+  medicine_id: number;
+  medicine_name: string;
+  strength?: string;
+  dosage_form?: string;
+  prescribed_dosage?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+export interface PharmacyOrder {
+  id: number;
+  order_number: string;
+  patient_id: number;
+  patient_name?: string;
+  patient_email?: string;
+  hospital_id: number;
+  hospital_name?: string;
+  pharmacy_id: number;
+  pharmacy_name?: string;
+  pharmacy_phone?: string;
+  appointment_id?: number;
+  prescription_id?: number;
+  prescription_number?: string;
+  fulfillment_type: 'hospital_pickup' | 'home_delivery';
+  delivery_address?: string;
+  contact_phone: string;
+  total_items: number;
+  subtotal: number;
+  delivery_fee: number;
+  total_amount: number;
+  payment_method: string;
+  payment_status: 'pending' | 'paid' | 'refunded';
+  payment_transaction_id?: string;
+  prescription_verified: number;
+  verified_by?: number;
+  verifier_name?: string;
+  verification_notes?: string;
+  status: 'pending' | 'prescription_verification' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  cancellation_reason?: string;
+  pickup_code?: string;
+  items: PharmacyOrderItem[];
+  created_at: string;
+  updated_at: string;
 }
 
