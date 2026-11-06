@@ -175,6 +175,46 @@ export function initDatabase(): void {
       `);
       db.exec("PRAGMA foreign_keys=ON;");
     }
+
+    // Auto-migrate pharmacies table for pharmacy_type and city
+    const pharmColumns = db.prepare('PRAGMA table_info(pharmacies)').all() as { name: string }[];
+    const pharmColNames = new Set(pharmColumns.map(c => c.name));
+    if (!pharmColNames.has('pharmacy_type')) {
+      db.exec("ALTER TABLE pharmacies ADD COLUMN pharmacy_type TEXT DEFAULT 'hospital_counter'");
+    }
+    if (!pharmColNames.has('city')) {
+      db.exec("ALTER TABLE pharmacies ADD COLUMN city TEXT DEFAULT 'Bengaluru'");
+    }
+
+    // Seed partner pharmacies & central warehouses if not present
+    const partnerCount = db.prepare("SELECT COUNT(*) as count FROM pharmacies WHERE name LIKE '%Apollo%' OR name LIKE '%MedPlus%' OR name LIKE '%Warehouse%'").get() as any;
+    if (!partnerCount || partnerCount.count === 0) {
+      const h1 = (db.prepare('SELECT id FROM hospitals LIMIT 1').get() as any)?.id || 1;
+      const h2 = (db.prepare('SELECT id FROM hospitals LIMIT 1 OFFSET 1').get() as any)?.id || h1;
+
+      const ins = db.prepare(`
+        INSERT INTO pharmacies (hospital_id, name, license_number, location, contact_phone, email, operating_hours, offers_delivery, delivery_fee, is_active, pharmacy_type, city)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1, ?, ?)
+      `);
+
+      ins.run(h1, 'Apollo Pharmacy Partner Network - Koramangala Hub', 'DL-KA-BLR-APL-4091', '80 Feet Road, 4th Block, Koramangala, Bengaluru', '+91-80-4112-9900', 'apollo.koramangala@partner.caresphere.health', '24x7 Open', 40, 'retail_partner', 'Bengaluru');
+      ins.run(h1, 'MedPlus Diagnostic & Pharmacy Partner - Indiranagar', 'DL-KA-BLR-MPL-5521', '100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru', '+91-80-2521-8833', 'medplus.indiranagar@partner.caresphere.health', '7:00 AM - 11:30 PM', 35, 'retail_partner', 'Bengaluru');
+      ins.run(h2, 'Wellness Forever 24x7 Partner Pharmacy - Anna Nagar', 'DL-TN-CHN-WFR-1194', '2nd Avenue, Anna Nagar East, Chennai', '+91-44-2621-4455', 'wellness.annanagar@partner.caresphere.health', '24x7 Open', 45, 'retail_partner', 'Chennai');
+      ins.run(h1, 'CareSphere National Digital Warehouse & Express Delivery', 'DL-IN-NAT-CSD-0001', 'Logistics Park, Hosur Road, Bengaluru (All-India Express Dispatch)', '+91-1800-202-9988', 'express.warehouse@caresphere.health', '24x7 Express Dispatch', 50, 'central_warehouse', 'All-India');
+
+      // Populate inventory for all pharmacies across all catalogued medicines
+      const allPharmIds = (db.prepare('SELECT id FROM pharmacies').all() as any[]).map(p => p.id);
+      const allMedIds = (db.prepare('SELECT id FROM medicines').all() as any[]).map(m => m.id);
+      const insInv = db.prepare(`
+        INSERT OR IGNORE INTO pharmacy_inventory (pharmacy_id, medicine_id, batch_number, expiry_date, mrp_price, selling_price, stock_quantity, low_stock_threshold, is_available)
+        VALUES (?, ?, 'CS-BATCH-2026', '2028-12-31', 120.0, 95.0, 100, 15, 1)
+      `);
+      for (const p of allPharmIds) {
+        for (const mId of allMedIds) {
+          insInv.run(p, mId);
+        }
+      }
+    }
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

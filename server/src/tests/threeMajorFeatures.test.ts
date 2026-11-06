@@ -334,5 +334,71 @@ describe('CareSphere Three Major Features Integration Tests', () => {
       expect(salesRes.status).toBe(200);
       expect(salesRes.body.sales_report.total_orders).toBeGreaterThan(0);
     });
+
+    it('should list all available pharmacies including hospital counters and partner retail stores', async () => {
+      const res = await request(app).get('/api/pharmacy/list');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.pharmacies.length).toBeGreaterThanOrEqual(3);
+      const names = res.body.pharmacies.map((p: any) => p.name);
+      expect(names.some((n: string) => n.includes('CareSphere'))).toBe(true);
+    });
+
+    it('should allow pharmacy staff or admin to add a specific medicine and allow patient to order it', async () => {
+      // 1. Add specific medicine
+      const addRes = await request(app)
+        .post('/api/pharmacy/medicines')
+        .set('Authorization', `Bearer ${pharmacyToken}`)
+        .send({
+          name: 'Amoxicillin 250mg Capsule',
+          brand_name: 'Mox 250',
+          generic_name: 'Amoxicillin Trihydrate',
+          strength: '250 mg',
+          dosage_form: 'Capsule',
+          manufacturer: 'Sun Pharmaceutical Industries',
+          category: 'Antibiotics',
+          prescription_required: 1,
+          mrp_price: 90.0,
+          selling_price: 72.0,
+          stock_quantity: 120,
+          low_stock_threshold: 20
+        });
+
+      expect(addRes.status).toBe(201);
+      expect(addRes.body.success).toBe(true);
+      expect(addRes.body.medicine.brand_name).toBe('Mox 250');
+      const newMedId = addRes.body.medicine.id;
+
+      // 2. Query medicine in store
+      const searchRes = await request(app).get('/api/pharmacy/medicines?search=Mox');
+      expect(searchRes.status).toBe(200);
+      expect(searchRes.body.medicines.some((m: any) => m.id === newMedId)).toBe(true);
+
+      // 3. Patient orders this specific medicine
+      const orderRes = await request(app)
+        .post('/api/pharmacy/orders')
+        .set('Authorization', `Bearer ${patientToken}`)
+        .send({
+          pharmacy_id: 1,
+          fulfillment_type: 'home_delivery',
+          delivery_address: '42, 5th Cross, HSR Layout, Bengaluru 560102',
+          contact_phone: '+91-9876543210',
+          payment_method: 'online_card',
+          items: [
+            {
+              medicine_id: newMedId,
+              medicine_name: 'Mox 250 (Amoxicillin 250mg)',
+              strength: '250 mg',
+              dosage_form: 'Capsule',
+              quantity: 3,
+              unit_price: 72.0
+            }
+          ]
+        });
+
+      expect(orderRes.status).toBe(201);
+      expect(orderRes.body.order.order_number).toMatch(/^RXO-/);
+      expect(orderRes.body.order.fulfillment_type).toBe('home_delivery');
+    });
   });
 });

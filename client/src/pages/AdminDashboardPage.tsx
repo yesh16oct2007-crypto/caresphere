@@ -43,6 +43,7 @@ import {
   PackageCheck,
   Check,
   X,
+  Plus,
   ShieldAlert,
   ShoppingBag
 } from 'lucide-react';
@@ -122,6 +123,23 @@ export const AdminDashboardPage: React.FC = () => {
   const [newStockQty, setNewStockQty] = useState<number>(0);
   const [newSellingPrice, setNewSellingPrice] = useState<number>(0);
   const [updatingStock, setUpdatingStock] = useState(false);
+  const [addMedicineModalOpen, setAddMedicineModalOpen] = useState(false);
+  const [newMedForm, setNewMedForm] = useState({
+    name: '',
+    brand_name: '',
+    generic_name: '',
+    strength: '',
+    dosage_form: 'Tablet',
+    manufacturer: '',
+    category: 'Antibiotics',
+    prescription_required: 1,
+    mrp_price: 120,
+    selling_price: 95,
+    stock_quantity: 100,
+    low_stock_threshold: 15,
+    pharmacy_id: ''
+  });
+  const [addingMedicine, setAddingMedicine] = useState(false);
 
   // Authoritative Verification Checklist Modal State
   const [verifyingDoc, setVerifyingDoc] = useState<any | null>(null);
@@ -487,6 +505,52 @@ export const AdminDashboardPage: React.FC = () => {
       alert('Network error updating inventory');
     } finally {
       setUpdatingStock(false);
+    }
+  };
+
+  const handleAddSpecificMedicine = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMedForm.name || !newMedForm.strength || !token) return;
+    try {
+      setAddingMedicine(true);
+      const res = await fetch(apiUrl('/api/pharmacy/medicines'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...newMedForm,
+          pharmacy_id: newMedForm.pharmacy_id ? Number(newMedForm.pharmacy_id) : undefined
+        })
+      });
+      if (res.ok) {
+        setAddMedicineModalOpen(false);
+        setNewMedForm({
+          name: '',
+          brand_name: '',
+          generic_name: '',
+          strength: '',
+          dosage_form: 'Tablet',
+          manufacturer: '',
+          category: 'Antibiotics',
+          prescription_required: 1,
+          mrp_price: 120,
+          selling_price: 95,
+          stock_quantity: 100,
+          low_stock_threshold: 15,
+          pharmacy_id: ''
+        });
+        alert('Specific medicine successfully added to pharmacy inventory.');
+        fetchPharmacyData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to add medicine');
+      }
+    } catch (e) {
+      alert('Network error adding medicine');
+    } finally {
+      setAddingMedicine(false);
     }
   };
 
@@ -2397,10 +2461,17 @@ export const AdminDashboardPage: React.FC = () => {
           {pharmacySection === 'inventory' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">
                     Total SKU in Stock: {pharmacyInventory.length}
                   </span>
+                  <button
+                    onClick={() => setAddMedicineModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Specific Medicine</span>
+                  </button>
                 </div>
                 <div className="relative min-w-[240px]">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -2872,6 +2943,230 @@ export const AdminDashboardPage: React.FC = () => {
                 {updatingStock ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: ADD SPECIFIC MEDICINE MODAL (ADMIN / PHARMACY STAFF) */}
+      {/* ========================================================================= */}
+      {addMedicineModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                  Pharmacy Inventory Master
+                </span>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-emerald-600" />
+                  <span>Add Specific Medicine to Pharmacy</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setAddMedicineModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSpecificMedicine} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Medicine Formulation Name:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Cefixime 200mg or Insulin Aspart"
+                  value={newMedForm.name}
+                  onChange={(e) => setNewMedForm({ ...newMedForm, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Brand Name:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Zifi 200"
+                    value={newMedForm.brand_name}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, brand_name: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Generic Active Ingredient:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cefixime Trihydrate"
+                    value={newMedForm.generic_name}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, generic_name: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Strength / Potency:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 200 mg or 100 IU/ml"
+                    value={newMedForm.strength}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, strength: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Dosage Form:
+                  </label>
+                  <select
+                    value={newMedForm.dosage_form}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, dosage_form: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  >
+                    <option value="Tablet">Tablet</option>
+                    <option value="Capsule">Capsule</option>
+                    <option value="Syrup">Syrup / Suspension</option>
+                    <option value="Injection">Injection / Pen</option>
+                    <option value="Inhaler">Inhaler / Respules</option>
+                    <option value="Drops">Eye / Ear Drops</option>
+                    <option value="Ointment">Gel / Ointment</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Manufacturer / Pharma:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. FDC Limited / Cipla"
+                    value={newMedForm.manufacturer}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, manufacturer: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Therapeutic Category:
+                  </label>
+                  <select
+                    value={newMedForm.category}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, category: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  >
+                    <option value="Antibiotics">Antibiotics</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Diabetology">Diabetology</option>
+                    <option value="Analgesics & Antipyretics">Analgesics & Antipyretics</option>
+                    <option value="Gastroenterology">Gastroenterology</option>
+                    <option value="Respiratory">Respiratory</option>
+                    <option value="Vitamins & Supplements">Vitamins & Supplements</option>
+                    <option value="Pain Relief">Pain Relief</option>
+                    <option value="Dermatology">Dermatology</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    MRP Price (₹):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newMedForm.mrp_price}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, mrp_price: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Selling Price (₹):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newMedForm.selling_price}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, selling_price: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Initial Stock (units):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newMedForm.stock_quantity}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, stock_quantity: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Low Stock Alert at (&le;):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newMedForm.low_stock_threshold}
+                    onChange={(e) => setNewMedForm({ ...newMedForm, low_stock_threshold: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="rxReqCheck"
+                  checked={newMedForm.prescription_required === 1}
+                  onChange={(e) => setNewMedForm({ ...newMedForm, prescription_required: e.target.checked ? 1 : 0 })}
+                  className="w-4 h-4 text-emerald-600 rounded"
+                />
+                <label htmlFor="rxReqCheck" className="font-bold text-slate-700 dark:text-slate-300">
+                  Prescription Required (Schedule H/H1 Drug)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setAddMedicineModalOpen(false)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingMedicine}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
+                >
+                  {addingMedicine ? 'Adding...' : 'Save to Inventory'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -623,6 +623,8 @@ export interface Pharmacy {
   offers_delivery: number;
   delivery_fee: number;
   is_active: number;
+  pharmacy_type?: 'hospital_counter' | 'retail_partner' | 'central_warehouse';
+  city?: string;
 }
 
 export interface Medicine {

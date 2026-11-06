@@ -511,6 +511,8 @@ CREATE TABLE IF NOT EXISTS pharmacies (
   offers_delivery INTEGER DEFAULT 1,
   delivery_fee INTEGER DEFAULT 50,
   is_active INTEGER DEFAULT 1,
+  pharmacy_type TEXT DEFAULT 'hospital_counter',
+  city TEXT DEFAULT 'Bengaluru',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -150,8 +150,10 @@ import {
   downloadLabReport
 } from './controllers/laboratoryController.js';
 import {
+  getAllPharmacies,
   getPatientHospitalPharmacy,
   getMedicines,
+  addMedicine,
   getPrescriptionMedicineAvailability,
   createPharmacyOrder,
   getMyPharmacyOrders,
@@ -394,8 +396,10 @@ app.post('/api/lab/bookings/:id/upload-report', authenticateToken, requireRole([
 app.get('/api/lab/bookings/:id/report', authenticateToken, downloadLabReport);
 
 // ----------------- 14. ONLINE PHARMACY & MEDICINE ORDERS -----------------
+app.get('/api/pharmacy/list', getAllPharmacies);
 app.get('/api/pharmacy/hospital-pharmacy', getPatientHospitalPharmacy);
 app.get('/api/pharmacy/medicines', getMedicines);
+app.post('/api/pharmacy/medicines', authenticateToken, requireRole(['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin']), addMedicine);
 app.get('/api/pharmacy/prescription-availability/:id', authenticateToken, getPrescriptionMedicineAvailability);
 app.post('/api/pharmacy/orders', authenticateToken, requireRole(['patient']), createPharmacyOrder);
 app.get('/api/pharmacy/my-orders', authenticateToken, requireRole(['patient']), getMyPharmacyOrders);

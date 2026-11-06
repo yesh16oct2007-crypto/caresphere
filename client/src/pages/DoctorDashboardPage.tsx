@@ -1495,11 +1495,26 @@ export const DoctorDashboardPage: React.FC = () => {
                         <input
                           type="text"
                           required
-                          placeholder="Medicine Name (e.g. Telma 40, Pan 40)"
+                          list="common-meds"
+                          placeholder="Medicine Name (e.g. Telma 40, Pan 40, Dolo 650)"
                           value={m.medicine_name}
                           onChange={(e) => handleUpdateMedicineRow(idx, 'medicine_name', e.target.value)}
                           className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs"
                         />
+                        <datalist id="common-meds">
+                          <option value="Telma 40 (Telmisartan 40mg)" />
+                          <option value="Pan 40 (Pantoprazole 40mg)" />
+                          <option value="Glycomet 500 SR (Metformin 500mg)" />
+                          <option value="Augmentin 625 Duo (Amoxicillin + Clav)" />
+                          <option value="Dolo 650 (Paracetamol 650mg)" />
+                          <option value="Azee 500 (Azithromycin 500mg)" />
+                          <option value="Montair LC (Montelukast + Levocetirizine)" />
+                          <option value="Atorva 10 (Atorvastatin 10mg)" />
+                          <option value="Amlong 5 (Amlodipine 5mg)" />
+                          <option value="Cetzine 10 (Cetirizine 10mg)" />
+                          <option value="Thyronorm 50 (Levothyroxine 50mcg)" />
+                          <option value="Shelcal 500 (Calcium + Vit D3)" />
+                        </datalist>
                         <input
                           type="text"
                           placeholder="Dosage (e.g. 40mg)"

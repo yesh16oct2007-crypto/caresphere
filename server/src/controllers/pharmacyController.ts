@@ -2,9 +2,49 @@ import { Response } from 'express';
 import { db, logAudit } from '../db/database.js';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
 
-// 1. Get Patient's Hospital-Linked Pharmacy (Primary Rule)
+// 0. Get All Pharmacies (Hospital Counters & Partner Networks)
+export function getAllPharmacies(req: AuthenticatedRequest, res: Response): void {
+  try {
+    const pharmacies = db.prepare(`
+      SELECT p.*, h.name as hospital_name, h.location as hospital_location, h.city as hospital_city
+      FROM pharmacies p
+      LEFT JOIN hospitals h ON p.hospital_id = h.id
+      WHERE p.is_active = 1
+      ORDER BY p.id ASC
+    `).all();
+    res.json({ success: true, pharmacies });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to retrieve pharmacies: ' + err.message });
+  }
+}
+
+// 1. Get Patient's Hospital-Linked Pharmacy Or Specific Pharmacy
 export function getPatientHospitalPharmacy(req: AuthenticatedRequest, res: Response): void {
   try {
+    const allPharmacies = db.prepare(`
+      SELECT p.*, h.name as hospital_name, h.location as hospital_location, h.city as hospital_city
+      FROM pharmacies p
+      LEFT JOIN hospitals h ON p.hospital_id = h.id
+      WHERE p.is_active = 1
+      ORDER BY p.id ASC
+    `).all();
+
+    // If explicit pharmacy_id requested, return that pharmacy directly
+    if (req.query.pharmacy_id) {
+      const pharmId = Number(req.query.pharmacy_id);
+      const chosen = db.prepare(`
+        SELECT p.*, h.name as hospital_name, h.location as hospital_location, h.address as hospital_address, h.emergency_hotline
+        FROM pharmacies p
+        LEFT JOIN hospitals h ON p.hospital_id = h.id
+        WHERE p.id = ? AND p.is_active = 1
+      `).get(pharmId) as any;
+
+      if (chosen) {
+        res.json({ pharmacy: chosen, hospital_linked: true, all_pharmacies: allPharmacies });
+        return;
+      }
+    }
+
     let hospitalId: number | null = null;
 
     if (req.query.hospital_id) {
@@ -31,8 +71,9 @@ export function getPatientHospitalPharmacy(req: AuthenticatedRequest, res: Respo
     const pharmacy = db.prepare(`
       SELECT p.*, h.name as hospital_name, h.location as hospital_location, h.address as hospital_address, h.emergency_hotline
       FROM pharmacies p
-      JOIN hospitals h ON p.hospital_id = h.id
+      LEFT JOIN hospitals h ON p.hospital_id = h.id
       WHERE p.hospital_id = ? AND p.is_active = 1
+      ORDER BY p.id ASC LIMIT 1
     `).get(hospitalId) as any;
 
     if (!pharmacy) {
@@ -40,16 +81,124 @@ export function getPatientHospitalPharmacy(req: AuthenticatedRequest, res: Respo
       const fallback = db.prepare(`
         SELECT p.*, h.name as hospital_name, h.location as hospital_location, h.address as hospital_address
         FROM pharmacies p
-        JOIN hospitals h ON p.hospital_id = h.id
+        LEFT JOIN hospitals h ON p.hospital_id = h.id
         WHERE p.is_active = 1 LIMIT 1
       `).get();
-      res.json({ pharmacy: fallback, hospital_linked: false });
+      res.json({ pharmacy: fallback, hospital_linked: false, all_pharmacies: allPharmacies });
       return;
     }
 
-    res.json({ pharmacy, hospital_linked: true });
+    res.json({ pharmacy, hospital_linked: true, all_pharmacies: allPharmacies });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to retrieve hospital pharmacy: ' + err.message });
+  }
+}
+
+// Add Specific Medicine to Catalogue & Inventory
+export function addMedicine(req: AuthenticatedRequest, res: Response): void {
+  try {
+    if (!req.user || !['pharmacy_staff', 'hospital_admin', 'admin', 'superadmin'].includes(req.user.role)) {
+      res.status(403).json({ error: 'Restricted to authorized pharmacy personnel and administrators.' });
+      return;
+    }
+
+    const {
+      name,
+      brand_name,
+      generic_name,
+      strength,
+      dosage_form,
+      manufacturer,
+      category,
+      prescription_required,
+      description,
+      mrp_price,
+      selling_price,
+      stock_quantity,
+      low_stock_threshold,
+      pharmacy_id,
+      batch_number,
+      expiry_date
+    } = req.body;
+
+    if (!name || !strength || !dosage_form) {
+      res.status(400).json({ error: 'Medicine name, strength, and dosage form are required.' });
+      return;
+    }
+
+    const medName = name.trim();
+    const brandName = (brand_name || name).trim();
+    const genericName = (generic_name || name).trim();
+    const str = strength.trim();
+    const form = dosage_form.trim();
+    const mfr = (manufacturer || 'CareSphere Healthcare').trim();
+    const cat = (category || 'General').trim();
+    const rx = prescription_required !== undefined ? Number(prescription_required) : 1;
+    const desc = description || `Specific clinical formulation for ${genericName}`;
+
+    // Check if medicine already exists with same name and strength
+    let existing = db.prepare('SELECT id FROM medicines WHERE name = ? AND strength = ?').get(medName, str) as any;
+    let medicineId: number;
+
+    if (existing) {
+      medicineId = existing.id;
+    } else {
+      const insertMed = db.prepare(`
+        INSERT INTO medicines (
+          name, brand_name, generic_name, strength, dosage_form, manufacturer, category,
+          prescription_required, description
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const medResult = insertMed.run(medName, brandName, genericName, str, form, mfr, cat, rx, desc);
+      medicineId = Number(medResult.lastInsertRowid);
+    }
+
+    // Target pharmacies
+    const targetPharmacyIds = pharmacy_id
+      ? [Number(pharmacy_id)]
+      : (db.prepare('SELECT id FROM pharmacies WHERE is_active = 1').all() as any[]).map(p => p.id);
+
+    const defaultBatch = batch_number || `BATCH-${Date.now().toString().slice(-6)}`;
+    const defaultExpiry = expiry_date || '2028-12-31';
+    const mrp = mrp_price ? Number(mrp_price) : 120.0;
+    const sellPrice = selling_price ? Number(selling_price) : Math.round(mrp * 0.85);
+    const stockQty = stock_quantity !== undefined ? Number(stock_quantity) : 100;
+    const lowStock = low_stock_threshold !== undefined ? Number(low_stock_threshold) : 15;
+
+    const insInv = db.prepare(`
+      INSERT OR REPLACE INTO pharmacy_inventory (
+        pharmacy_id, medicine_id, batch_number, expiry_date, mrp_price, selling_price, stock_quantity, low_stock_threshold, is_available
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `);
+
+    for (const pId of targetPharmacyIds) {
+      insInv.run(pId, medicineId, defaultBatch, defaultExpiry, mrp, sellPrice, stockQty, lowStock);
+    }
+
+    logAudit(
+      req.user.id,
+      req.user.name,
+      req.user.role,
+      'CREATE_MEDICINE',
+      'medicines',
+      String(medicineId),
+      `Added specific medicine: ${medName} (${str})`
+    );
+
+    const newMedicine = db.prepare(`
+      SELECT m.*, pi.selling_price, pi.mrp_price, pi.stock_quantity
+      FROM medicines m
+      LEFT JOIN pharmacy_inventory pi ON m.id = pi.medicine_id
+      WHERE m.id = ? LIMIT 1
+    `).get(medicineId);
+
+    res.status(201).json({
+      success: true,
+      message: 'Specific medicine successfully added to pharmacy inventory.',
+      medicine: newMedicine
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to add medicine: ' + err.message });
   }
 }
 
