@@ -55,7 +55,17 @@ import {
   markNotificationRead,
   markAllNotificationsRead
 } from './controllers/hospitalController.js';
-import { chatWithAssistant } from './controllers/aiController.js';
+import {
+  chatWithAssistant,
+  orchestrateAgents,
+  hospitalAdminAssistant,
+  verifyDoctorAI,
+  getDoctorVerificationReport,
+  getHospitalRecommendations,
+  triggerAutomationCycle,
+  getAutomationLogs
+} from './controllers/aiController.js';
+import { startAutomationWorker } from './services/automationEngine.js';
 import { uploadRecord, uploadReport, uploadMedicalRecordMiddleware } from './middleware/uploadMiddleware.js';
 import {
   uploadMedicalRecord,
@@ -287,8 +297,17 @@ app.get('/api/notifications', authenticateToken, getUserNotifications);
 app.put('/api/notifications/:id/read', authenticateToken, markNotificationRead);
 app.put('/api/notifications/read-all', authenticateToken, markAllNotificationsRead);
 
-// ----------------- AI ASSISTANT -----------------
+// ----------------- AI ASSISTANT & AUTONOMOUS ORCHESTRATION -----------------
 app.post('/api/ai/chat', simpleRateLimiter(40, 60000), chatWithAssistant);
+app.post('/api/ai/orchestrate', simpleRateLimiter(40, 60000), orchestrateAgents);
+app.post('/api/ai/admin-assistant', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), hospitalAdminAssistant);
+app.post('/api/ai/verify-doctor/:id', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), verifyDoctorAI);
+app.get('/api/ai/doctor/:id/verification-report', authenticateToken, getDoctorVerificationReport);
+app.get('/api/ai/hospital/recommendations', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), getHospitalRecommendations);
+
+// ----------------- AUTONOMOUS OPERATIONS ENGINE -----------------
+app.post('/api/automation/trigger', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), triggerAutomationCycle);
+app.get('/api/automation/logs', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), getAutomationLogs);
 
 // ----------------- 1. DIGITAL PATIENT MEDICAL RECORDS -----------------
 // Primary frontend routes (/api/records)
@@ -447,6 +466,7 @@ app.use((req, res, next) => {
 
 // Start listening if run directly
 if (process.env.NODE_ENV !== 'test') {
+  startAutomationWorker(30);
   app.listen(PORT, () => {
     console.log(`CareSphere Backend Server running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);

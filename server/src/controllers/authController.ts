@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { db, logAudit } from '../db/database.js';
 import { JWT_SECRET, AuthenticatedRequest } from '../middleware/authMiddleware.js';
 import { createNotification } from '../services/notificationService.js';
+import { executeDoctorVerificationAgent } from '../services/aiOrchestrator.js';
 
 export function registerPatient(req: Request, res: Response): void {
   try {
@@ -260,6 +261,11 @@ export function registerDoctor(req: Request, res: Response): void {
 
     const { userId, doctorProfileId } = insertDoctorTransaction();
 
+    // Autonomous AI Doctor Verification Agent execution
+    executeDoctorVerificationAgent(doctorProfileId, targetHospitalId).catch(aiErr => {
+      console.error('Autonomous doctor verification background error:', aiErr);
+    });
+
     logAudit(
       userId,
       name,
@@ -305,6 +311,7 @@ export function registerDoctor(req: Request, res: Response): void {
       message: 'Doctor application submitted successfully! Your credentials are now under administrative review.',
       token,
       verification_status: 'pending',
+      doctor_profile_id: doctorProfileId,
       user: {
         id: userId,
         name,

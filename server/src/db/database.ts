@@ -345,6 +345,66 @@ export function initDatabase(): void {
       insAdminUser.run('Apollo Bannerghatta Admin', 'apollo.admin@partner.caresphere.health', '+91-9876543294', defaultHospPass, 'en', hApollo);
       db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'apollo.admin@partner.caresphere.health' AND (hospital_id IS NULL OR hospital_id != ?)").run(hApollo, hApollo);
     }
+
+    // Auto-create AI orchestration and verification tables
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS doctor_ai_verification_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+        hospital_id INTEGER REFERENCES hospitals(id),
+        authenticity_score INTEGER NOT NULL DEFAULT 85,
+        council_valid INTEGER DEFAULT 1,
+        duplicate_detected INTEGER DEFAULT 0,
+        flags_json TEXT,
+        checklist_json TEXT,
+        report_summary TEXT NOT NULL,
+        recommendation TEXT DEFAULT 'RECOMMENDED_FOR_APPROVAL',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_orchestration_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_type TEXT NOT NULL,
+        hospital_id INTEGER REFERENCES hospitals(id),
+        user_id INTEGER REFERENCES users(id),
+        language TEXT DEFAULT 'en',
+        input_preview TEXT NOT NULL,
+        output_preview TEXT NOT NULL,
+        tokens_used INTEGER DEFAULT 0,
+        latency_ms INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'success',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_hospital_recommendations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        hospital_id INTEGER NOT NULL REFERENCES hospitals(id),
+        category TEXT NOT NULL CHECK(category IN ('operations', 'clinical', 'pharmacy', 'staffing', 'emergency')),
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high', 'urgent')),
+        impact TEXT,
+        is_resolved INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS automation_job_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_name TEXT NOT NULL,
+        hospital_id INTEGER REFERENCES hospitals(id),
+        processed_count INTEGER DEFAULT 0,
+        details TEXT,
+        status TEXT DEFAULT 'completed',
+        executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_verification_doctor ON doctor_ai_verification_reports(doctor_id);
+      CREATE INDEX IF NOT EXISTS idx_ai_verification_hospital ON doctor_ai_verification_reports(hospital_id);
+      CREATE INDEX IF NOT EXISTS idx_ai_logs_hospital ON ai_orchestration_logs(hospital_id);
+      CREATE INDEX IF NOT EXISTS idx_ai_logs_agent ON ai_orchestration_logs(agent_type);
+      CREATE INDEX IF NOT EXISTS idx_ai_recs_hospital ON ai_hospital_recommendations(hospital_id);
+      CREATE INDEX IF NOT EXISTS idx_automation_logs_job ON automation_job_logs(job_name);
+    `);
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

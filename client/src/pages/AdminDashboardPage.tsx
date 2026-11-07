@@ -47,7 +47,13 @@ import {
   ShieldAlert,
   ShoppingBag,
   Award,
-  UserCheck
+  UserCheck,
+  Bot,
+  Sparkles,
+  Cpu,
+  Zap,
+  CheckCheck,
+  FileSearch
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { User, Appointment, AuditLog, EmergencyRequest, LabBooking, PharmacyOrder } from '../types/index.js';
@@ -73,7 +79,7 @@ export const AdminDashboardPage: React.FC = () => {
   // Active section tab
   const initialTab = isPharmacyStaff ? 'pharmacy' : isLabStaff ? 'laboratory' : 'analytics';
   const [activeTab, setActiveTab] = useState<
-    'analytics' | 'verification' | 'appointments' | 'users' | 'logs' | 'announcements' | 'emergency' | 'laboratory' | 'pharmacy'
+    'ai_assistant' | 'analytics' | 'verification' | 'appointments' | 'users' | 'logs' | 'announcements' | 'emergency' | 'laboratory' | 'pharmacy'
   >(initialTab);
 
   // Feature 3: Hospital Analytics State
@@ -163,6 +169,35 @@ export const AdminDashboardPage: React.FC = () => {
   const [newAnnTitle, setNewAnnTitle] = useState('');
   const [newAnnContent, setNewAnnContent] = useState('');
   const [newAnnPriority, setNewAnnPriority] = useState('normal');
+
+  // ---------------- AUTONOMOUS AI ADMIN ASSISTANT & OPERATIONS STATE ----------------
+  const [aiAdminInput, setAiAdminInput] = useState('');
+  const [aiChatMessages, setAiChatMessages] = useState<{
+    id: string;
+    sender: 'admin' | 'ai';
+    text: string;
+    structured_data?: any;
+    timestamp: Date;
+  }[]>([
+    {
+      id: 'welcome',
+      sender: 'ai',
+      text: `Welcome to CareSphere Autonomous AI Admin Operations. I am your hospital's dedicated AI assistant.\n\nYou can ask me questions about your registered doctors, pending credential approvals, today's appointment schedule, pharmacy stock levels, bed occupancy, or hospital resource utilization. All queries are strictly scoped to your assigned hospital data.`,
+      timestamp: new Date()
+    }
+  ]);
+  const [aiChatLoading, setAiChatLoading] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+  const [loadingAiRecs, setLoadingAiRecs] = useState(false);
+  const [automationLogs, setAutomationLogs] = useState<any[]>([]);
+  const [triggeringAutomation, setTriggeringAutomation] = useState(false);
+  const [automationResult, setAutomationResult] = useState<any | null>(null);
+
+  // AI Doctor Verification Report Modal State
+  const [viewingAiReportDoc, setViewingAiReportDoc] = useState<any | null>(null);
+  const [docAiReport, setDocAiReport] = useState<any | null>(null);
+  const [loadingAiReport, setLoadingAiReport] = useState(false);
+  const [reverifyingDoc, setReverifyingDoc] = useState(false);
 
   const fetchAdminData = async () => {
     if (!token) return;
@@ -338,6 +373,10 @@ export const AdminDashboardPage: React.FC = () => {
     if (activeTab === 'emergency') fetchEmergencyRequests();
     if (activeTab === 'laboratory') fetchLabBookings();
     if (activeTab === 'pharmacy') fetchPharmacyData();
+    if (activeTab === 'ai_assistant') {
+      fetchHospitalAiRecommendations();
+      fetchAutomationLogs();
+    }
   }, [token, selectedHospitalId, activeTab, analyticsDateRange]);
 
   // Emergency status updater
@@ -668,6 +707,175 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleAskAdminAI = async (queryText?: string) => {
+    const q = (queryText || aiAdminInput).trim();
+    if (!q || !token) return;
+
+    const userMsg = {
+      id: String(Date.now()),
+      sender: 'admin' as const,
+      text: q,
+      timestamp: new Date()
+    };
+    setAiChatMessages(prev => [...prev, userMsg]);
+    setAiAdminInput('');
+    setAiChatLoading(true);
+
+    try {
+      const res = await fetch(apiUrl('/api/ai/admin-assistant'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: q,
+          hospital_id: user?.hospital_id
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAiChatMessages(prev => [
+          ...prev,
+          {
+            id: String(Date.now() + 1),
+            sender: 'ai',
+            text: data.reply || 'Request completed.',
+            structured_data: data.structured_data,
+            timestamp: new Date()
+          }
+        ]);
+      } else {
+        setAiChatMessages(prev => [
+          ...prev,
+          {
+            id: String(Date.now() + 1),
+            sender: 'ai',
+            text: `Error: ${data.error || 'Failed to query hospital AI data.'}`,
+            timestamp: new Date()
+          }
+        ]);
+      }
+    } catch (err) {
+      setAiChatMessages(prev => [
+        ...prev,
+        {
+          id: String(Date.now() + 1),
+          sender: 'ai',
+          text: 'Network error connecting to Hospital AI Assistant.',
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setAiChatLoading(false);
+    }
+  };
+
+  const fetchHospitalAiRecommendations = async () => {
+    if (!token) return;
+    try {
+      setLoadingAiRecs(true);
+      const res = await fetch(apiUrl(`/api/ai/hospital/recommendations${user?.hospital_id ? `?hospital_id=${user.hospital_id}` : ''}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiRecommendations(data.recommendations || []);
+      }
+    } catch (err) {
+      console.error('Error fetching AI recommendations:', err);
+    } finally {
+      setLoadingAiRecs(false);
+    }
+  };
+
+  const fetchAutomationLogs = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/automation/logs${user?.hospital_id ? `?hospital_id=${user.hospital_id}` : ''}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAutomationLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error('Error fetching automation logs:', err);
+    }
+  };
+
+  const handleTriggerAutomation = async () => {
+    if (!token) return;
+    try {
+      setTriggeringAutomation(true);
+      const res = await fetch(apiUrl('/api/automation/trigger'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ hospital_id: user?.hospital_id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAutomationResult(data.result);
+        alert(`Autonomous operations cycle completed: ${data.result?.total_processed || 0} reminders and notifications processed.`);
+        fetchAutomationLogs();
+      } else {
+        alert(data.error || 'Automation execution failed.');
+      }
+    } catch (err) {
+      alert('Network error executing automation cycle.');
+    } finally {
+      setTriggeringAutomation(false);
+    }
+  };
+
+  const openDoctorAiReport = async (doc: any) => {
+    setViewingAiReportDoc(doc);
+    setDocAiReport(null);
+    setLoadingAiReport(true);
+    try {
+      const docId = doc.doctor_profile_id || doc.id;
+      const res = await fetch(apiUrl(`/api/ai/doctor/${docId}/verification-report`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocAiReport(data.report);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to load AI verification report.');
+      }
+    } catch (e) {
+      alert('Network error loading AI report.');
+    } finally {
+      setLoadingAiReport(false);
+    }
+  };
+
+  const handleReverifyDoctorAI = async (docId: number) => {
+    if (!token) return;
+    try {
+      setReverifyingDoc(true);
+      const res = await fetch(apiUrl(`/api/ai/verify-doctor/${docId}`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDocAiReport(data.verification_report);
+        alert('AI Doctor Verification audit successfully refreshed.');
+      } else {
+        alert(data.error || 'Failed to re-run AI verification.');
+      }
+    } catch (e) {
+      alert('Network error during AI verification re-audit.');
+    } finally {
+      setReverifyingDoc(false);
+    }
+  };
+
   // Filtered doctors list
   const filteredDoctors = allDoctors.filter((doc) => {
     const matchesFilter =
@@ -869,6 +1077,20 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto no-scrollbar">
+        {/* Autonomous AI Hospital Operations & Admin Assistant Tab */}
+        <button
+          onClick={() => setActiveTab('ai_assistant')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'ai_assistant'
+              ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Bot className="w-4 h-4 text-cyan-200 animate-pulse" />
+          <span>AI Hospital Operations & Assistant</span>
+          <span className="px-1.5 py-0.5 text-[10px] font-black bg-cyan-400/20 text-cyan-300 rounded-md">AI Autonomous</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('analytics')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
@@ -1645,6 +1867,329 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
+      {/* AUTONOMOUS AI HOSPITAL OPERATIONS & ADMIN ASSISTANT TAB CONTENT */}
+      {activeTab === 'ai_assistant' && (
+        <div className="space-y-6">
+          {/* Top Overview Banner */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-[#123B5D] via-[#0D9488] to-[#123B5D] text-white shadow-xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-10">
+              <Cpu className="w-64 h-64 text-white" />
+            </div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full bg-cyan-400/20 text-cyan-200 text-xs font-black tracking-wider uppercase flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
+                    Autonomous Orchestration Engine
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white text-xs font-semibold">
+                    Hospital ID: #{user?.hospital_id || 'Network Central'}
+                  </span>
+                </div>
+                <h2 className="text-2xl font-black text-white tracking-tight">
+                  {user?.hospital?.name || (isHospitalAdmin ? 'Your Hospital Administration' : 'CareSphere Central Operations')} AI Command Center
+                </h2>
+                <p className="text-cyan-100 text-xs sm:text-sm mt-1 max-w-2xl">
+                  Hospital-isolated intelligence coordinating Doctor Credential Verification, Patient Assistance, Automated Appointment Reminders, Low-Stock Pharmacy Alerts, and Live Bed Capacity Monitoring.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleTriggerAutomation}
+                  disabled={triggeringAutomation}
+                  className="px-4 py-2.5 rounded-2xl bg-white text-[#123B5D] hover:bg-cyan-50 font-black text-xs sm:text-sm shadow-md flex items-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                >
+                  <Zap className={`w-4 h-4 text-amber-500 ${triggeringAutomation ? 'animate-bounce' : ''}`} />
+                  <span>{triggeringAutomation ? 'Executing Automation Cycle...' : 'Run Autonomous Cycle Now'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left 7 Columns: Conversational Hospital Admin AI Assistant */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col h-[680px]">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 flex items-center justify-center">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <span>Hospital Admin AI Assistant</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Strict Hospital Isolation Enforced (No Cross-Hospital Access)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAiChatMessages([aiChatMessages[0]])}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Clear</span>
+                  </button>
+                </div>
+
+                {/* Quick Inquiries */}
+                <div className="py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-slate-700 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleAskAdminAI('How many doctors are registered and approved in our hospital?')}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap cursor-pointer transition text-[11px]"
+                  >
+                    🩺 Total Doctors
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAskAdminAI('How many doctor applications are currently pending verification?')}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap cursor-pointer transition text-[11px]"
+                  >
+                    📋 Pending Reviews
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAskAdminAI('How many appointments are scheduled for today?')}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap cursor-pointer transition text-[11px]"
+                  >
+                    📅 Today's Visits
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAskAdminAI('Which medicines in our pharmacy are running low on stock?')}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap cursor-pointer transition text-[11px]"
+                  >
+                    💊 Low Stock Drugs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAskAdminAI('What is our current hospital bed and ICU capacity and occupancy?')}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap cursor-pointer transition text-[11px]"
+                  >
+                    🛏️ Bed & ICU Load
+                  </button>
+                </div>
+
+                {/* Messages Container */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-3.5 my-2">
+                  {aiChatMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-3 ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {msg.sender === 'ai' && (
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                          <Bot className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-3.5 text-xs sm:text-sm ${
+                          msg.sender === 'admin'
+                            ? 'bg-[#123B5D] text-white rounded-tr-none'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-600'
+                        }`}
+                      >
+                        <div className="whitespace-pre-line leading-relaxed">{msg.text}</div>
+                        <div
+                          className={`text-[10px] mt-1.5 ${
+                            msg.sender === 'admin' ? 'text-cyan-200 text-right' : 'text-slate-400'
+                          }`}
+                        >
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {aiChatLoading && (
+                    <div className="flex gap-3 items-center">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 text-white flex items-center justify-center shrink-0 animate-pulse">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                      <div className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping" />
+                        <span>Querying hospital database & running AI inference...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Field */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAskAdminAI();
+                  }}
+                  className="pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={aiAdminInput}
+                    onChange={(e) => setAiAdminInput(e.target.value)}
+                    placeholder="Ask about doctors, pending reviews, appointments, low stocks..."
+                    className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-100"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiAdminInput.trim() || aiChatLoading}
+                    className="px-4 py-2.5 rounded-2xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-40 cursor-pointer shadow-xs"
+                  >
+                    <span>Send</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right 5 Columns: Autonomous Operations & AI Recommendations */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* Card 1: Autonomous Automation Engine Status */}
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-800 dark:text-slate-100">
+                        Autonomous Operations Engine
+                      </h4>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Active Background Runner (Interval: 30m)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Appointment Reminders</span>
+                    <span className="font-black text-slate-700 dark:text-slate-200 text-sm">
+                      {automationResult?.jobs?.appointment_reminders ?? 'Automated (24h)'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Low-Stock Alerts</span>
+                    <span className="font-black text-amber-600 dark:text-amber-400 text-sm">
+                      {automationResult?.jobs?.pharmacy_stock_alerts ?? 'Live Monitor'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Pending Doctor Alerts</span>
+                    <span className="font-black text-blue-600 dark:text-blue-400 text-sm">
+                      {pendingDoctors.length} Awaiting Review
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Medicine Intake Alerts</span>
+                    <span className="font-black text-teal-600 dark:text-teal-400 text-sm">
+                      {automationResult?.jobs?.medicine_reminders ?? 'Daily Active'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Last Automated Execution:</span>
+                  <span className="font-medium text-slate-600 dark:text-slate-300">
+                    {automationResult?.executed_at ? new Date(automationResult.executed_at).toLocaleTimeString() : 'Recent'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 2: AI Strategic Hospital Recommendations */}
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-800 dark:text-slate-100">
+                        AI Strategic Recommendations
+                      </h4>
+                      <p className="text-[11px] text-slate-400">Proactive Hospital Optimization</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchHospitalAiRecommendations}
+                    className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5 mt-3">
+                  {aiRecommendations.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 italic">
+                      Evaluating hospital metrics to generate operational recommendations...
+                    </div>
+                  ) : (
+                    aiRecommendations.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{rec.title}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full font-black text-[10px] uppercase ${
+                              rec.priority === 'urgent'
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                : rec.priority === 'high'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                            }`}
+                          >
+                            {rec.priority}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 text-[11px]">{rec.description}</p>
+                        {rec.impact && (
+                          <div className="mt-1.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+                            💡 Impact: {rec.impact}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Card 3: Recent Automation Logs */}
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-4 shadow-xs text-xs">
+                <div className="font-black text-xs text-slate-800 dark:text-slate-200 mb-2 flex items-center justify-between">
+                  <span>Background Engine Audit Logs</span>
+                  <span className="text-[10px] text-slate-400">Last 5 runs</span>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {automationLogs.length === 0 ? (
+                    <div className="text-[11px] text-slate-400 italic py-2">No automation log entries yet.</div>
+                  ) : (
+                    automationLogs.slice(0, 5).map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-[11px] flex items-center justify-between"
+                      >
+                        <div>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 block">{log.job_name}</span>
+                          <span className="text-[10px] text-slate-400">Processed: {log.processed_count} tasks</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold">
+                          {log.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Doctor Verification & Governance Queue */}
       {activeTab === 'verification' && (
         <div className="space-y-6">
@@ -1874,6 +2419,14 @@ export const AdminDashboardPage: React.FC = () => {
                         >
                           <UserCheck className="w-3.5 h-3.5 text-brand-600" />
                           <span>View Doctor Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDoctorAiReport(doc)}
+                          className="px-3 py-1.5 rounded-xl border border-cyan-200 dark:border-cyan-800 bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/60 text-cyan-800 dark:text-cyan-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                          <span>AI Verification Report</span>
                         </button>
                       </div>
 
@@ -4135,6 +4688,221 @@ export const AdminDashboardPage: React.FC = () => {
                 <ShieldCheck className="w-4 h-4" />
                 <span>Open Governance Review</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- AI DOCTOR VERIFICATION REPORT MODAL ---------------- */}
+      {viewingAiReportDoc && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                      AI Doctor Credential Verification Audit
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 text-[10px] font-black uppercase">
+                      Autonomous Audit
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Dr. <strong>{viewingAiReportDoc.name}</strong> • {viewingAiReportDoc.specialization} ({viewingAiReportDoc.hospital_name || viewingAiReportDoc.hospital_official_name || 'CareSphere'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingAiReportDoc(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingAiReport ? (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-slate-500">Retrieving credentials & running AI verification analysis...</p>
+              </div>
+            ) : docAiReport ? (
+              <div className="space-y-4 text-xs">
+                {/* Authenticity Score & Recommendation Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-cyan-50 dark:from-slate-900/60 dark:to-cyan-950/30 border border-cyan-100 dark:border-cyan-900/40 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                      AI Authenticity Rating
+                    </span>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <span className={`text-3xl font-black ${
+                        docAiReport.authenticity_score >= 80 
+                          ? 'text-emerald-600 dark:text-emerald-400' 
+                          : docAiReport.authenticity_score >= 50 
+                          ? 'text-amber-600 dark:text-amber-400' 
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}>
+                        {docAiReport.authenticity_score}%
+                      </span>
+                      <span className="text-slate-500 font-medium">Confidence Score</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                      AI Recommendation
+                    </span>
+                    <span className={`inline-block px-3 py-1 rounded-xl text-xs font-black uppercase mt-1 ${
+                      docAiReport.recommendation === 'RECOMMENDED_FOR_APPROVAL'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : docAiReport.recommendation === 'MANUAL_INSPECTION_REQUIRED'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                    }`}>
+                      {docAiReport.recommendation?.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4-Point Verification Checklist Matrix */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 block">Medical Council Format</span>
+                      <span className="text-[11px] text-slate-400">{viewingAiReportDoc.registration_number}</span>
+                    </div>
+                    {docAiReport.council_valid ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 block">Duplicate Registry Check</span>
+                      <span className="text-[11px] text-slate-400">{docAiReport.duplicate_detected ? 'Duplicate Flagged' : 'Unique Record'}</span>
+                    </div>
+                    {!docAiReport.duplicate_detected ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 block">Qualifications Match</span>
+                      <span className="text-[11px] text-slate-400 truncate max-w-[140px] block">{viewingAiReportDoc.qualifications}</span>
+                    </div>
+                    {docAiReport.checklist?.qualifications_consistent ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 block">Uploaded Certificates</span>
+                      <span className="text-[11px] text-slate-400">{docAiReport.checklist?.identity_documents_present ? 'All Present' : 'Missing Uploads'}</span>
+                    </div>
+                    {docAiReport.checklist?.identity_documents_present ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Flags Warning Box (if any) */}
+                {docAiReport.flags && docAiReport.flags.length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 space-y-1.5">
+                    <div className="font-bold flex items-center gap-1.5 text-xs">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span>Audit Warnings & Identified Credential Flags:</span>
+                    </div>
+                    <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
+                      {docAiReport.flags.map((flag: string, idx: number) => (
+                        <li key={idx}>{flag}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Summary narrative */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">AI Verification Narrative</span>
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-xs">
+                    {docAiReport.report_summary}
+                  </p>
+                </div>
+
+                {/* Human Authorization Notice */}
+                <div className="p-2.5 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-100 dark:border-cyan-900 text-[11px] text-cyan-800 dark:text-cyan-300 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-cyan-600" />
+                  <span>
+                    <strong>Human Authorization Mandate:</strong> Only the assigned hospital administrator can approve or reject doctor credentials. AI verification operates as an intelligent advisory audit.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400">
+                No verification report available for this profile.
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => handleReverifyDoctorAI(viewingAiReportDoc.doctor_profile_id || viewingAiReportDoc.id)}
+                disabled={reverifyingDoc}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${reverifyingDoc ? 'animate-spin' : ''}`} />
+                <span>{reverifyingDoc ? 'Re-auditing...' : 'Re-Run AI Verification'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingAiReportDoc(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  Close
+                </button>
+                {viewingAiReportDoc && viewingAiReportDoc.verification_status !== 'rejected' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const doc = viewingAiReportDoc;
+                      setViewingAiReportDoc(null);
+                      openReviewModal(doc, 'rejected');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Reject Doctor</span>
+                  </button>
+                )}
+                {viewingAiReportDoc && viewingAiReportDoc.verification_status !== 'verified' && viewingAiReportDoc.verification_status !== 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const doc = viewingAiReportDoc;
+                      setViewingAiReportDoc(null);
+                      openReviewModal(doc, 'verified');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Approve Doctor</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

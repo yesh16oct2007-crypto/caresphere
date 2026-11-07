@@ -66,6 +66,7 @@ export const AIAssistantModal: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<'patient' | 'appointment' | 'pharmacy' | 'report' | 'emergency'>('patient');
 
   // Multilingual Voice Input (STT) State
   const [isListening, setIsListening] = useState(false);
@@ -292,13 +293,15 @@ export const AIAssistantModal: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch(apiUrl('/api/ai/chat'), {
+      const endpoint = selectedAgent === 'patient' ? '/api/ai/chat' : '/api/ai/orchestrate';
+      const bodyPayload = selectedAgent === 'patient'
+        ? { message: text, language: activeLangCode }
+        : { agent_type: selectedAgent, message: text, language: activeLangCode, hospital_id: user?.hospital_id };
+
+      const res = await fetch(apiUrl(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          language: activeLangCode
-        })
+        body: JSON.stringify(bodyPayload)
       });
 
       const data = await res.json();
@@ -439,12 +442,71 @@ export const AIAssistantModal: React.FC = () => {
             {isSpeaking && (
               <button
                 onClick={stopSpeaking}
-                className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full hover:bg-amber-200"
+                className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full hover:bg-amber-200 cursor-pointer"
               >
                 <Square className="w-2.5 h-2.5 fill-current" />
                 <span>Stop Audio</span>
               </button>
             )}
+          </div>
+
+          {/* Autonomous AI Specialized Agent Switcher */}
+          <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+            <button
+              type="button"
+              onClick={() => setSelectedAgent('patient')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                selectedAgent === 'patient'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              🤖 Care AI
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedAgent('appointment')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                selectedAgent === 'appointment'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              📅 Bookings
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedAgent('pharmacy')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                selectedAgent === 'pharmacy'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              💊 Pharmacy
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedAgent('report')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                selectedAgent === 'report'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              📑 Lab Reports
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedAgent('emergency')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap transition cursor-pointer ${
+                selectedAgent === 'emergency'
+                  ? 'bg-red-600 text-white shadow-xs animate-pulse'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}
+            >
+              🚨 SOS
+            </button>
           </div>
 
           {/* Speech Error Banner if any */}
