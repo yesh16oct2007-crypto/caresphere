@@ -41,7 +41,9 @@ import {
   getAllUsers,
   getAuditLogs,
   createAnnouncement,
-  deleteAnnouncement
+  deleteAnnouncement,
+  getDoctorApprovalHistory,
+  getDoctorDocuments
 } from './controllers/adminController.js';
 import {
   getHospitalInfo,
@@ -265,6 +267,8 @@ app.put('/api/appointments/:id/status', authenticateToken, updateAppointmentStat
 app.get('/api/admin/pending-doctors', authenticateToken, requireRole(['admin']), getPendingDoctors);
 app.get('/api/admin/doctors', authenticateToken, requireRole(['admin']), getAllDoctorsAdmin);
 app.post('/api/admin/verify-doctor', authenticateToken, requireRole(['admin']), verifyDoctor);
+app.get('/api/admin/doctor/:id/history', authenticateToken, requireRole(['admin']), getDoctorApprovalHistory);
+app.get('/api/admin/doctor/:id/documents', authenticateToken, requireRole(['admin']), getDoctorDocuments);
 app.get('/api/admin/stats', authenticateToken, requireRole(['admin']), getSystemStats);
 app.get('/api/admin/users', authenticateToken, requireRole(['admin']), getAllUsers);
 app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), getAuditLogs);

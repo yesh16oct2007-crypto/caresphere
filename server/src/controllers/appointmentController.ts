@@ -217,7 +217,7 @@ export function getMyAppointments(req: AuthenticatedRequest, res: Response): voi
           ORDER BY a.appointment_date DESC, a.appointment_time DESC
         `).all(doc.id);
       }
-    } else if (req.user.role === 'admin') {
+    } else if (req.user.role === 'hospital_admin' && req.user.hospital_id) {
       appointments = db.prepare(`
         SELECT 
           a.id,
@@ -230,8 +230,38 @@ export function getMyAppointments(req: AuthenticatedRequest, res: Response): voi
           a.cancellation_reason,
           a.created_at,
           p.name as patient_name,
+          p.email as patient_email,
+          p.phone as patient_phone,
           docUser.name as doctor_name,
-          d.name as department_name
+          d.name as department_name,
+          dp.hospital_name
+        FROM appointments a
+        JOIN users p ON a.patient_id = p.id
+        JOIN doctor_profiles dp ON a.doctor_id = dp.id
+        JOIN users docUser ON dp.user_id = docUser.id
+        JOIN departments d ON a.department_id = d.id
+        WHERE a.hospital_id = ? OR dp.hospital_id = ?
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        LIMIT 200
+      `).all(req.user.hospital_id, req.user.hospital_id);
+    } else if (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'hospital_admin') {
+      appointments = db.prepare(`
+        SELECT 
+          a.id,
+          a.reference_no,
+          a.appointment_date,
+          a.appointment_time,
+          a.status,
+          a.patient_notes,
+          a.doctor_notes,
+          a.cancellation_reason,
+          a.created_at,
+          p.name as patient_name,
+          p.email as patient_email,
+          p.phone as patient_phone,
+          docUser.name as doctor_name,
+          d.name as department_name,
+          dp.hospital_name
         FROM appointments a
         JOIN users p ON a.patient_id = p.id
         JOIN doctor_profiles dp ON a.doctor_id = dp.id

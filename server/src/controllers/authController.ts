@@ -86,6 +86,7 @@ export function registerDoctor(req: Request, res: Response): void {
       email,
       phone,
       password,
+      hospital_id,
       hospital_name = 'CareSphere Super Specialty Hospital',
       hospital_location = 'Main Campus, Bengaluru',
       registration_number,
@@ -133,47 +134,59 @@ export function registerDoctor(req: Request, res: Response): void {
 
     const passwordHash = bcrypt.hashSync(password, 10);
 
-    const cleanHospName = (hospital_name || 'CareSphere Super Specialty Hospital').trim();
-    const cleanHospLocation = (hospital_location || 'Main Campus, Bengaluru').trim();
-
-    // Check if the hospital already exists (case-insensitive)
-    let hospital = db.prepare('SELECT id, name, location, city FROM hospitals WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(cleanHospName) as any;
+    let cleanHospName = (hospital_name || 'CareSphere Super Specialty Hospital').trim();
+    let cleanHospLocation = (hospital_location || 'Main Campus, Bengaluru').trim();
     let targetHospitalId: number;
 
-    if (hospital) {
-      targetHospitalId = hospital.id;
-    } else {
-      // Automatically register the newly entered hospital
-      const locationParts = cleanHospLocation.split(',').map((s: string) => s.trim());
-      const cleanCity = locationParts.length > 1 ? locationParts[locationParts.length - 1] : (cleanHospLocation || 'Bengaluru');
-      const baseCode = cleanHospName.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'HOSP';
-      const finalCode = `${baseCode}-${Date.now().toString().slice(-4)}`;
+    // 1. If hospital_id is explicitly passed, verify it in database
+    if (hospital_id) {
+      const explicitHosp = db.prepare('SELECT id, name, location, city FROM hospitals WHERE id = ?').get(Number(hospital_id)) as any;
+      if (explicitHosp) {
+        targetHospitalId = explicitHosp.id;
+        cleanHospName = explicitHosp.name;
+        cleanHospLocation = explicitHosp.location || `${explicitHosp.city} Campus`;
+      }
+    }
 
-      const insHosp = db.prepare(`
-        INSERT INTO hospitals (name, code, location, city, emergency_hotline, total_beds, is_active)
-        VALUES (?, ?, ?, ?, '+91-80-CARE-911', 200, 1)
-      `);
-      const hResult = insHosp.run(cleanHospName, finalCode, cleanHospLocation, cleanCity);
-      targetHospitalId = Number(hResult.lastInsertRowid);
+    // 2. If not found by ID, look up by name
+    if (!targetHospitalId!) {
+      let hospital = db.prepare('SELECT id, name, location, city FROM hospitals WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(cleanHospName) as any;
+      if (hospital) {
+        targetHospitalId = hospital.id;
+        cleanHospLocation = hospital.location || cleanHospLocation;
+      } else {
+        // Automatically register the newly entered hospital
+        const locationParts = cleanHospLocation.split(',').map((s: string) => s.trim());
+        const cleanCity = locationParts.length > 1 ? locationParts[locationParts.length - 1] : (cleanHospLocation || 'Bengaluru');
+        const baseCode = cleanHospName.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'HOSP';
+        const finalCode = `${baseCode}-${Date.now().toString().slice(-4)}`;
 
-      // Auto-create default hospital resources so that resource analytics and gauges work
-      const defaultResources = [
-        { type: 'general_beds', total: 200, avail: 75, occ: 125 },
-        { type: 'icu_beds', total: 30, avail: 10, occ: 20 },
-        { type: 'emergency_beds', total: 20, avail: 8, occ: 12 },
-        { type: 'ambulance', total: 6, avail: 4, occ: 2 },
-        { type: 'blood_bank', total: 100, avail: 80, occ: 20 },
-        { type: 'lab_services', total: 1, avail: 1, occ: 0 },
-        { type: 'pharmacy', total: 1, avail: 1, occ: 0 },
-        { type: 'emergency_dept', total: 1, avail: 1, occ: 0 }
-      ];
+        const insHosp = db.prepare(`
+          INSERT INTO hospitals (name, code, location, city, emergency_hotline, total_beds, is_active)
+          VALUES (?, ?, ?, ?, '+91-80-CARE-911', 200, 1)
+        `);
+        const hResult = insHosp.run(cleanHospName, finalCode, cleanHospLocation, cleanCity);
+        targetHospitalId = Number(hResult.lastInsertRowid);
 
-      const resStmt = db.prepare(`
-        INSERT INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status)
-        VALUES (?, ?, ?, ?, ?, 'available')
-      `);
-      for (const r of defaultResources) {
-        resStmt.run(targetHospitalId, r.type, r.total, r.avail, r.occ);
+        // Auto-create default hospital resources
+        const defaultResources = [
+          { type: 'general_beds', total: 200, avail: 75, occ: 125 },
+          { type: 'icu_beds', total: 30, avail: 10, occ: 20 },
+          { type: 'emergency_beds', total: 20, avail: 8, occ: 12 },
+          { type: 'ambulance', total: 6, avail: 4, occ: 2 },
+          { type: 'blood_bank', total: 100, avail: 80, occ: 20 },
+          { type: 'lab_services', total: 1, avail: 1, occ: 0 },
+          { type: 'pharmacy', total: 1, avail: 1, occ: 0 },
+          { type: 'emergency_dept', total: 1, avail: 1, occ: 0 }
+        ];
+
+        const resStmt = db.prepare(`
+          INSERT INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status)
+          VALUES (?, ?, ?, ?, ?, 'available')
+        `);
+        for (const r of defaultResources) {
+          resStmt.run(targetHospitalId, r.type, r.total, r.avail, r.occ);
+        }
       }
     }
 
@@ -215,10 +228,37 @@ export function registerDoctor(req: Request, res: Response): void {
         navigation_instructions
       );
 
-      return { userId, doctorProfileId: Number(docResult.lastInsertRowid) };
+      const doctorProfileId = Number(docResult.lastInsertRowid);
+
+      // Save documents to doctor_documents table
+      const insDoc = db.prepare(`
+        INSERT INTO doctor_documents (doctor_id, document_type, title, file_url)
+        VALUES (?, ?, ?, ?)
+      `);
+      if (council_certificate_url) {
+        insDoc.run(doctorProfileId, 'council_registration', 'State Medical Council Certificate', council_certificate_url);
+      }
+      if (degree_certificate_url) {
+        insDoc.run(doctorProfileId, 'degree_certificate', 'Medical Degree / Specialization Certificate', degree_certificate_url);
+      }
+      if (id_proof_url) {
+        insDoc.run(doctorProfileId, 'identity_proof', 'Government / Photo ID Proof', id_proof_url);
+      }
+
+      // Record in doctor approval history
+      try {
+        db.prepare(`
+          INSERT INTO doctor_approval_history (doctor_id, hospital_id, action, acted_by, acted_by_name, notes)
+          VALUES (?, ?, 'submitted', ?, ?, 'Doctor registration submitted for administrative credential review.')
+        `).run(doctorProfileId, targetHospitalId, userId, name);
+      } catch (hErr) {
+        console.error('Failed to log approval history on registration:', hErr);
+      }
+
+      return { userId, doctorProfileId };
     });
 
-    const { userId } = insertDoctorTransaction();
+    const { userId, doctorProfileId } = insertDoctorTransaction();
 
     logAudit(
       userId,
@@ -226,8 +266,8 @@ export function registerDoctor(req: Request, res: Response): void {
       'doctor',
       'REGISTER_DOCTOR_SUBMITTED',
       'DOCTOR_PROFILES',
-      String(userId),
-      `Doctor application submitted. Reg: ${registration_number}. Awaiting admin verification.`,
+      String(doctorProfileId),
+      `Doctor application submitted for hospital ${cleanHospName} (ID: ${targetHospitalId}). Reg: ${registration_number}. Awaiting admin verification.`,
       req.ip
     );
 
@@ -236,24 +276,27 @@ export function registerDoctor(req: Request, res: Response): void {
       userId,
       'notif.doctor_pending_title',
       'notif.doctor_pending_msg',
-      { name },
+      { name, hospitalName: cleanHospName },
       'info'
     );
 
-    // Notify admins
-    const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all() as { id: number }[];
-    admins.forEach(admin => {
+    // Notify the assigned hospital admin and superadmins
+    const hospAdmins = db.prepare("SELECT id FROM users WHERE role = 'hospital_admin' AND hospital_id = ?").all(targetHospitalId) as { id: number }[];
+    const globalAdmins = db.prepare("SELECT id FROM users WHERE role = 'admin' OR role = 'superadmin'").all() as { id: number }[];
+    const targetAdminIds = Array.from(new Set([...hospAdmins.map(a => a.id), ...globalAdmins.map(a => a.id)]));
+
+    targetAdminIds.forEach(adminId => {
       createNotification(
-        admin.id,
+        adminId,
         'notif.admin_new_doctor_title',
         'notif.admin_new_doctor_msg',
-        { doctorName: name, regNumber: registration_number },
+        { doctorName: name, regNumber: registration_number, hospitalName: cleanHospName },
         'alert'
       );
     });
 
     const token = jwt.sign(
-      { id: userId, name, email, role: 'doctor', preferred_language },
+      { id: userId, name, email, role: 'doctor', preferred_language, hospital_id: targetHospitalId },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -446,11 +489,16 @@ export function login(req: Request, res: Response): void {
     if (user.role === 'doctor') {
       const doc = db.prepare(`
         SELECT id as doctor_id, hospital_id, hospital_name, hospital_location, registration_number, specialization, qualifications,
-               experience_years, consultation_fee, teleconsultation_available, teleconsultation_fee, verification_status, department_id
+               experience_years, consultation_fee, teleconsultation_available, teleconsultation_fee, verification_status,
+               rejection_reason, verification_notes, approved_at, rejected_at, department_id
         FROM doctor_profiles WHERE user_id = ?
       `).get(user.id) as any;
       if (doc) {
-        extraDetails = { doctor: doc, verification_status: doc.verification_status };
+        extraDetails = { 
+          doctor: doc, 
+          verification_status: doc.verification_status,
+          rejection_reason: doc.rejection_reason || doc.verification_notes
+        };
       }
     } else if (user.role === 'patient') {
       const patient = db.prepare(`
@@ -519,7 +567,11 @@ export function getCurrentUser(req: AuthenticatedRequest, res: Response): void {
         LEFT JOIN departments d ON dp.department_id = d.id
         WHERE dp.user_id = ?
       `).get(user.id) as any;
-      extraDetails = { doctor: doc, verification_status: doc?.verification_status };
+      extraDetails = { 
+        doctor: doc, 
+        verification_status: doc?.verification_status,
+        rejection_reason: doc?.rejection_reason || doc?.verification_notes
+      };
     } else if (user.role === 'patient') {
       const patient = db.prepare(`
         SELECT * FROM patient_profiles WHERE user_id = ?

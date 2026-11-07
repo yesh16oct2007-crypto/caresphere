@@ -12,6 +12,14 @@ export interface User {
   hospital_id?: number;
   hospital_name?: string;
   hospital_city?: string;
+  hospital?: {
+    id: number;
+    name: string;
+    code: string;
+    location?: string;
+    city?: string;
+    emergency_hotline?: string;
+  };
   doctor?: DoctorProfile;
   patient?: PatientProfile;
 }
@@ -58,6 +66,11 @@ export interface DoctorProfile {
   verification_status: 'pending' | 'verified' | 'approved' | 'rejected' | 'suspended';
   verification_checklist?: string;
   verification_notes?: string;
+  rejection_reason?: string;
+  approved_by?: number;
+  approved_at?: string;
+  rejected_by?: number;
+  rejected_at?: string;
   verified_at?: string;
   room_number?: string;
   floor?: string;

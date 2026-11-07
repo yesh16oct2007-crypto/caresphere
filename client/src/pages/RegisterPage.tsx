@@ -89,6 +89,7 @@ export const RegisterPage: React.FC = () => {
   const [consent, setConsent] = useState(true);
 
   // Doctor Fields
+  const [doctorHospitalId, setDoctorHospitalId] = useState<number | 'custom'>(1);
   const [hospitalName, setHospitalName] = useState('CareSphere Super Specialty Hospital');
   const [hospitalLocation, setHospitalLocation] = useState('Main Campus, Bengaluru');
   const [regNumber, setRegNumber] = useState('');
@@ -147,7 +148,12 @@ export const RegisterPage: React.FC = () => {
       .then(data => {
         const list = data.hospitals || [];
         setHospitals(list);
-        if (list.length > 0) setSelectedHospitalId(list[0].id);
+        if (list.length > 0) {
+          setSelectedHospitalId(list[0].id);
+          setDoctorHospitalId(list[0].id);
+          setHospitalName(list[0].name);
+          setHospitalLocation(list[0].location || `${list[0].city} Campus`);
+        }
       })
       .catch(err => console.error(err));
   }, []);
@@ -223,6 +229,7 @@ export const RegisterPage: React.FC = () => {
           email,
           phone,
           password,
+          hospital_id: typeof doctorHospitalId === 'number' ? doctorHospitalId : null,
           hospital_name: hospitalName,
           hospital_location: hospitalLocation,
           registration_number: regNumber,
@@ -657,57 +664,95 @@ export const RegisterPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                    Hospital / Institution Name *
+                    Select Target Hospital to Join *
                   </label>
                   <div className="relative">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={hospitalName}
-                      onChange={(e) => setHospitalName(e.target.value)}
-                      placeholder="e.g. Apollo, Fortis, CareSphere, or any hospital name"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
-                    />
+                    <Building2 className="w-4 h-4 text-brand-600 dark:text-brand-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      value={doctorHospitalId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setDoctorHospitalId('custom');
+                          setHospitalName('');
+                          setHospitalLocation('');
+                        } else {
+                          const hId = Number(val);
+                          setDoctorHospitalId(hId);
+                          const chosen = hospitals.find(h => h.id === hId);
+                          if (chosen) {
+                            setHospitalName(chosen.name);
+                            setHospitalLocation(chosen.location || `${chosen.city} Campus`);
+                          }
+                        }
+                      }}
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    >
+                      <option value="">-- Choose Hospital to Join --</option>
+                      {hospitals.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name} — {h.city} ({h.code})
+                        </option>
+                      ))}
+                      <option value="custom">+ Register Under Another / New Hospital Facility</option>
+                    </select>
                   </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Your credentials will be routed strictly to the designated Medical Administration Portal of this hospital for verification.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                    Hospital Location / City / Campus *
-                  </label>
-                  <div className="relative">
-                    <MapPin className="w-3.5 h-3.5 text-teal-600 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={hospitalLocation}
-                      onChange={(e) => setHospitalLocation(e.target.value)}
-                      placeholder="e.g. Bannerghatta Road, Bengaluru or South Delhi Campus"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
-                    />
+                {doctorHospitalId === 'custom' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Hospital / Institution Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={hospitalName}
+                        onChange={(e) => setHospitalName(e.target.value)}
+                        placeholder="e.g. Lilavati Hospital or AIIMS"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Campus Location / City *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={hospitalLocation}
+                        onChange={(e) => setHospitalLocation(e.target.value)}
+                        placeholder="e.g. Bandra West, Mumbai"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Quick Select Hospital Suggestions */}
               <div className="pt-1">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">
-                  Select from accredited partner hospitals or type any medical institution above:
+                  Quick select accredited partner hospitals:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {POPULAR_HOSPITAL_LOCATIONS.map((loc, idx) => {
-                    const isSelected = hospitalName === loc.name && hospitalLocation === loc.location;
+                  {hospitals.slice(0, 6).map((h) => {
+                    const isSelected = doctorHospitalId === h.id;
                     return (
                       <button
-                        key={idx}
+                        key={h.id}
                         type="button"
                         onClick={() => {
-                          setHospitalName(loc.name);
-                          setHospitalLocation(loc.location);
+                          setDoctorHospitalId(h.id);
+                          setHospitalName(h.name);
+                          setHospitalLocation(h.location || `${h.city} Campus`);
                         }}
                         className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all font-medium ${
                           isSelected
@@ -715,7 +760,7 @@ export const RegisterPage: React.FC = () => {
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                         }`}
                       >
-                        {loc.name.replace('Hospital', 'Hosp.').replace('Super Specialty', 'SS')}
+                        {h.name.replace('Hospital', 'Hosp.').replace('Super Specialty', 'SS')} ({h.city})
                       </button>
                     );
                   })}

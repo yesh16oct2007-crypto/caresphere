@@ -233,17 +233,24 @@ export function getDoctorSchedule(req: AuthenticatedRequest, res: Response): voi
 
     const doctorProfile = db.prepare(`
       SELECT 
-        id, verification_status, state_medical_council, hospital_name, hospital_location,
-        room_number, floor, wing, current_presence_status, navigation_instructions
-      FROM doctor_profiles 
-      WHERE user_id = ?
+        dp.id, dp.verification_status, dp.rejection_reason, dp.verification_notes,
+        dp.registration_number, dp.state_medical_council, dp.specialization, dp.qualifications,
+        dp.experience_years, dp.consultation_fee, dp.bio, dp.hospital_name, dp.hospital_location,
+        dp.hospital_id, dp.room_number, dp.floor, dp.wing, dp.current_presence_status,
+        dp.navigation_instructions, dp.council_certificate_url, dp.degree_certificate_url,
+        dp.id_proof_url, dp.document_url, u.created_at as registered_at
+      FROM doctor_profiles dp
+      JOIN users u ON dp.user_id = u.id
+      WHERE dp.user_id = ?
     `).get(req.user.id) as any;
     if (!doctorProfile) {
       res.status(404).json({ error: 'Doctor profile not found.' });
       return;
     }
 
-    const appointments = db.prepare(`
+    const isApproved = ['approved', 'verified'].includes(doctorProfile.verification_status);
+
+    const appointments = isApproved ? db.prepare(`
       SELECT 
         a.id,
         a.reference_no,
@@ -266,19 +273,31 @@ export function getDoctorSchedule(req: AuthenticatedRequest, res: Response): voi
       LEFT JOIN patient_profiles p ON u.id = p.user_id
       WHERE a.doctor_id = ?
       ORDER BY a.appointment_date ASC, a.appointment_time ASC
-    `).all(doctorProfile.id);
+    `).all(doctorProfile.id) : [];
 
-    const availability = db.prepare(`
+    const availability = isApproved ? db.prepare(`
       SELECT DISTINCT day_of_week, start_time, end_time, slot_duration_minutes, is_active
       FROM doctor_availability
       WHERE doctor_id = ?
       ORDER BY day_of_week, start_time
-    `).all(doctorProfile.id);
+    `).all(doctorProfile.id) : [];
 
     res.json({
       doctor_profile_id: doctorProfile.id,
       verification_status: doctorProfile.verification_status,
+      rejection_reason: doctorProfile.rejection_reason || doctorProfile.verification_notes,
+      verification_notes: doctorProfile.verification_notes,
+      is_approved: isApproved,
+      registration_number: doctorProfile.registration_number,
       state_medical_council: doctorProfile.state_medical_council,
+      specialization: doctorProfile.specialization,
+      qualifications: doctorProfile.qualifications,
+      experience_years: doctorProfile.experience_years,
+      registered_at: doctorProfile.registered_at,
+      council_certificate_url: doctorProfile.council_certificate_url,
+      degree_certificate_url: doctorProfile.degree_certificate_url,
+      id_proof_url: doctorProfile.id_proof_url,
+      document_url: doctorProfile.document_url,
       hospital_name: doctorProfile.hospital_name || 'CareSphere Super Specialty Hospital',
       hospital_location: doctorProfile.hospital_location || 'Main Campus, Bengaluru',
       room_number: doctorProfile.room_number,

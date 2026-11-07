@@ -93,6 +93,47 @@ export function initDatabase(): void {
     if (!colNames.has('teleconsultation_fee')) {
       db.exec("ALTER TABLE doctor_profiles ADD COLUMN teleconsultation_fee INTEGER DEFAULT 500");
     }
+    if (!colNames.has('rejection_reason')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN rejection_reason TEXT");
+    }
+    if (!colNames.has('approved_by')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN approved_by INTEGER REFERENCES users(id)");
+    }
+    if (!colNames.has('approved_at')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN approved_at DATETIME");
+    }
+    if (!colNames.has('rejected_by')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN rejected_by INTEGER REFERENCES users(id)");
+    }
+    if (!colNames.has('rejected_at')) {
+      db.exec("ALTER TABLE doctor_profiles ADD COLUMN rejected_at DATETIME");
+    }
+
+    // Auto-create doctor_documents and doctor_approval_history if not present
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS doctor_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+        document_type TEXT NOT NULL CHECK(document_type IN ('council_registration', 'degree_certificate', 'identity_proof', 'experience_certificate', 'other')),
+        title TEXT NOT NULL,
+        file_url TEXT NOT NULL,
+        file_name TEXT,
+        file_size INTEGER,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS doctor_approval_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+        hospital_id INTEGER REFERENCES hospitals(id),
+        action TEXT NOT NULL CHECK(action IN ('submitted', 'approved', 'rejected', 'suspended', 're_submitted')),
+        acted_by INTEGER REFERENCES users(id),
+        acted_by_name TEXT,
+        reason TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     // Auto-migrate users columns and role check if needed
     const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
@@ -278,6 +319,32 @@ export function initDatabase(): void {
       SET hospital_id = (SELECT dp.hospital_id FROM doctor_profiles dp WHERE dp.user_id = users.id)
       WHERE role = 'doctor' AND hospital_id IS NULL AND id IN (SELECT user_id FROM doctor_profiles WHERE hospital_id IS NOT NULL)
     `).run();
+
+    // Ensure separate admin accounts for independent hospitals
+    const defaultHospPass = '$2b$10$5osBoRRSwe4JrdYialJshOC5xogievE.fUo6oOVB2W.HkXyin8VVK'; // Hospital@12345
+    const insAdminUser = db.prepare(`
+      INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id)
+      VALUES (?, ?, ?, ?, 'hospital_admin', ?, ?)
+    `);
+
+    const h1 = (db.prepare("SELECT id FROM hospitals WHERE code = 'CS-BLR-01' OR name LIKE '%Bengaluru%' LIMIT 1").get() as any)?.id || 1;
+    const h2 = (db.prepare("SELECT id FROM hospitals WHERE code = 'CS-CHN-01' OR name LIKE '%Chennai%' LIMIT 1").get() as any)?.id || 2;
+    const h3 = (db.prepare("SELECT id FROM hospitals WHERE code = 'CS-HYD-01' OR name LIKE '%Hyderabad%' LIMIT 1").get() as any)?.id || 3;
+    const hApollo = (db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Apollo%' LIMIT 1").get() as any)?.id;
+
+    insAdminUser.run('Bengaluru Hospital Admin', 'blr.admin@caresphere.health', '+91-9876543291', defaultHospPass, 'en', h1);
+    db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'blr.admin@caresphere.health' AND (hospital_id IS NULL OR hospital_id != ?)").run(h1, h1);
+
+    insAdminUser.run('Chennai Hospital Admin', 'chn.admin@caresphere.health', '+91-9876543292', defaultHospPass, 'ta', h2);
+    db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'chn.admin@caresphere.health' AND (hospital_id IS NULL OR hospital_id != ?)").run(h2, h2);
+
+    insAdminUser.run('Hyderabad Hospital Admin', 'hyd.admin@caresphere.health', '+91-9876543293', defaultHospPass, 'te', h3);
+    db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'hyd.admin@caresphere.health' AND (hospital_id IS NULL OR hospital_id != ?)").run(h3, h3);
+
+    if (hApollo) {
+      insAdminUser.run('Apollo Bannerghatta Admin', 'apollo.admin@partner.caresphere.health', '+91-9876543294', defaultHospPass, 'en', hApollo);
+      db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'apollo.admin@partner.caresphere.health' AND (hospital_id IS NULL OR hospital_id != ?)").run(hApollo, hApollo);
+    }
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

@@ -45,7 +45,9 @@ import {
   X,
   Plus,
   ShieldAlert,
-  ShoppingBag
+  ShoppingBag,
+  Award,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { User, Appointment, AuditLog, EmergencyRequest, LabBooking, PharmacyOrder } from '../types/index.js';
@@ -146,6 +148,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [verifyingDoc, setVerifyingDoc] = useState<any | null>(null);
   const [verifyStatus, setVerifyStatus] = useState<'verified' | 'pending' | 'rejected' | 'suspended'>('verified');
   const [verifyNotes, setVerifyNotes] = useState('');
+  const [viewingProfileDoc, setViewingProfileDoc] = useState<any | null>(null);
+  const [viewingDocsDoc, setViewingDocsDoc] = useState<any | null>(null);
   const [checklist, setChecklist] = useState({
     council_reg_verified: false,
     id_verified: false,
@@ -562,7 +566,7 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const openReviewModal = (doc: any) => {
+  const openReviewModal = (doc: any, overrideStatus?: 'verified' | 'pending' | 'rejected' | 'suspended') => {
     setVerifyingDoc(doc);
     let initialChecklist = {
       council_reg_verified: false,
@@ -572,7 +576,15 @@ export const AdminDashboardPage: React.FC = () => {
       chamber_assigned: false
     };
 
-    if (doc.verification_checklist) {
+    if (overrideStatus === 'verified' || (!overrideStatus && (doc.verification_status === 'verified' || doc.verification_status === 'approved'))) {
+      initialChecklist = {
+        council_reg_verified: true,
+        id_verified: true,
+        degree_verified: true,
+        background_cleared: true,
+        chamber_assigned: true
+      };
+    } else if (doc.verification_checklist) {
       try {
         const parsed = typeof doc.verification_checklist === 'string'
           ? JSON.parse(doc.verification_checklist)
@@ -581,25 +593,21 @@ export const AdminDashboardPage: React.FC = () => {
       } catch (e) {
         // ignore
       }
-    } else if (doc.verification_status === 'verified' || doc.verification_status === 'approved') {
-      initialChecklist = {
-        council_reg_verified: true,
-        id_verified: true,
-        degree_verified: true,
-        background_cleared: true,
-        chamber_assigned: true
-      };
     }
 
     setChecklist(initialChecklist);
     setVerifyStatus(
-      (doc.verification_status === 'approved' ? 'verified' : doc.verification_status) || 'verified'
+      overrideStatus || (doc.verification_status === 'approved' ? 'verified' : doc.verification_status) || 'verified'
     );
-    setVerifyNotes(doc.verification_notes || '');
+    setVerifyNotes(overrideStatus === 'rejected' ? (doc.rejection_reason || '') : (doc.verification_notes || ''));
   };
 
   const handleVerifyDoctorSubmit = async () => {
     if (!verifyingDoc || !token) return;
+    if (verifyStatus === 'rejected' && !verifyNotes.trim()) {
+      alert('Please provide a mandatory rejection reason explaining why the credentials were not approved.');
+      return;
+    }
     setIsVerifying(true);
     try {
       const res = await fetch(apiUrl('/api/admin/verify-doctor'), {
@@ -609,9 +617,10 @@ export const AdminDashboardPage: React.FC = () => {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          doctor_profile_id: verifyingDoc.doctor_profile_id,
+          doctor_profile_id: verifyingDoc.doctor_profile_id || verifyingDoc.id,
           status: verifyStatus,
           notes: verifyNotes,
+          rejection_reason: verifyStatus === 'rejected' ? verifyNotes : undefined,
           checklist
         })
       });
@@ -622,7 +631,7 @@ export const AdminDashboardPage: React.FC = () => {
         await fetchAdminData();
       } else {
         const data = await res.json();
-        alert(data.message || 'Verification update failed.');
+        alert(data.error || data.message || 'Verification update failed.');
       }
     } catch (err) {
       console.error('Verification failed:', err);
@@ -701,17 +710,45 @@ export const AdminDashboardPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
+      {/* Hospital-Branded Portal Header for Hospital Administrators (Requirement 1 & 9) */}
+      {isHospitalAdmin && (
+        <div className="bg-gradient-to-r from-[#123B5D] via-[#144167] to-[#0D9488] rounded-3xl p-6 sm:p-7 text-white shadow-premium border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-teal-200 text-xs font-bold backdrop-blur border border-white/20">
+              <Building2 className="w-3.5 h-3.5 text-teal-300" />
+              <span>Independent Hospital Administration Portal</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {stats?.hospital?.name || user?.hospital?.name || user?.hospital_name || 'Hospital Administration'}
+            </h1>
+            <p className="text-xs sm:text-sm text-teal-100 max-w-3xl leading-relaxed">
+              Campus: <strong>{stats?.hospital?.location || user?.hospital?.location || 'Main Campus'}</strong> • City: <strong>{stats?.hospital?.city || user?.hospital?.city || 'Bengaluru'}</strong> • Code: <span className="font-mono font-bold bg-white/20 px-1.5 py-0.5 rounded">{stats?.hospital?.code || user?.hospital?.code || 'CS-HOSP'}</span> • Emergency: <strong>{stats?.hospital?.emergency_hotline || '+91-80-CARE-911'}</strong>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+            <div className="px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur border border-white/20 text-left sm:text-right">
+              <span className="text-[10px] uppercase font-bold text-teal-200 block">Assigned Admin</span>
+              <span className="text-xs font-bold text-white block">{user?.name}</span>
+              <span className="text-[10px] text-teal-300 block">{user?.email}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Title & Hospital Governance Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <span className="text-xs uppercase tracking-wider font-semibold text-teal-600 dark:text-teal-400">
-            CareSphere Governance & Oversight
+            {isHospitalAdmin ? 'Designated Hospital Governance' : 'CareSphere Central Oversight'}
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-0.5">
-            Hospital Administration Center
+            {isHospitalAdmin ? `${stats?.hospital?.name || user?.hospital?.name || 'Hospital'} Admin Center` : 'Central Hospital Administration'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Hospital-wise analytics, authoritative doctor verification, security audit review, and resource governance.
+            {isHospitalAdmin
+              ? 'Doctor credential approvals, hospital analytics, patient bookings, and department oversight.'
+              : 'Multi-hospital network analytics, authoritative doctor verification, security audit review, and central resource governance.'}
           </p>
         </div>
 
@@ -722,7 +759,7 @@ export const AdminDashboardPage: React.FC = () => {
             <Building2 className="w-4 h-4 text-teal-600" />
             {isHospitalAdmin ? (
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                {user?.hospital_name || 'My Assigned Hospital'}
+                {stats?.hospital?.name || user?.hospital?.name || user?.hospital_name || 'My Assigned Hospital'}
               </span>
             ) : (
               <select
@@ -790,34 +827,40 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Operational Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Operational Statistics Cards (Requirement 5) */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="text-xs text-slate-400 font-medium">Pending Approvals</div>
+          <div className="text-[11px] text-slate-400 font-medium">Pending Approvals</div>
           <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-            {stats?.pending_doctors || pendingDoctors.length || 0}
+            {stats?.pending_doctors !== undefined ? stats.pending_doctors : pendingDoctors.length}
           </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="text-xs text-slate-400 font-medium">Verified Doctors</div>
+          <div className="text-[11px] text-slate-400 font-medium">Approved Doctors</div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-            {stats?.approved_doctors || allDoctors.filter(d => ['verified', 'approved'].includes(d.verification_status)).length || 0}
+            {stats?.approved_doctors !== undefined ? stats.approved_doctors : allDoctors.filter(d => ['verified', 'approved'].includes(d.verification_status)).length}
           </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="text-xs text-slate-400 font-medium">Registered Patients</div>
+          <div className="text-[11px] text-slate-400 font-medium">Rejected Applications</div>
+          <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
+            {stats?.rejected_doctors !== undefined ? stats.rejected_doctors : allDoctors.filter(d => d.verification_status === 'rejected').length}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="text-[11px] text-slate-400 font-medium">Hospital Patients</div>
           <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
             {stats?.total_patients || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="text-xs text-slate-400 font-medium">Active Bookings</div>
+          <div className="text-[11px] text-slate-400 font-medium">Total Appointments</div>
           <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
-            {stats?.active_appointments || 0}
+            {stats?.total_appointments || 0}
           </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="text-xs text-slate-400 font-medium">Today's Visits</div>
+          <div className="text-[11px] text-slate-400 font-medium">Today's Visits</div>
           <div className="text-2xl font-black text-slate-800 dark:text-slate-200 mt-1">
             {stats?.today_appointments || 0}
           </div>
@@ -1702,41 +1745,52 @@ export const AdminDashboardPage: React.FC = () => {
                     className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs space-y-4 hover:border-brand-300 dark:hover:border-brand-700 transition-colors"
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                            {doc.name}
-                          </h3>
-
-                          {/* Verification Status Badge */}
-                          {isVerified && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Verified Specialist</span>
-                            </span>
-                          )}
-                          {isPending && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Pending Verification</span>
-                            </span>
-                          )}
-                          {isSuspended && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                              <Ban className="w-3.5 h-3.5 text-purple-600" />
-                              <span>Suspended</span>
-                            </span>
-                          )}
-                          {isRejected && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                              <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                              <span>Rejected</span>
-                            </span>
+                      <div className="flex items-start gap-3.5">
+                        {/* Profile Photograph / Avatar (Requirement 3) */}
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#123B5D] to-[#0D9488] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs overflow-hidden">
+                          {doc.avatar_url ? (
+                            <img src={doc.avatar_url} alt={doc.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{doc.name?.replace('Dr. ', '').slice(0, 2).toUpperCase() || 'DR'}</span>
                           )}
                         </div>
 
-                        <div className="text-xs text-brand-600 dark:text-brand-400 font-semibold mt-1">
-                          {doc.specialization} • {doc.department_name}
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                              {doc.name}
+                            </h3>
+
+                            {/* Verification Status Badge (Requirement 3) */}
+                            {isVerified && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Approved Specialist</span>
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Pending Approval</span>
+                              </span>
+                            )}
+                            {isSuspended && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                                <Ban className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Suspended</span>
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Application Rejected</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-brand-600 dark:text-brand-400 font-semibold mt-0.5">
+                            {doc.specialization} • {doc.department_name}
+                          </div>
                         </div>
                       </div>
 
@@ -1744,127 +1798,120 @@ export const AdminDashboardPage: React.FC = () => {
                       <div className="flex items-center gap-2 flex-wrap text-xs">
                         <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-teal-600" />
-                          <span>{doc.room_number || 'Room TBD'} {doc.floor ? `(${doc.floor})` : ''}</span>
+                          <span>{doc.room_number || 'Chamber TBD'} {doc.floor ? `(${doc.floor})` : ''}</span>
                         </span>
                         <span className={`px-2.5 py-1 rounded-lg font-medium text-[11px] ${
-                          doc.current_presence_status === 'available'
+                          doc.current_presence_status === 'available' || doc.current_presence_status === 'in_opd'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : doc.current_presence_status === 'in_consultation'
                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : 'bg-slate-100 text-slate-600'
                         }`}>
-                          ● {doc.current_presence_status?.replace('_', ' ') || 'available'}
+                          ● {doc.current_presence_status?.replace('_', ' ') || 'on duty'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Registration & Credentials Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                    {/* Registration & Credentials Details (Requirement 3) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Hospital Affiliation</span>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Selected Hospital</span>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {doc.hospital_name || 'CareSphere Super Specialty Hospital'}
-                          {doc.hospital_location ? ` • ${doc.hospital_location}` : ''}
+                          {doc.hospital_name || doc.hospital_official_name || 'CareSphere Hospital'}
+                        </span>
+                        <span className="text-[11px] text-teal-600 dark:text-teal-400 block">
+                          {doc.hospital_location || doc.hospital_city || 'Main Campus'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Medical Council</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {doc.state_medical_council || 'State Medical Council (TBD)'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Registration Number</span>
-                        <span className="font-mono font-bold text-brand-700 dark:text-brand-400">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Medical Council & Reg No</span>
+                        <span className="font-mono font-bold text-brand-700 dark:text-brand-400 block">
                           {doc.registration_number || 'N/A'}
                         </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact</span>
-                        <span className="text-slate-700 dark:text-slate-300">
-                          {doc.email} {doc.phone ? `• ${doc.phone}` : ''}
+                        <span className="text-[11px] text-slate-500">
+                          {doc.state_medical_council || 'State Medical Council'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Qualifications</span>
-                        <span className="text-slate-700 dark:text-slate-300">{doc.qualifications}</span>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Qualifications & Exp</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium block">{doc.qualifications}</span>
+                        <span className="text-[11px] text-slate-500">{doc.experience_years} Years Experience • ₹{doc.consultation_fee} OPD</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Experience & Fee</span>
-                        <span className="text-slate-700 dark:text-slate-300">
-                          {doc.experience_years} years • ₹{doc.consultation_fee}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Navigation Route</span>
-                        <span className="text-slate-600 dark:text-slate-400 truncate block">
-                          {doc.navigation_instructions || 'Take central elevator to specified floor.'}
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact & Registered On</span>
+                        <span className="text-slate-700 dark:text-slate-300 block truncate">{doc.email}</span>
+                        <span className="text-[11px] text-slate-500 block">
+                          {doc.phone ? `${doc.phone} • ` : ''}{doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recent'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Certificate Documents View */}
-                    <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">
-                        Credentials:
-                      </span>
-                      {doc.council_certificate_url ? (
-                        <a
-                          href={doc.council_certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 font-medium"
+                    {/* Rejection Reason Notice (if rejected) */}
+                    {(doc.rejection_reason || isRejected) && (
+                      <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold">Official Rejection Reason:</span> {doc.rejection_reason || doc.verification_notes || 'Credentials did not satisfy hospital requirements.'}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Bar (Requirement 3: Approve, Reject, View Documents, View Profile) */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setViewingDocsDoc(doc)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Council Certificate</span>
-                          <ExternalLink className="w-3 h-3 ml-0.5 opacity-60" />
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 italic">No council doc</span>
-                      )}
-
-                      {doc.degree_certificate_url ? (
-                        <a
-                          href={doc.degree_certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 font-medium"
+                          <FileText className="w-3.5 h-3.5 text-teal-600" />
+                          <span>View Doctor Documents</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewingProfileDoc(doc)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Degree Certificate</span>
-                          <ExternalLink className="w-3 h-3 ml-0.5 opacity-60" />
-                        </a>
-                      ) : null}
+                          <UserCheck className="w-3.5 h-3.5 text-brand-600" />
+                          <span>View Doctor Profile</span>
+                        </button>
+                      </div>
 
-                      {doc.id_proof_url ? (
-                        <a
-                          href={doc.id_proof_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 font-medium"
+                      <div className="flex items-center gap-2">
+                        {/* Reject Doctor Button */}
+                        {doc.verification_status !== 'rejected' && (
+                          <button
+                            type="button"
+                            onClick={() => openReviewModal(doc, 'rejected')}
+                            className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Reject Doctor</span>
+                          </button>
+                        )}
+
+                        {/* Approve Doctor Button */}
+                        {!isVerified && (
+                          <button
+                            type="button"
+                            onClick={() => openReviewModal(doc, 'verified')}
+                            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Approve Doctor</span>
+                          </button>
+                        )}
+
+                        {/* Full 5-step checklist button */}
+                        <button
+                          type="button"
+                          onClick={() => openReviewModal(doc)}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Govt ID Proof</span>
-                          <ExternalLink className="w-3 h-3 ml-0.5 opacity-60" />
-                        </a>
-                      ) : null}
-
-                      {doc.verification_notes && (
-                        <span className="text-slate-500 italic ml-2">
-                          Note: "{doc.verification_notes}"
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <button
-                        onClick={() => openReviewModal(doc)}
-                        className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
-                      >
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Authoritative Verification Review</span>
-                      </button>
+                          <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                          <span>Governance Review</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -3805,16 +3852,23 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Audit Notes */}
+            {/* Audit Notes / Rejection Reason (Requirement 3 & 7) */}
             <div>
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                4. Administrative Audit Remarks / Justification:
+                {verifyStatus === 'rejected'
+                  ? '4. Mandatory Rejection Reason (Doctor will see this when logging in): *'
+                  : '4. Administrative Audit Remarks / Justification:'}
               </label>
               <textarea
                 rows={2}
                 value={verifyNotes}
+                required={verifyStatus === 'rejected'}
                 onChange={(e) => setVerifyNotes(e.target.value)}
-                placeholder="e.g., Council registration cross-referenced with TNMC registry on Oct 2026. All five authoritative checks passed."
+                placeholder={
+                  verifyStatus === 'rejected'
+                    ? 'e.g., Medical registration number could not be validated against State Medical Council records. Please re-upload active registration.'
+                    : 'e.g., Council registration cross-referenced with TNMC registry on Oct 2026. All five authoritative checks passed.'
+                }
                 className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
             </div>
@@ -3848,6 +3902,239 @@ export const AdminDashboardPage: React.FC = () => {
                   <span>{isVerifying ? 'Updating...' : `Save Decision (${verifyStatus.toUpperCase()})`}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: VIEW DOCTOR DOCUMENTS MODAL (Requirement 3) */}
+      {/* ========================================================================= */}
+      {viewingDocsDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 my-8">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                  Doctor Application Documents
+                </span>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                  Credentials for {viewingDocsDoc.name}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hospital: <strong>{viewingDocsDoc.hospital_name || viewingDocsDoc.hospital_official_name}</strong> • Reg: <span className="font-mono font-bold text-teal-600">{viewingDocsDoc.registration_number}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingDocsDoc(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Council Certificate */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">
+                      State Medical Council Certificate
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Council: {viewingDocsDoc.state_medical_council || 'State Medical Council'}
+                    </span>
+                  </div>
+                </div>
+                {viewingDocsDoc.council_certificate_url ? (
+                  <a
+                    href={viewingDocsDoc.council_certificate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span>View / Inspect</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Not Uploaded</span>
+                )}
+              </div>
+
+              {/* Degree Certificate */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">
+                      Medical Degree / Post-Graduation Certificate
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Degree: {viewingDocsDoc.qualifications}
+                    </span>
+                  </div>
+                </div>
+                {viewingDocsDoc.degree_certificate_url ? (
+                  <a
+                    href={viewingDocsDoc.degree_certificate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span>View / Inspect</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Not Uploaded</span>
+                )}
+              </div>
+
+              {/* Government ID Proof */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">
+                      Government Photo Identity Proof
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Aadhaar / Passport / Medical ID
+                    </span>
+                  </div>
+                </div>
+                {viewingDocsDoc.id_proof_url ? (
+                  <a
+                    href={viewingDocsDoc.id_proof_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span>View / Inspect</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Not Uploaded</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+              <span className="text-[11px] text-slate-400">
+                Documents encrypted & verified on CareSphere Network.
+              </span>
+              <button
+                onClick={() => setViewingDocsDoc(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: VIEW DOCTOR PROFILE MODAL (Requirement 3) */}
+      {/* ========================================================================= */}
+      {viewingProfileDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 my-8">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#123B5D] to-[#0D9488] text-white flex items-center justify-center font-bold text-sm shadow-xs overflow-hidden shrink-0">
+                  {viewingProfileDoc.avatar_url ? (
+                    <img src={viewingProfileDoc.avatar_url} alt={viewingProfileDoc.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{viewingProfileDoc.name?.replace('Dr. ', '').slice(0, 2).toUpperCase() || 'DR'}</span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                    {viewingProfileDoc.name}
+                  </h3>
+                  <p className="text-xs text-teal-600 dark:text-teal-400 font-semibold">
+                    {viewingProfileDoc.specialization} • {viewingProfileDoc.department_name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingProfileDoc(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Assigned Hospital</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                  {viewingProfileDoc.hospital_name || viewingProfileDoc.hospital_official_name}
+                </span>
+                <span className="text-[11px] text-teal-600 dark:text-teal-400 block">{viewingProfileDoc.hospital_location || viewingProfileDoc.hospital_city}</span>
+              </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Registration License</span>
+                <span className="font-mono font-bold text-brand-700 dark:text-brand-400 text-sm">{viewingProfileDoc.registration_number}</span>
+                <span className="text-[11px] text-slate-500 block">{viewingProfileDoc.state_medical_council || 'State Medical Council'}</span>
+              </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Qualifications & Exp</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{viewingProfileDoc.qualifications}</span>
+                <span className="text-[11px] text-slate-500 block">{viewingProfileDoc.experience_years} years clinical experience</span>
+              </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Consultation Fee & OPD</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">₹{viewingProfileDoc.consultation_fee} per consultation</span>
+                <span className="text-[11px] text-slate-500 block">{viewingProfileDoc.room_number || 'Room 101'} • {viewingProfileDoc.floor || '1st Floor'}</span>
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Clinical Biography</span>
+              <p className="text-xs text-slate-700 dark:text-slate-300 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60 leading-relaxed">
+                {viewingProfileDoc.bio || 'Doctor has submitted complete clinical qualifications for review by the hospital administration committee.'}
+              </p>
+            </div>
+
+            {/* Contact */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/60 text-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Contact Information</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{viewingProfileDoc.email}</span>
+                {viewingProfileDoc.phone && <span className="text-slate-500 block">{viewingProfileDoc.phone}</span>}
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full uppercase bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                Status: {viewingProfileDoc.verification_status}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={() => setViewingProfileDoc(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  const doc = viewingProfileDoc;
+                  setViewingProfileDoc(null);
+                  openReviewModal(doc);
+                }}
+                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Open Governance Review</span>
+              </button>
             </div>
           </div>
         </div>

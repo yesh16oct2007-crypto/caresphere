@@ -31,7 +31,9 @@ import {
   Trash2,
   QrCode,
   ShoppingBag,
-  FileCheck
+  FileCheck,
+  LogOut,
+  Phone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import {
@@ -46,7 +48,7 @@ import { apiUrl } from '../services/api.js';
 
 export const DoctorDashboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
 
   // Active top tab
   const [activeTab, setActiveTab] = useState<'schedule' | 'prescriptions' | 'lab_reports' | 'shared_records' | 'followups'>('schedule');
@@ -82,6 +84,16 @@ export const DoctorDashboardPage: React.FC = () => {
   const [verificationStatus, setVerificationStatus] = useState<
     'pending' | 'verified' | 'approved' | 'rejected' | 'suspended'
   >('pending');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [regNumber, setRegNumber] = useState<string>('');
+  const [specialization, setSpecialization] = useState<string>('');
+  const [qualifications, setQualifications] = useState<string>('');
+  const [experienceYears, setExperienceYears] = useState<number>(1);
+  const [registeredAt, setRegisteredAt] = useState<string>('');
+  const [councilCertUrl, setCouncilCertUrl] = useState<string | null>(null);
+  const [degreeCertUrl, setDegreeCertUrl] = useState<string | null>(null);
+  const [idProofUrl, setIdProofUrl] = useState<string | null>(null);
+
   const [hospitalName, setHospitalName] = useState('');
   const [hospitalLocation, setHospitalLocation] = useState('');
   const [stateCouncil, setStateCouncil] = useState('');
@@ -141,6 +153,15 @@ export const DoctorDashboardPage: React.FC = () => {
         const data = await res.json();
         setAppointments(data.appointments || []);
         setVerificationStatus(data.verification_status || 'pending');
+        setRejectionReason(data.rejection_reason || user?.doctor?.rejection_reason || '');
+        setRegNumber(data.registration_number || user?.doctor?.registration_number || '');
+        setSpecialization(data.specialization || user?.doctor?.specialization || '');
+        setQualifications(data.qualifications || user?.doctor?.qualifications || '');
+        setExperienceYears(data.experience_years || user?.doctor?.experience_years || 1);
+        setRegisteredAt(data.registered_at || user?.created_at || '');
+        setCouncilCertUrl(data.council_certificate_url || user?.doctor?.council_certificate_url || null);
+        setDegreeCertUrl(data.degree_certificate_url || user?.doctor?.degree_certificate_url || null);
+        setIdProofUrl(data.id_proof_url || user?.doctor?.id_proof_url || null);
         setHospitalName(
           data.hospital_name || user?.doctor?.hospital_name || 'CareSphere Super Specialty Hospital'
         );
@@ -505,6 +526,213 @@ export const DoctorDashboardPage: React.FC = () => {
         .map((a) => [a.patient_id, { id: a.patient_id!, name: a.patient_name || 'Patient' }])
     ).values()
   );
+
+  // 1. Loading State
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-[#123B5D]/20 border-t-[#0D9488] rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+          Loading medical faculty session...
+        </p>
+      </div>
+    );
+  }
+
+  // 2. Pending Verification Gate Screen (Requirement 8)
+  if (verificationStatus === 'pending') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+        {/* Banner */}
+        <div className="bg-gradient-to-r from-[#123B5D] via-[#144167] to-[#0D9488] rounded-3xl p-6 sm:p-8 text-white shadow-premium border border-white/10 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-teal-200 text-xs font-bold backdrop-blur mb-2 border border-white/20">
+                <Building2 className="w-3.5 h-3.5" />
+                <span>{hospitalName}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Application Under Credential Review
+              </h1>
+              <p className="text-xs sm:text-sm text-teal-100 mt-1 max-w-xl">
+                Welcome Dr. {user?.name}. Your registration has been received and routed to the <strong>{hospitalName}</strong> Medical Administration Committee.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchSchedule()}
+                className="px-4 py-2 rounded-xl bg-white text-[#123B5D] font-bold text-xs flex items-center gap-2 shadow-md hover:bg-teal-50 transition cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-[#0D9488]" />
+                <span>Refresh Status</span>
+              </button>
+              <button
+                onClick={() => logout()}
+                className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition border border-white/20 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stepper tracker */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+            Verification Pipeline Status
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">1. Application Logged</p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400">Credentials recorded</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border-2 border-[#0D9488] flex items-start gap-3 relative">
+              <div className="w-8 h-8 rounded-xl bg-[#0D9488] text-white flex items-center justify-center shrink-0 animate-pulse">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-teal-900 dark:text-teal-200">2. Credential Audit</p>
+                <p className="text-[11px] text-teal-700 dark:text-teal-300 font-semibold">Under Admin Review</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 flex items-start gap-3 opacity-60">
+              <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">3. Chamber Assign</p>
+                <p className="text-[11px] text-slate-500">Awaiting approval</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 flex items-start gap-3 opacity-60">
+              <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">4. Live Practice</p>
+                <p className="text-[11px] text-slate-500">Portal activation</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Doctor Submitted Credentials Summary */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <Award className="w-4 h-4 text-[#0D9488]" />
+            <span>Submitted Medical Qualifications</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Registration / License</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm">{regNumber || 'Registered'}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">{stateCouncil || 'Medical Council'}</span>
+            </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Specialization</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{specialization || 'Clinical Specialist'}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">{qualifications || 'Medical Degree'}</span>
+            </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Selected Hospital</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{hospitalName}</span>
+              <span className="text-[11px] text-teal-600 dark:text-teal-400 block mt-0.5">{hospitalLocation}</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+              <strong>Strict Clinical Security Notice:</strong> In compliance with national healthcare governance regulations, doctor dashboard access, electronic health records (EHR), and prescription privileges remain locked until your assigned hospital administrator at <strong>{hospitalName}</strong> verifies and approves your medical license. Verification typically completes within 12–24 business hours.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Rejected Status Gate Screen (Requirement 8)
+  if (verificationStatus === 'rejected') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+        <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-premium border border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-200 text-xs font-bold border border-rose-400/30 mb-2">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Application Not Approved</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Doctor Credential Review Decision
+              </h1>
+              <p className="text-xs sm:text-sm text-rose-100 mt-1 max-w-xl">
+                The Medical Administration at <strong>{hospitalName}</strong> has reviewed your submitted credentials and was unable to approve your application at this time.
+              </p>
+            </div>
+            <button
+              onClick={() => logout()}
+              className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition border border-white/20 cursor-pointer self-start sm:self-auto"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Reason Card */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border-2 border-rose-200 dark:border-rose-900/60 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <h2 className="text-sm font-bold uppercase tracking-wider">
+              Reason Provided by Hospital Administration
+            </h2>
+          </div>
+
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 leading-relaxed font-medium">
+            "{rejectionReason || 'Application credentials do not meet the hospital verification requirements. Please review your submitted documents and re-apply.'}"
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Institution</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{hospitalName}</span>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Registration Number</span>
+              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{regNumber || 'Logged'}</span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-wrap gap-3">
+            <Link
+              to="/register"
+              onClick={() => logout()}
+              className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition shadow-sm inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Re-Submit Registration with Updated Documents</span>
+            </Link>
+            <button
+              onClick={() => fetchSchedule()}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Check for Status Updates</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">

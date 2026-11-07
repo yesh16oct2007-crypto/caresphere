@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS doctor_profiles (
   verification_notes TEXT,
   verified_at DATETIME,
   verified_by INTEGER REFERENCES users(id),
+  rejection_reason TEXT,
+  approved_by INTEGER REFERENCES users(id),
+  approved_at DATETIME,
+  rejected_by INTEGER REFERENCES users(id),
+  rejected_at DATETIME,
   room_number TEXT DEFAULT 'Chamber 101',
   floor TEXT DEFAULT '1st Floor',
   wing TEXT DEFAULT 'Block A - Clinical Wing',
@@ -95,6 +100,29 @@ CREATE TABLE IF NOT EXISTS doctor_availability (
   slot_duration_minutes INTEGER DEFAULT 30,
   is_active INTEGER DEFAULT 1,
   UNIQUE(doctor_id, day_of_week, start_time, end_time)
+);
+
+CREATE TABLE IF NOT EXISTS doctor_documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+  document_type TEXT NOT NULL CHECK(document_type IN ('council_registration', 'degree_certificate', 'identity_proof', 'experience_certificate', 'other')),
+  title TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  file_name TEXT,
+  file_size INTEGER,
+  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS doctor_approval_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doctor_id INTEGER NOT NULL REFERENCES doctor_profiles(id) ON DELETE CASCADE,
+  hospital_id INTEGER REFERENCES hospitals(id),
+  action TEXT NOT NULL CHECK(action IN ('submitted', 'approved', 'rejected', 'suspended', 're_submitted')),
+  acted_by INTEGER REFERENCES users(id),
+  acted_by_name TEXT,
+  reason TEXT,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS appointments (

@@ -572,10 +572,15 @@ export function seedDatabase() {
   const hospAdminPassword = bcrypt.hashSync('Hospital@12345', 10);
   insertUser.run('Bengaluru Hospital Admin', 'blr.admin@caresphere.health', '+91-9876543291', hospAdminPassword, 'hospital_admin', 'en');
   insertUser.run('Chennai Hospital Admin', 'chn.admin@caresphere.health', '+91-9876543292', hospAdminPassword, 'hospital_admin', 'ta');
+  insertUser.run('Hyderabad Hospital Admin', 'hyd.admin@caresphere.health', '+91-9876543293', hospAdminPassword, 'hospital_admin', 'te');
+  insertUser.run('Apollo Bannerghatta Admin', 'apollo.admin@partner.caresphere.health', '+91-9876543294', hospAdminPassword, 'hospital_admin', 'en');
 
   // Assign hospital_id to administrators
   db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'blr.admin@caresphere.health'").run(hospRows['CS-BLR-01'] || 1);
   db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'chn.admin@caresphere.health'").run(hospRows['CS-CHN-01'] || 2);
+  db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'hyd.admin@caresphere.health'").run(hospRows['CS-HYD-01'] || 3);
+  const apolloHospId = (db.prepare("SELECT id FROM hospitals WHERE name LIKE '%Apollo%' LIMIT 1").get() as any)?.id || (hospRows['CS-BLR-01'] || 1);
+  db.prepare("UPDATE users SET hospital_id = ? WHERE email = 'apollo.admin@partner.caresphere.health'").run(apolloHospId);
 
   // Link existing doctors to hospitals
   db.prepare("UPDATE doctor_profiles SET hospital_id = ?, teleconsultation_available = 1, teleconsultation_fee = 750 WHERE id IN (1, 2, 3)").run(hospRows['CS-BLR-01'] || 1);
