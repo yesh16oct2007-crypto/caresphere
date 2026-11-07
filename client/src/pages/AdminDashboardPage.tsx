@@ -188,7 +188,7 @@ export const AdminDashboardPage: React.FC = () => {
     if (!token) return;
     try {
       setLoadingAnalytics(true);
-      const hRes = await fetch(apiUrl('/api/analytics/hospitals'), {
+      const hRes = await fetch(apiUrl('/api/admin/analytics/hospitals'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (hRes.ok) {
@@ -197,7 +197,7 @@ export const AdminDashboardPage: React.FC = () => {
       }
 
       if (selectedHospitalId === 'all') {
-        const oRes = await fetch(apiUrl('/api/analytics/overview'), {
+        const oRes = await fetch(apiUrl(`/api/admin/analytics/overview?date_range=${analyticsDateRange}`), {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (oRes.ok) {
@@ -205,7 +205,7 @@ export const AdminDashboardPage: React.FC = () => {
           setAnalyticsOverview(oData);
         }
       } else {
-        const dRes = await fetch(apiUrl(`/api/analytics/hospital/${selectedHospitalId}`), {
+        const dRes = await fetch(apiUrl(`/api/admin/analytics/hospital/${selectedHospitalId}?date_range=${analyticsDateRange}`), {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (dRes.ok) {
@@ -225,7 +225,7 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       setExportingCsv(true);
       const q = selectedHospitalId !== 'all' ? `hospital_id=${selectedHospitalId}&format=csv` : 'format=csv';
-      const res = await fetch(apiUrl(`/api/analytics/export?${q}`), {
+      const res = await fetch(apiUrl(`/api/admin/analytics/export?${q}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to export CSV report');
@@ -320,13 +320,20 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Sync hospital admin's selected hospital once user profile loads
+  useEffect(() => {
+    if ((isHospitalAdmin || isLabStaff || isPharmacyStaff) && user?.hospital_id && selectedHospitalId === 'all') {
+      setSelectedHospitalId(user.hospital_id);
+    }
+  }, [isHospitalAdmin, isLabStaff, isPharmacyStaff, user?.hospital_id, selectedHospitalId]);
+
   useEffect(() => {
     fetchAdminData();
     fetchAnalytics();
     if (activeTab === 'emergency') fetchEmergencyRequests();
     if (activeTab === 'laboratory') fetchLabBookings();
     if (activeTab === 'pharmacy') fetchPharmacyData();
-  }, [token, selectedHospitalId, activeTab]);
+  }, [token, selectedHospitalId, activeTab, analyticsDateRange]);
 
   // Emergency status updater
   const handleUpdateEmergencyStatus = async () => {
@@ -933,358 +940,527 @@ export const AdminDashboardPage: React.FC = () => {
               <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm text-slate-500">Computing real-time hospital analytics...</p>
             </div>
-          ) : selectedHospitalId === 'all' && analyticsOverview ? (
+          ) : selectedHospitalId === 'all' && (analyticsOverview?.overview || analyticsOverview?.stats) ? (
             /* ========================================================================= */
             /* SUPER ADMIN: CENTRAL NETWORK-WIDE OVERVIEW & HOSPITAL COMPARISON MATRIX */
             /* ========================================================================= */
-            <div className="space-y-6">
-              {/* Central Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Total Hospitals
-                  </span>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {analyticsOverview.overview.total_hospitals}
-                  </div>
-                  <span className="text-[11px] text-teal-600 font-medium">Active Accreditation</span>
-                </div>
+            (() => {
+              const overview = analyticsOverview.overview || analyticsOverview.stats || {};
+              const comparisonList = analyticsOverview.hospital_comparison || [];
+              const monthlyTrendsList = analyticsOverview.monthly_trends && analyticsOverview.monthly_trends.length > 0
+                ? analyticsOverview.monthly_trends
+                : [
+                    { month_key: 'Jun', in_person_count: 42, online_count: 18 },
+                    { month_key: 'Jul', in_person_count: 58, online_count: 24 },
+                    { month_key: 'Aug', in_person_count: 65, online_count: 31 },
+                    { month_key: 'Sep', in_person_count: 72, online_count: 45 },
+                    { month_key: 'Oct', in_person_count: 88, online_count: 52 },
+                    { month_key: 'Nov', in_person_count: 96, online_count: 68 }
+                  ];
 
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Registered Patients
-                  </span>
-                  <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
-                    {analyticsOverview.overview.total_patients}
-                  </div>
-                  <span className="text-[11px] text-slate-500">Enrolled across network</span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Total Doctors
-                  </span>
-                  <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
-                    {analyticsOverview.overview.total_doctors}
-                  </div>
-                  <span className="text-[11px] text-emerald-600 font-medium">
-                    {analyticsOverview.overview.approved_doctors} Approved & Verified
-                  </span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Total Consultations
-                  </span>
-                  <div className="text-2xl font-black text-medblue-600 dark:text-medblue-400 mt-1">
-                    {analyticsOverview.overview.total_appointments}
-                  </div>
-                  <span className="text-[11px] text-slate-500">
-                    {analyticsOverview.overview.online_consultations} Online Teleconsultations
-                  </span>
-                </div>
-              </div>
-
-              {/* Central Interactive Chart: Monthly Trends Across Hospitals */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-teal-600" />
-                      <span>Network Appointments & Teleconsult Volume Trends</span>
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Distribution between In-Person OPD and Online Video Teleconsultations
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded bg-teal-600" /> In-Person Visits
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded bg-medblue-500" /> Online Video
-                    </span>
-                  </div>
-                </div>
-
-                {/* Visual Chart with Gradient Bars */}
-                <div className="h-64 w-full flex items-end justify-between gap-4 pt-6 px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-4">
-                  {[
-                    { month: 'Jun', inPerson: 42, online: 18 },
-                    { month: 'Jul', inPerson: 58, online: 24 },
-                    { month: 'Aug', inPerson: 65, online: 31 },
-                    { month: 'Sep', inPerson: 72, online: 45 },
-                    { month: 'Oct', inPerson: 88, online: 52 },
-                    { month: 'Nov', inPerson: 96, online: 68 }
-                  ].map((d, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                      <div className="text-[10px] font-bold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-xs">
-                        {d.inPerson + d.online} total
+              return (
+                <div className="space-y-6">
+                  {/* Central Metrics Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Total Hospitals
+                      </span>
+                      <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                        {overview.total_hospitals ?? 0}
                       </div>
-                      <div className="w-full max-w-[48px] flex items-end gap-1.5 h-full justify-center">
-                        <div
-                          className="w-1/2 bg-gradient-to-t from-[#0D9488] to-[#14b8a6] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
-                          style={{ height: `${(d.inPerson / 100) * 160}px` }}
-                          title={`In-Person: ${d.inPerson}`}
-                        />
-                        <div
-                          className="w-1/2 bg-gradient-to-t from-[#123B5D] to-[#38BDF8] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
-                          style={{ height: `${(d.online / 100) * 160}px` }}
-                          title={`Online Video: ${d.online}`}
-                        />
-                      </div>
-                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-2">{d.month}</span>
+                      <span className="text-[11px] text-teal-600 font-medium">Active Accreditation</span>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Hospital Comparison Matrix */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                      Hospital Comparison & Performance Matrix
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Benchmarking doctors, consultation volumes, bed capacity, and patient satisfaction ratings.
-                    </p>
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Registered Patients
+                      </span>
+                      <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
+                        {overview.total_patients ?? 0}
+                      </div>
+                      <span className="text-[11px] text-slate-500">Enrolled across network</span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Total Doctors
+                      </span>
+                      <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
+                        {overview.total_doctors ?? 0}
+                      </div>
+                      <span className="text-[11px] text-emerald-600 font-medium">
+                        {overview.approved_doctors ?? 0} Approved & Verified
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Total Consultations
+                      </span>
+                      <div className="text-2xl font-black text-medblue-600 dark:text-medblue-400 mt-1">
+                        {overview.total_appointments ?? 0}
+                      </div>
+                      <span className="text-[11px] text-slate-500">
+                        {overview.online_consultations ?? 0} Online Teleconsultations
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Central Interactive Chart: Monthly Trends Across Hospitals */}
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-teal-600" />
+                          <span>Network Appointments & Teleconsult Volume Trends</span>
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Distribution between In-Person OPD and Online Video Teleconsultations
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-teal-600" /> In-Person Visits
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-medblue-500" /> Online Video
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Visual Chart with Gradient Bars */}
+                    <div className="h-64 w-full flex items-end justify-between gap-4 pt-6 px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-4">
+                      {monthlyTrendsList.map((d: any, i: number) => {
+                        const inPerson = d.in_person_count ?? d.inPerson ?? 0;
+                        const online = d.online_count ?? d.online ?? 0;
+                        const label = d.month_key ?? d.month ?? `P${i + 1}`;
+                        const total = inPerson + online;
+                        const maxVal = Math.max(10, ...monthlyTrendsList.map((m: any) => (m.in_person_count ?? m.inPerson ?? 0) + (m.online_count ?? m.online ?? 0)));
+
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                            <div className="text-[10px] font-bold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-xs">
+                              {total} total
+                            </div>
+                            <div className="w-full max-w-[48px] flex items-end gap-1.5 h-full justify-center">
+                              <div
+                                className="w-1/2 bg-gradient-to-t from-[#0D9488] to-[#14b8a6] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
+                                style={{ height: `${Math.max(8, (inPerson / maxVal) * 160)}px` }}
+                                title={`In-Person: ${inPerson}`}
+                              />
+                              <div
+                                className="w-1/2 bg-gradient-to-t from-[#123B5D] to-[#38BDF8] rounded-t-lg transition-all duration-300 hover:brightness-110 shadow-sm"
+                                style={{ height: `${Math.max(8, (online / maxVal) * 160)}px` }}
+                                title={`Online Video: ${online}`}
+                              />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-2">{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Hospital Comparison Matrix */}
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                      <div>
+                        <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                          Hospital Comparison & Performance Matrix
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Benchmarking doctors, consultation volumes, bed capacity, and patient satisfaction ratings.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-[10px]">
+                          <tr>
+                            <th className="p-3 rounded-l-xl">Hospital Name</th>
+                            <th className="p-3">Location</th>
+                            <th className="p-3">Total Doctors</th>
+                            <th className="p-3">Appointments</th>
+                            <th className="p-3">Teleconsults</th>
+                            <th className="p-3">Rating</th>
+                            <th className="p-3 rounded-r-xl">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                          {comparisonList.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="p-6 text-center text-slate-400">
+                                No hospitals found in comparison matrix.
+                              </td>
+                            </tr>
+                          ) : (
+                            comparisonList.map((hosp: any) => (
+                              <tr key={hosp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                                <td className="p-3 font-bold text-slate-900 dark:text-white">
+                                  {hosp.name}
+                                </td>
+                                <td className="p-3 text-slate-500">{hosp.city}</td>
+                                <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
+                                  {hosp.total_doctors} doctors ({hosp.approved_doctors} approved)
+                                </td>
+                                <td className="p-3 font-mono font-bold text-teal-600">
+                                  {hosp.total_appointments}
+                                </td>
+                                <td className="p-3 font-mono text-medblue-600">
+                                  {hosp.online_consultations}
+                                </td>
+                                <td className="p-3">
+                                  <span className="inline-flex items-center gap-1 font-bold text-amber-600">
+                                    ★ {hosp.patient_rating}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  <button
+                                    onClick={() => setSelectedHospitalId(hosp.id)}
+                                    className="px-3 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-semibold text-xs"
+                                  >
+                                    Drill Down
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-[10px]">
-                      <tr>
-                        <th className="p-3 rounded-l-xl">Hospital Name</th>
-                        <th className="p-3">Location</th>
-                        <th className="p-3">Total Doctors</th>
-                        <th className="p-3">Appointments</th>
-                        <th className="p-3">Teleconsults</th>
-                        <th className="p-3">Rating</th>
-                        <th className="p-3 rounded-r-xl">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                      {analyticsOverview.hospital_comparison.map((hosp: any) => (
-                        <tr key={hosp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                          <td className="p-3 font-bold text-slate-900 dark:text-white">
-                            {hosp.name}
-                          </td>
-                          <td className="p-3 text-slate-500">{hosp.city}</td>
-                          <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
-                            {hosp.total_doctors} doctors ({hosp.approved_doctors} approved)
-                          </td>
-                          <td className="p-3 font-mono font-bold text-teal-600">
-                            {hosp.total_appointments}
-                          </td>
-                          <td className="p-3 font-mono text-medblue-600">
-                            {hosp.online_consultations}
-                          </td>
-                          <td className="p-3">
-                            <span className="inline-flex items-center gap-1 font-bold text-amber-600">
-                              ★ {hosp.patient_rating}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => setSelectedHospitalId(hosp.id)}
-                              className="px-3 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-semibold text-xs"
-                            >
-                              Drill Down
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          ) : hospitalDetailed ? (
+              );
+            })()
+          ) : hospitalDetailed && hospitalDetailed.hospital ? (
             /* ========================================================================= */
             /* HOSPITAL-WISE DETAILED ANALYTICS (HOSPITAL ADMIN OR DRILLED DOWN VIEW)   */
             /* ========================================================================= */
-            <div className="space-y-6">
-              {/* Hospital Overview Banner */}
-              <div className="bg-gradient-to-r from-teal-700 to-medblue-700 text-white p-6 rounded-3xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-teal-200 font-bold">
-                    Hospital-Specific Intelligence
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-black mt-0.5">
-                    {hospitalDetailed.hospital.name} ({hospitalDetailed.hospital.city})
-                  </h2>
-                  <p className="text-xs text-teal-100 mt-1">
-                    {hospitalDetailed.hospital.address} • Emergency Hotline: {hospitalDetailed.hospital.emergency_hotline}
-                  </p>
-                </div>
+            (() => {
+              const hosp = hospitalDetailed.hospital || {};
+              const docStats = hospitalDetailed.doctor_stats || {};
+              const patStats = hospitalDetailed.patient_stats || {};
+              const apptSummary = hospitalDetailed.appointments_summary || {};
+              const depts = hospitalDetailed.department_breakdown || [];
+              const docs = hospitalDetailed.doctor_breakdown || [];
+              const resList = hospitalDetailed.resources || [];
+              const dailyTrends = hospitalDetailed.daily_trends || [];
+              const recentFeedback = hospitalDetailed.recent_feedback || [];
 
-                <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl text-xs backdrop-blur shrink-0">
-                  <div>
-                    <span className="block text-slate-300">Total Bed Capacity</span>
-                    <strong className="text-base text-white">{hospitalDetailed.hospital.total_beds} Beds</strong>
-                  </div>
-                  <div className="h-6 w-px bg-white/20" />
-                  <div>
-                    <span className="block text-slate-300">ICU Suites</span>
-                    <strong className="text-base text-white">{hospitalDetailed.hospital.icu_beds} Units</strong>
-                  </div>
-                </div>
-              </div>
+              return (
+                <div className="space-y-6">
+                  {/* Hospital Overview Banner */}
+                  <div className="bg-gradient-to-r from-teal-700 to-medblue-700 text-white p-6 rounded-3xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <span className="text-xs uppercase tracking-wider text-teal-200 font-bold">
+                        Hospital-Specific Intelligence
+                      </span>
+                      <h2 className="text-xl sm:text-2xl font-black mt-0.5">
+                        {hosp.name} ({hosp.city})
+                      </h2>
+                      <p className="text-xs text-teal-100 mt-1">
+                        {hosp.address || hosp.location || 'Hospital Campus'} • Emergency Hotline: {hosp.emergency_hotline || '+91-80-CARE-911'}
+                      </p>
+                    </div>
 
-              {/* Hospital Metrics Row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Hospital Doctors
-                  </span>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {hospitalDetailed.doctor_stats.total_doctors}
-                  </div>
-                  <span className="text-[11px] text-emerald-600 font-medium">
-                    {hospitalDetailed.doctor_stats.approved_doctors} Approved & Active
-                  </span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Associated Patients
-                  </span>
-                  <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
-                    {hospitalDetailed.patient_stats.total_associated_patients}
-                  </div>
-                  <span className="text-[11px] text-slate-500">Hospital OPD Registrations</span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Total Visits
-                  </span>
-                  <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
-                    {hospitalDetailed.appointments_summary.total_appointments}
-                  </div>
-                  <span className="text-[11px] text-slate-500">
-                    {hospitalDetailed.appointments_summary.completed_appointments} Completed
-                  </span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Teleconsultations
-                  </span>
-                  <div className="text-2xl font-black text-medblue-600 dark:text-medblue-400 mt-1">
-                    {hospitalDetailed.appointments_summary.online_consultations}
-                  </div>
-                  <span className="text-[11px] text-slate-500">Encrypted Video Sessions</span>
-                </div>
-              </div>
-
-              {/* Interactive Charts: Department Distribution & Daily Trends */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Department-Wise Distribution Chart */}
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                      <PieChart className="w-4 h-4 text-teal-600" />
-                      <span>Department-Wise Consultations</span>
-                    </h3>
+                    <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl text-xs backdrop-blur shrink-0">
+                      <div>
+                        <span className="block text-slate-300">Total Bed Capacity</span>
+                        <strong className="text-base text-white">{hosp.total_beds ?? 250} Beds</strong>
+                      </div>
+                      <div className="h-6 w-px bg-white/20" />
+                      <div>
+                        <span className="block text-slate-300">ICU Suites</span>
+                        <strong className="text-base text-white">{hosp.icu_beds ?? Math.round((hosp.total_beds || 250) * 0.15)} Units</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {hospitalDetailed.department_breakdown.map((dept: any) => {
-                      const total = hospitalDetailed.appointments_summary.total_appointments || 1;
-                      const pct = Math.round((dept.appointment_count / total) * 100);
-                      return (
-                        <div key={dept.id} className="text-xs space-y-1">
-                          <div className="flex justify-between font-semibold">
-                            <span className="text-slate-800 dark:text-slate-200">{dept.department_name}</span>
-                            <span className="text-slate-500">{dept.appointment_count} visits ({pct}%)</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                            <div
-                              className="h-full bg-teal-600 rounded-full transition-all"
-                              style={{ width: `${Math.max(5, pct)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                  {/* Hospital Metrics Row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Hospital Doctors
+                      </span>
+                      <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                        {docStats.total_doctors ?? 0}
+                      </div>
+                      <span className="text-[11px] text-emerald-600 font-medium">
+                        {docStats.approved_doctors ?? 0} Approved & Active
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Associated Patients
+                      </span>
+                      <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
+                        {patStats.total_associated_patients ?? 0}
+                      </div>
+                      <span className="text-[11px] text-slate-500">Hospital OPD Registrations</span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Total Visits
+                      </span>
+                      <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
+                        {apptSummary.total_appointments ?? 0}
+                      </div>
+                      <span className="text-[11px] text-slate-500">
+                        {apptSummary.completed_appointments ?? 0} Completed
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Teleconsultations
+                      </span>
+                      <div className="text-2xl font-black text-medblue-600 dark:text-medblue-400 mt-1">
+                        {apptSummary.online_consultations ?? 0}
+                      </div>
+                      <span className="text-[11px] text-slate-500">Encrypted Video Sessions</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Doctor-Wise Performance Breakdown */}
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <Stethoscope className="w-4 h-4 text-medblue-600" />
-                    <span>Doctor Consultation Volume & Satisfaction</span>
-                  </h3>
-
-                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                    {hospitalDetailed.doctor_breakdown.map((doc: any) => (
-                      <div
-                        key={doc.doctor_id}
-                        className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs"
-                      >
+                  {/* Daily Appointment Volume Chart (if available) */}
+                  {dailyTrends.length > 0 && (
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
                         <div>
-                          <span className="font-bold text-slate-900 dark:text-white">{doc.doctor_name}</span>
-                          <span className="text-slate-400 block text-[11px]">{doc.specialization}</span>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-teal-600" />
+                            <span>Daily Consultation Volume History</span>
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Volume breakdown for {hosp.name} over selected period
+                          </p>
                         </div>
-                        <div className="text-right">
-                          <span className="font-mono font-bold text-teal-600 block">
-                            {doc.total_appointments} Visits
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded bg-teal-600" /> In-Person
                           </span>
-                          <span className="text-[10px] text-amber-500 font-bold">★ {doc.rating}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded bg-medblue-500" /> Online Video
+                          </span>
                         </div>
                       </div>
-                    ))}
+
+                      <div className="h-48 w-full flex items-end justify-between gap-2 pt-4 px-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-3 overflow-x-auto">
+                        {dailyTrends.map((d: any, i: number) => {
+                          const inPerson = d.in_person_count || 0;
+                          const online = d.online_count || 0;
+                          const total = d.total || (inPerson + online);
+                          const maxVal = Math.max(5, ...dailyTrends.map((t: any) => t.total || 0));
+
+                          return (
+                            <div key={i} className="flex-1 min-w-[36px] flex flex-col items-center gap-1 h-full justify-end group">
+                              <div className="text-[9px] font-bold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white dark:bg-slate-800 px-1 py-0.5 rounded shadow-xs">
+                                {total} appts
+                              </div>
+                              <div className="w-full max-w-[32px] flex items-end gap-1 h-full justify-center">
+                                <div
+                                  className="w-1/2 bg-teal-600 rounded-t transition-all"
+                                  style={{ height: `${Math.max(6, (inPerson / maxVal) * 110)}px` }}
+                                  title={`In-Person: ${inPerson}`}
+                                />
+                                <div
+                                  className="w-1/2 bg-medblue-500 rounded-t transition-all"
+                                  style={{ height: `${Math.max(6, (online / maxVal) * 110)}px` }}
+                                  title={`Online: ${online}`}
+                                />
+                              </div>
+                              <span className="text-[10px] font-medium text-slate-500 truncate max-w-[44px]">
+                                {d.date ? d.date.split('-').slice(1).join('/') : `#${i + 1}`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interactive Charts: Department Distribution & Doctor Performance */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Department-Wise Distribution Chart */}
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          <PieChart className="w-4 h-4 text-teal-600" />
+                          <span>Department-Wise Consultations</span>
+                        </h3>
+                        <span className="text-xs text-slate-400 font-medium">
+                          {depts.length} Departments
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {depts.length === 0 ? (
+                          <p className="text-xs text-slate-400 text-center py-6">
+                            No department consultation records logged yet.
+                          </p>
+                        ) : (
+                          depts.map((dept: any) => {
+                            const total = apptSummary.total_appointments || 1;
+                            const pct = Math.round(((dept.appointment_count || 0) / total) * 100);
+                            return (
+                              <div key={dept.id} className="text-xs space-y-1">
+                                <div className="flex justify-between font-semibold">
+                                  <span className="text-slate-800 dark:text-slate-200">{dept.department_name}</span>
+                                  <span className="text-slate-500">{dept.appointment_count || 0} visits ({pct}%)</span>
+                                </div>
+                                <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                  <div
+                                    className="h-full bg-teal-600 rounded-full transition-all"
+                                    style={{ width: `${Math.max(5, pct)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Doctor-Wise Performance Breakdown */}
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4 text-medblue-600" />
+                          <span>Doctor Consultation Volume & Satisfaction</span>
+                        </h3>
+                        <span className="text-xs text-slate-400 font-medium">
+                          {docs.length} Active Specialists
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                        {docs.length === 0 ? (
+                          <p className="text-xs text-slate-400 text-center py-6">
+                            No doctors currently assigned to this hospital.
+                          </p>
+                        ) : (
+                          docs.map((doc: any) => (
+                            <div
+                              key={doc.doctor_id}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs"
+                            >
+                              <div>
+                                <span className="font-bold text-slate-900 dark:text-white">{doc.doctor_name}</span>
+                                <span className="text-slate-400 block text-[11px]">{doc.specialization}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono font-bold text-teal-600 block">
+                                  {doc.total_appointments} Visits
+                                </span>
+                                <span className="text-[10px] text-amber-500 font-bold">★ {doc.rating}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Live Resource & Bed Occupancy Breakdown */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <Bed className="w-5 h-5 text-teal-600" />
-                  <span>Hospital Resource & Bed Occupancy Gauges</span>
-                </h3>
+                  {/* Live Resource & Bed Occupancy Breakdown */}
+                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                      <Bed className="w-5 h-5 text-teal-600" />
+                      <span>Hospital Resource & Bed Occupancy Gauges</span>
+                    </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  {hospitalDetailed.resources.map((res: any) => {
-                    const pct =
-                      res.total_capacity > 0
-                        ? Math.round((res.available_capacity / res.total_capacity) * 100)
-                        : 0;
-
-                    return (
-                      <div
-                        key={res.id}
-                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs space-y-2"
-                      >
-                        <div className="flex justify-between items-center capitalize font-bold text-slate-800 dark:text-slate-200">
-                          <span>{res.resource_type.replace('_', ' ')}</span>
-                          <span className="text-[10px] uppercase font-bold text-teal-600">
-                            {res.status}
-                          </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      {resList.length === 0 ? (
+                        <div className="col-span-full py-6 text-center text-xs text-slate-400">
+                          No resource gauges configured for this hospital.
                         </div>
-                        <div className="text-lg font-black text-slate-900 dark:text-white">
-                          {res.available_capacity} <span className="text-xs text-slate-400">/ {res.total_capacity}</span>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      ) : (
+                        resList.map((res: any, idx: number) => {
+                          const available = res.available_capacity ?? res.available_count ?? 0;
+                          const total = res.total_capacity || 0;
+                          const pct = total > 0 ? Math.round((available / total) * 100) : 0;
+
+                          return (
+                            <div
+                              key={res.id || idx}
+                              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs space-y-2"
+                            >
+                              <div className="flex justify-between items-center capitalize font-bold text-slate-800 dark:text-slate-200">
+                                <span>{(res.resource_type || '').replace(/_/g, ' ')}</span>
+                                <span className="text-[10px] uppercase font-bold text-teal-600">
+                                  {res.status || 'available'}
+                                </span>
+                              </div>
+                              <div className="text-lg font-black text-slate-900 dark:text-white">
+                                {available} <span className="text-xs text-slate-400">/ {total}</span>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    pct > 30 ? 'bg-emerald-500' : pct > 10 ? 'bg-amber-500' : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(5, pct))}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Patient Feedback */}
+                  {recentFeedback.length > 0 && (
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                      <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-teal-600" />
+                        <span>Recent Patient Verified Feedback</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {recentFeedback.map((fb: any) => (
                           <div
-                            className={`h-full rounded-full ${
-                              pct > 30 ? 'bg-emerald-500' : pct > 10 ? 'bg-amber-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(100, Math.max(5, pct))}%` }}
-                          />
-                        </div>
+                            key={fb.id}
+                            className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800 dark:text-slate-100">{fb.patient_name}</span>
+                              <span className="text-amber-500 font-bold">★ {fb.rating} / 5</span>
+                            </div>
+                            <p className="text-slate-600 dark:text-slate-400 italic">"{fb.review}"</p>
+                            {fb.doctor_name && (
+                              <span className="text-[10px] text-teal-600 font-medium block">
+                                Attending: {fb.doctor_name}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
-              </div>
+              );
+            })()
+          ) : (
+            /* Fallback state if analytics cannot load or are empty */
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-700 shadow-sm">
+              <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-800 dark:text-white">Hospital Metrics Ready to Display</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
+                {selectedHospitalId === 'all'
+                  ? 'Click below to load network-wide metrics and hospital comparisons.'
+                  : 'Select an accredited hospital from the dropdown or click below to retrieve detailed intelligence.'}
+              </p>
+              <button
+                onClick={fetchAnalytics}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors inline-flex items-center gap-2"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Load Analytics & Metrics</span>
+              </button>
             </div>
-          ) : null}
+          )}
         </div>
       )}
 

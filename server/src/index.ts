@@ -323,6 +323,12 @@ app.get('/api/admin/analytics/hospitals', authenticateToken, requireRole(['admin
 app.get('/api/admin/analytics/hospital/:hospitalId', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getHospitalDetailedAnalytics);
 app.get('/api/admin/analytics/export', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), exportAnalyticsReport);
 
+// Aliases for /api/analytics/...
+app.get('/api/analytics/overview', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getAnalyticsOverview);
+app.get('/api/analytics/hospitals', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getAdminHospitals);
+app.get('/api/analytics/hospital/:hospitalId', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), getHospitalDetailedAnalytics);
+app.get('/api/analytics/export', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), exportAnalyticsReport);
+
 // ----------------- 4. AI MEDICAL REPORT EXPLAINER -----------------
 app.post('/api/ai/explain-report', authenticateToken, uploadReport.single('file'), explainMedicalReport);
 app.get('/api/ai/report-history', authenticateToken, getReportExplainerHistory);
