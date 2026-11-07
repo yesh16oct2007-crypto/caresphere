@@ -27,12 +27,15 @@ import { Department } from '../types/index.js';
 import { apiUrl } from '../services/api.js';
 
 export const POPULAR_HOSPITAL_LOCATIONS = [
-  { name: 'CareSphere Super Specialty Hospital', location: 'Main Campus, Bengaluru' },
-  { name: 'CareSphere Multi-Specialty Hospital', location: 'Greams Road Campus, Chennai' },
-  { name: 'CareSphere Premier Institute of Health', location: 'HITEC City Campus, Hyderabad' },
-  { name: 'CareSphere Central Hospital', location: 'Saket Medical Enclave, New Delhi' },
-  { name: 'CareSphere Advanced Care Pavilion', location: 'Bandra West, Mumbai' },
-  { name: 'CareSphere City General Hospital', location: 'Whitefield Campus, Bengaluru' }
+  { name: 'CareSphere Super Specialty Hospital', location: 'Central Campus, Outer Ring Road, Bellandur, Bengaluru' },
+  { name: 'CareSphere Multi-Specialty Hospital', location: 'Greams Road Campus, Thousand Lights, Chennai' },
+  { name: 'CareSphere Advanced Healthcare Center', location: 'Hitec City Medical Enclave, Madhapur, Hyderabad' },
+  { name: 'Apollo Hospitals - Bannerghatta', location: 'Bannerghatta Main Road, Opposite IIMB, Bengaluru' },
+  { name: 'Fortis Hospital - Cunningham Road', location: '14, Cunningham Road, Vasanth Nagar, Bengaluru' },
+  { name: 'Manipal Hospital - Old Airport Road', location: '98, HAL Old Airport Road, Kodihalli, Bengaluru' },
+  { name: 'Max Super Specialty Hospital - Saket', location: '1, 2, Press Enclave Marg, Saket, New Delhi' },
+  { name: 'Narayana Multispeciality Hospital - Whitefield', location: '3 & 4, ITPL Main Road, Whitefield, Bengaluru' },
+  { name: 'AIIMS - All India Institute of Medical Sciences', location: 'Sri Aurobindo Marg, Ansari Nagar, New Delhi' }
 ];
 
 export const STATE_MEDICAL_COUNCILS = [
@@ -666,7 +669,7 @@ export const RegisterPage: React.FC = () => {
                       required
                       value={hospitalName}
                       onChange={(e) => setHospitalName(e.target.value)}
-                      placeholder="e.g. CareSphere Super Specialty Hospital"
+                      placeholder="e.g. Apollo, Fortis, CareSphere, or any hospital name"
                       className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
                     />
                   </div>
@@ -683,7 +686,7 @@ export const RegisterPage: React.FC = () => {
                       required
                       value={hospitalLocation}
                       onChange={(e) => setHospitalLocation(e.target.value)}
-                      placeholder="e.g. Main Campus, Bengaluru"
+                      placeholder="e.g. Bannerghatta Road, Bengaluru or South Delhi Campus"
                       className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium"
                     />
                   </div>
@@ -693,7 +696,7 @@ export const RegisterPage: React.FC = () => {
               {/* Quick Select Hospital Suggestions */}
               <div className="pt-1">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">
-                  Select predefined CareSphere hospital network campus:
+                  Select from accredited partner hospitals or type any medical institution above:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {POPULAR_HOSPITAL_LOCATIONS.map((loc, idx) => {
@@ -712,7 +715,7 @@ export const RegisterPage: React.FC = () => {
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                         }`}
                       >
-                        {loc.location}
+                        {loc.name.replace('Hospital', 'Hosp.').replace('Super Specialty', 'SS')}
                       </button>
                     );
                   })}

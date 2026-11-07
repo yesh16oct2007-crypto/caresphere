@@ -271,6 +271,13 @@ export function initDatabase(): void {
         insDp.run(u8Id, narayanaRow.id);
       }
     }
+
+    // Sync all doctor users with their doctor_profiles hospital_id
+    db.prepare(`
+      UPDATE users
+      SET hospital_id = (SELECT dp.hospital_id FROM doctor_profiles dp WHERE dp.user_id = users.id)
+      WHERE role = 'doctor' AND hospital_id IS NULL AND id IN (SELECT user_id FROM doctor_profiles WHERE hospital_id IS NOT NULL)
+    `).run();
   } catch (migErr) {
     console.error('Migration note:', migErr);
   }

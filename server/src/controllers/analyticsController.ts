@@ -12,6 +12,11 @@ export function getAdminHospitals(req: AuthenticatedRequest, res: Response): voi
 
     let query = `
       SELECT h.*,
+             CASE 
+               WHEN LOWER(h.name) LIKE '%caresphere%' THEN 'CareSphere Network'
+               WHEN LOWER(h.name) LIKE '%apollo%' OR LOWER(h.name) LIKE '%fortis%' OR LOWER(h.name) LIKE '%manipal%' OR LOWER(h.name) LIKE '%max%' OR LOWER(h.name) LIKE '%narayana%' THEN 'Partner Hospital Chains'
+               ELSE 'Affiliated & Independent Hospitals'
+             END as network_category,
              (SELECT COUNT(*) FROM doctor_profiles WHERE hospital_id = h.id AND verification_status IN ('verified', 'approved')) as active_doctors,
              (SELECT COUNT(*) FROM appointments WHERE hospital_id = h.id) as total_appointments,
              (SELECT AVG(rating) FROM patient_feedback WHERE hospital_id = h.id) as avg_rating
@@ -77,6 +82,11 @@ export function getAnalyticsOverview(req: AuthenticatedRequest, res: Response): 
     // Hospital Comparison Matrix (Super Admin only, or single hospital for hospital admin)
     const comparisonQuery = `
       SELECT h.id, h.name, h.code, h.city, h.total_beds,
+             CASE 
+               WHEN LOWER(h.name) LIKE '%caresphere%' THEN 'CareSphere Network'
+               WHEN LOWER(h.name) LIKE '%apollo%' OR LOWER(h.name) LIKE '%fortis%' OR LOWER(h.name) LIKE '%manipal%' OR LOWER(h.name) LIKE '%max%' OR LOWER(h.name) LIKE '%narayana%' THEN 'Partner Hospital Chains'
+               ELSE 'Affiliated & Independent Hospitals'
+             END as network_category,
              (SELECT COUNT(*) FROM doctor_profiles WHERE hospital_id = h.id) as total_doctors,
              (SELECT COUNT(*) FROM doctor_profiles WHERE hospital_id = h.id AND verification_status IN ('verified', 'approved')) as approved_doctors,
              (SELECT COUNT(*) FROM appointments WHERE hospital_id = h.id) as total_appointments,
@@ -87,11 +97,16 @@ export function getAnalyticsOverview(req: AuthenticatedRequest, res: Response): 
       FROM hospitals h
       WHERE h.is_active = 1
       ${isHospitalAdmin ? 'AND h.id = ?' : ''}
-      ORDER BY total_appointments DESC
+      ORDER BY total_appointments DESC, total_doctors DESC
     `;
     const hospitalComparison = isHospitalAdmin 
       ? db.prepare(comparisonQuery).all(req.user.hospital_id)
       : db.prepare(comparisonQuery).all();
+
+    // Category breakdown counts
+    const caresphereCount = (db.prepare("SELECT COUNT(*) as count FROM hospitals WHERE is_active = 1 AND LOWER(name) LIKE '%caresphere%'").get() as any)?.count || 0;
+    const partnerCount = (db.prepare("SELECT COUNT(*) as count FROM hospitals WHERE is_active = 1 AND (LOWER(name) LIKE '%apollo%' OR LOWER(name) LIKE '%fortis%' OR LOWER(name) LIKE '%manipal%' OR LOWER(name) LIKE '%max%' OR LOWER(name) LIKE '%narayana%')").get() as any)?.count || 0;
+    const affiliatedCount = (db.prepare("SELECT COUNT(*) as count FROM hospitals WHERE is_active = 1 AND NOT (LOWER(name) LIKE '%caresphere%' OR LOWER(name) LIKE '%apollo%' OR LOWER(name) LIKE '%fortis%' OR LOWER(name) LIKE '%manipal%' OR LOWER(name) LIKE '%max%' OR LOWER(name) LIKE '%narayana%')").get() as any)?.count || 0;
 
     // Monthly Appointment Trends
     const monthlyTrends = db.prepare(`
@@ -109,6 +124,9 @@ export function getAnalyticsOverview(req: AuthenticatedRequest, res: Response): 
 
     const statsObj = {
       total_hospitals: totalHospitals.count,
+      caresphere_hospitals: caresphereCount,
+      partner_hospitals: partnerCount,
+      affiliated_hospitals: affiliatedCount,
       total_patients: totalPatients.count,
       total_doctors: docStats.total_doctors || 0,
       approved_doctors: docStats.approved_doctors || 0,
@@ -270,6 +288,13 @@ export function getHospitalDetailedAnalytics(req: AuthenticatedRequest, res: Res
       LIMIT 5
     `).all(requestedHospitalId);
 
+    const hospNameLower = (hospital.name || '').toLowerCase();
+    const networkCategory = hospNameLower.includes('caresphere')
+      ? 'CareSphere Network'
+      : (['apollo', 'fortis', 'manipal', 'max', 'narayana'].some(n => hospNameLower.includes(n))
+          ? 'Partner Hospital Chains'
+          : 'Affiliated & Independent Hospitals');
+
     res.json({
       hospital: {
         id: hospital.id,
@@ -279,6 +304,7 @@ export function getHospitalDetailedAnalytics(req: AuthenticatedRequest, res: Res
         city: hospital.city,
         state: hospital.state,
         address: hospital.address || hospital.location,
+        network_category: networkCategory,
         total_beds: hospital.total_beds || 250,
         icu_beds: hospital.icu_beds || Math.round((hospital.total_beds || 250) * 0.15),
         rating: hospital.rating || 4.8,

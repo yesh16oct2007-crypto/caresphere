@@ -84,6 +84,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsDateRange, setAnalyticsDateRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [analyticsDeptFilter, setAnalyticsDeptFilter] = useState('all');
+  const [hospitalCategoryFilter, setHospitalCategoryFilter] = useState<'all' | 'caresphere' | 'partner' | 'affiliated'>('all');
   const [exportingCsv, setExportingCsv] = useState(false);
 
   // ---------------- FEATURE 1: EMERGENCY SOS QUEUE STATE ----------------
@@ -731,12 +732,34 @@ export const AdminDashboardPage: React.FC = () => {
                 }
                 className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
               >
-                <option value="all">All Hospitals (Central Super Admin)</option>
-                {adminHospitals.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name} ({h.city})
-                  </option>
-                ))}
+                <option value="all">All Hospitals & Medical Centers (Central View)</option>
+                <optgroup label="CareSphere Flagship Network">
+                  {adminHospitals
+                    .filter((h) => (h.network_category === 'CareSphere Network' || h.name.toLowerCase().includes('caresphere')))
+                    .map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name} ({h.city})
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Partner Hospital Chains (Apollo, Fortis, Manipal, Max, Narayana)">
+                  {adminHospitals
+                    .filter((h) => h.network_category === 'Partner Hospital Chains' || ['apollo', 'fortis', 'manipal', 'max', 'narayana'].some(k => h.name.toLowerCase().includes(k)))
+                    .map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name} ({h.city})
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Affiliated & Doctor-Registered Hospitals">
+                  {adminHospitals
+                    .filter((h) => !h.name.toLowerCase().includes('caresphere') && !['apollo', 'fortis', 'manipal', 'max', 'narayana'].some(k => h.name.toLowerCase().includes(k)))
+                    .map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name} ({h.city})
+                      </option>
+                    ))}
+                </optgroup>
               </select>
             )}
           </div>
@@ -928,9 +951,9 @@ export const AdminDashboardPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 font-medium">
               {selectedHospitalId === 'all'
-                ? 'Displaying Network-Wide Statistics across 3 Partner Hospitals'
+                ? `Displaying Network-Wide Statistics across ${adminHospitals.length || 8} Multi-Hospital Healthcare Systems & Clinics`
                 : `Scoped to: ${adminHospitals.find((h) => h.id === selectedHospitalId)?.name || 'Selected Hospital'}`}
             </div>
           </div>
@@ -942,7 +965,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           ) : selectedHospitalId === 'all' && (analyticsOverview?.overview || analyticsOverview?.stats) ? (
             /* ========================================================================= */
-            /* SUPER ADMIN: CENTRAL NETWORK-WIDE OVERVIEW & HOSPITAL COMPARISON MATRIX */
+            /* SUPER ADMIN: CENTRAL NETWORK-WIDE OVERVIEW & SEPARATE HOSPITAL SECTIONS   */
             /* ========================================================================= */
             (() => {
               const overview = analyticsOverview.overview || analyticsOverview.stats || {};
@@ -958,6 +981,49 @@ export const AdminDashboardPage: React.FC = () => {
                     { month_key: 'Nov', in_person_count: 96, online_count: 68 }
                   ];
 
+              // Categorize hospitals into separate sections
+              const caresphereList = comparisonList.filter((h: any) =>
+                h.network_category === 'CareSphere Network' || (h.name && h.name.toLowerCase().includes('caresphere'))
+              );
+              const partnerList = comparisonList.filter((h: any) =>
+                h.network_category === 'Partner Hospital Chains' ||
+                (['apollo', 'fortis', 'manipal', 'max', 'narayana'].some((k: string) => (h.name || '').toLowerCase().includes(k)))
+              );
+              const affiliatedList = comparisonList.filter((h: any) =>
+                !caresphereList.some((c: any) => c.id === h.id) &&
+                !partnerList.some((p: any) => p.id === h.id)
+              );
+
+              const sectionsToRender = [
+                {
+                  id: 'caresphere',
+                  title: 'CareSphere Health System Network',
+                  subtitle: 'Flagship multi-specialty healthcare centers with integrated digital ICU & surgical suites',
+                  badge: 'CareSphere Flagship Network',
+                  badgeColor: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+                  icon: Building2,
+                  list: caresphereList
+                },
+                {
+                  id: 'partner',
+                  title: 'National Partner Hospital Chains (Apollo, Fortis, Manipal, Max, Narayana)',
+                  subtitle: 'Accredited multi-chain medical institutions supporting joint teleconsultations & specialized patient referrals',
+                  badge: 'Accredited Partner Chains',
+                  badgeColor: 'bg-medblue-50 dark:bg-medblue-950/60 text-medblue-700 dark:text-medblue-300 border-medblue-200 dark:border-medblue-800',
+                  icon: Building2,
+                  list: partnerList
+                },
+                {
+                  id: 'affiliated',
+                  title: 'Affiliated & Physician-Registered Hospitals',
+                  subtitle: 'Independent hospitals, clinics, and community medical institutions registered by onboarding doctors',
+                  badge: 'Physician-Registered Facilities',
+                  badgeColor: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+                  icon: Stethoscope,
+                  list: affiliatedList
+                }
+              ].filter((sec) => hospitalCategoryFilter === 'all' || hospitalCategoryFilter === sec.id);
+
               return (
                 <div className="space-y-6">
                   {/* Central Metrics Grid */}
@@ -967,9 +1033,11 @@ export const AdminDashboardPage: React.FC = () => {
                         Total Hospitals
                       </span>
                       <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                        {overview.total_hospitals ?? 0}
+                        {overview.total_hospitals ?? comparisonList.length}
                       </div>
-                      <span className="text-[11px] text-teal-600 font-medium">Active Accreditation</span>
+                      <span className="text-[11px] text-teal-600 font-medium block truncate">
+                        {caresphereList.length} CareSphere • {partnerList.length} Partner • {affiliatedList.length} Registered
+                      </span>
                     </div>
 
                     <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -979,7 +1047,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mt-1">
                         {overview.total_patients ?? 0}
                       </div>
-                      <span className="text-[11px] text-slate-500">Enrolled across network</span>
+                      <span className="text-[11px] text-slate-500">Enrolled across all institutions</span>
                     </div>
 
                     <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -1013,10 +1081,10 @@ export const AdminDashboardPage: React.FC = () => {
                       <div>
                         <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                           <TrendingUp className="w-5 h-5 text-teal-600" />
-                          <span>Network Appointments & Teleconsult Volume Trends</span>
+                          <span>Cross-Network Appointments & Teleconsult Volume Trends</span>
                         </h3>
                         <p className="text-xs text-slate-500">
-                          Distribution between In-Person OPD and Online Video Teleconsultations
+                          Unified distribution across CareSphere, Partner Chains, and Registered Healthcare Centers
                         </p>
                       </div>
                       <div className="flex items-center gap-4 text-xs">
@@ -1062,74 +1130,134 @@ export const AdminDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Hospital Comparison Matrix */}
-                  <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-                      <div>
-                        <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                          Hospital Comparison & Performance Matrix
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          Benchmarking doctors, consultation volumes, bed capacity, and patient satisfaction ratings.
-                        </p>
-                      </div>
+                  {/* Section Filter Pills */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                    <div>
+                      <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                        Hospital Networks & Institutional Breakdown
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Separate operational intelligence sections for CareSphere campuses, partner hospital chains, and doctor-registered facilities.
+                      </p>
                     </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-[10px]">
-                          <tr>
-                            <th className="p-3 rounded-l-xl">Hospital Name</th>
-                            <th className="p-3">Location</th>
-                            <th className="p-3">Total Doctors</th>
-                            <th className="p-3">Appointments</th>
-                            <th className="p-3">Teleconsults</th>
-                            <th className="p-3">Rating</th>
-                            <th className="p-3 rounded-r-xl">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                          {comparisonList.length === 0 ? (
-                            <tr>
-                              <td colSpan={7} className="p-6 text-center text-slate-400">
-                                No hospitals found in comparison matrix.
-                              </td>
-                            </tr>
-                          ) : (
-                            comparisonList.map((hosp: any) => (
-                              <tr key={hosp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                                <td className="p-3 font-bold text-slate-900 dark:text-white">
-                                  {hosp.name}
-                                </td>
-                                <td className="p-3 text-slate-500">{hosp.city}</td>
-                                <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
-                                  {hosp.total_doctors} doctors ({hosp.approved_doctors} approved)
-                                </td>
-                                <td className="p-3 font-mono font-bold text-teal-600">
-                                  {hosp.total_appointments}
-                                </td>
-                                <td className="p-3 font-mono text-medblue-600">
-                                  {hosp.online_consultations}
-                                </td>
-                                <td className="p-3">
-                                  <span className="inline-flex items-center gap-1 font-bold text-amber-600">
-                                    ★ {hosp.patient_rating}
-                                  </span>
-                                </td>
-                                <td className="p-3">
-                                  <button
-                                    onClick={() => setSelectedHospitalId(hosp.id)}
-                                    className="px-3 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-semibold text-xs"
-                                  >
-                                    Drill Down
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        { id: 'all', label: `All Facilities (${comparisonList.length})` },
+                        { id: 'caresphere', label: `CareSphere Network (${caresphereList.length})` },
+                        { id: 'partner', label: `Partner Chains (${partnerList.length})` },
+                        { id: 'affiliated', label: `Registered & Affiliated (${affiliatedList.length})` }
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setHospitalCategoryFilter(cat.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                            hospitalCategoryFilter === cat.id
+                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+
+                  {/* SEPARATE SECTIONS FOR DIFFERENT HOSPITALS */}
+                  <div className="space-y-6">
+                    {sectionsToRender.map((section) => {
+                      const IconComp = section.icon;
+                      return (
+                        <div
+                          key={section.id}
+                          className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-2xl bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 border border-teal-200 dark:border-teal-800">
+                                <IconComp className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                                  <span>{section.title}</span>
+                                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${section.badgeColor}`}>
+                                    {section.list.length} Facilities
+                                  </span>
+                                </h4>
+                                <p className="text-xs text-slate-500 mt-0.5">{section.subtitle}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-[10px]">
+                                <tr>
+                                  <th className="p-3 rounded-l-xl">Hospital Facility</th>
+                                  <th className="p-3">Location & City</th>
+                                  <th className="p-3">Active Doctors</th>
+                                  <th className="p-3">Total Visits</th>
+                                  <th className="p-3">Teleconsults</th>
+                                  <th className="p-3">Bed Capacity</th>
+                                  <th className="p-3">Rating</th>
+                                  <th className="p-3 rounded-r-xl">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                {section.list.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={8} className="p-6 text-center text-slate-400">
+                                      {section.id === 'affiliated'
+                                        ? 'No physician-registered facilities yet. When a doctor enters a new hospital during registration, it will automatically populate here.'
+                                        : 'No hospitals listed under this network section.'}
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  section.list.map((hosp: any) => (
+                                    <tr key={hosp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                                      <td className="p-3 font-bold text-slate-900 dark:text-white">
+                                        <div className="flex items-center gap-2">
+                                          <span>{hosp.name}</span>
+                                          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500">
+                                            {hosp.code}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-slate-500">{hosp.city}</td>
+                                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
+                                        {hosp.total_doctors} doctors ({hosp.approved_doctors} verified)
+                                      </td>
+                                      <td className="p-3 font-mono font-bold text-teal-600">
+                                        {hosp.total_appointments}
+                                      </td>
+                                      <td className="p-3 font-mono text-medblue-600">
+                                        {hosp.online_consultations}
+                                      </td>
+                                      <td className="p-3 text-slate-600 dark:text-slate-300 font-medium">
+                                        {hosp.total_beds || 200} Beds
+                                      </td>
+                                      <td className="p-3">
+                                        <span className="inline-flex items-center gap-1 font-bold text-amber-600">
+                                          ★ {hosp.patient_rating}
+                                        </span>
+                                      </td>
+                                      <td className="p-3">
+                                        <button
+                                          onClick={() => setSelectedHospitalId(hosp.id)}
+                                          className="px-3 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-semibold text-xs transition-colors"
+                                        >
+                                          Drill Down
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1154,9 +1282,14 @@ export const AdminDashboardPage: React.FC = () => {
                   {/* Hospital Overview Banner */}
                   <div className="bg-gradient-to-r from-teal-700 to-medblue-700 text-white p-6 rounded-3xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <span className="text-xs uppercase tracking-wider text-teal-200 font-bold">
-                        Hospital-Specific Intelligence
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur text-white border border-white/20">
+                          {hosp.network_category || (hosp.name?.toLowerCase().includes('caresphere') ? 'CareSphere Network' : 'Accredited Healthcare Facility')}
+                        </span>
+                        <span className="text-xs uppercase tracking-wider text-teal-200 font-bold">
+                          • Hospital Intelligence
+                        </span>
+                      </div>
                       <h2 className="text-xl sm:text-2xl font-black mt-0.5">
                         {hosp.name} ({hosp.city})
                       </h2>
@@ -1174,6 +1307,11 @@ export const AdminDashboardPage: React.FC = () => {
                       <div>
                         <span className="block text-slate-300">ICU Suites</span>
                         <strong className="text-base text-white">{hosp.icu_beds ?? Math.round((hosp.total_beds || 250) * 0.15)} Units</strong>
+                      </div>
+                      <div className="h-6 w-px bg-white/20" />
+                      <div>
+                        <span className="block text-slate-300">Affiliated Doctors</span>
+                        <strong className="text-base text-white">{docStats.total_doctors ?? 0} Physicians</strong>
                       </div>
                     </div>
                   </div>

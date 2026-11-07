@@ -133,25 +133,70 @@ export function registerDoctor(req: Request, res: Response): void {
 
     const passwordHash = bcrypt.hashSync(password, 10);
 
+    const cleanHospName = (hospital_name || 'CareSphere Super Specialty Hospital').trim();
+    const cleanHospLocation = (hospital_location || 'Main Campus, Bengaluru').trim();
+
+    // Check if the hospital already exists (case-insensitive)
+    let hospital = db.prepare('SELECT id, name, location, city FROM hospitals WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(cleanHospName) as any;
+    let targetHospitalId: number;
+
+    if (hospital) {
+      targetHospitalId = hospital.id;
+    } else {
+      // Automatically register the newly entered hospital
+      const locationParts = cleanHospLocation.split(',').map((s: string) => s.trim());
+      const cleanCity = locationParts.length > 1 ? locationParts[locationParts.length - 1] : (cleanHospLocation || 'Bengaluru');
+      const baseCode = cleanHospName.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'HOSP';
+      const finalCode = `${baseCode}-${Date.now().toString().slice(-4)}`;
+
+      const insHosp = db.prepare(`
+        INSERT INTO hospitals (name, code, location, city, emergency_hotline, total_beds, is_active)
+        VALUES (?, ?, ?, ?, '+91-80-CARE-911', 200, 1)
+      `);
+      const hResult = insHosp.run(cleanHospName, finalCode, cleanHospLocation, cleanCity);
+      targetHospitalId = Number(hResult.lastInsertRowid);
+
+      // Auto-create default hospital resources so that resource analytics and gauges work
+      const defaultResources = [
+        { type: 'general_beds', total: 200, avail: 75, occ: 125 },
+        { type: 'icu_beds', total: 30, avail: 10, occ: 20 },
+        { type: 'emergency_beds', total: 20, avail: 8, occ: 12 },
+        { type: 'ambulance', total: 6, avail: 4, occ: 2 },
+        { type: 'blood_bank', total: 100, avail: 80, occ: 20 },
+        { type: 'lab_services', total: 1, avail: 1, occ: 0 },
+        { type: 'pharmacy', total: 1, avail: 1, occ: 0 },
+        { type: 'emergency_dept', total: 1, avail: 1, occ: 0 }
+      ];
+
+      const resStmt = db.prepare(`
+        INSERT INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status)
+        VALUES (?, ?, ?, ?, ?, 'available')
+      `);
+      for (const r of defaultResources) {
+        resStmt.run(targetHospitalId, r.type, r.total, r.avail, r.occ);
+      }
+    }
+
     const insertDoctorTransaction = db.transaction(() => {
       const userStmt = db.prepare(`
-        INSERT INTO users (name, email, phone, password_hash, role, preferred_language)
-        VALUES (?, ?, ?, ?, 'doctor', ?)
+        INSERT INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id)
+        VALUES (?, ?, ?, ?, 'doctor', ?, ?)
       `);
-      const userResult = userStmt.run(name, email, phone || null, passwordHash, preferred_language);
+      const userResult = userStmt.run(name, email, phone || null, passwordHash, preferred_language, targetHospitalId);
       const userId = Number(userResult.lastInsertRowid);
 
       const doctorStmt = db.prepare(`
         INSERT INTO doctor_profiles (
-          user_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications,
+          user_id, hospital_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications,
           experience_years, consultation_fee, bio, document_url, council_certificate_url, degree_certificate_url,
           id_proof_url, verification_status, room_number, floor, wing, current_presence_status, navigation_instructions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'in_opd', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'in_opd', ?)
       `);
       const docResult = doctorStmt.run(
         userId,
-        hospital_name,
-        hospital_location,
+        targetHospitalId,
+        cleanHospName,
+        cleanHospLocation,
         registration_number,
         state_medical_council,
         department_id,

@@ -235,6 +235,39 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
       expect(res.headers['content-type']).toContain('text/csv');
       expect(res.text).toContain('Reference No');
     });
+
+    it('automatically registers hospital and categorizes in analytics when doctor registers with custom hospital', async () => {
+      const uniqueNum = `STJUDE-${Date.now()}`;
+      const docEmail = `dr.stjude.${Date.now()}@health.org`;
+      const regRes = await request(app)
+        .post('/api/auth/register-doctor')
+        .send({
+          name: 'Dr. Sarah Mathews',
+          email: docEmail,
+          phone: '+91-9988776655',
+          password: 'Password123!',
+          hospital_name: 'St. Jude Specialist Center',
+          hospital_location: 'Koramangala, Bengaluru',
+          registration_number: uniqueNum,
+          state_medical_council: 'Karnataka Medical Council',
+          department_id: 1,
+          specialization: 'Clinical Cardiology',
+          qualifications: 'MBBS, MD'
+        });
+
+      expect(regRes.status).toBe(201);
+
+      // Verify hospital was registered in database and analytics
+      const analyticsRes = await request(app)
+        .get('/api/admin/analytics/overview')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(analyticsRes.status).toBe(200);
+      const stJude = analyticsRes.body.hospital_comparison.find((h: any) => h.name === 'St. Jude Specialist Center');
+      expect(stJude).toBeDefined();
+      expect(stJude.network_category).toBe('Affiliated & Independent Hospitals');
+      expect(stJude.total_doctors).toBe(1);
+    });
   });
 
   describe('Feature 4: AI Medical Report Explainer', () => {
