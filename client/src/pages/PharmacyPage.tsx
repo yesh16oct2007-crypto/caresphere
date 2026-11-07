@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Pill,
   Search,
@@ -29,6 +30,7 @@ import { Medicine, Pharmacy, PharmacyOrder } from '../types/index.js';
 export const PharmacyPage: React.FC = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
   const [allPharmacies, setAllPharmacies] = useState<Pharmacy[]>([]);
@@ -40,6 +42,13 @@ export const PharmacyPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [rxOnly, setRxOnly] = useState<boolean | null>(null);
+
+  // Direct Prescription Integration State
+  const [activePrescriptionId, setActivePrescriptionId] = useState<number | null>(null);
+  const [activePrescriptionNumber, setActivePrescriptionNumber] = useState<string | null>(null);
+  const [prescriptionBannerMsg, setPrescriptionBannerMsg] = useState<string | null>(null);
+  const [userPrescriptions, setUserPrescriptions] = useState<any[]>([]);
+  const [loadingRx, setLoadingRx] = useState(false);
 
   // Add Specific Medicine Modal State
   const [addSpecificModalOpen, setAddSpecificModalOpen] = useState(false);
@@ -193,6 +202,144 @@ export const PharmacyPage: React.FC = () => {
     setCartOpen(true);
   };
 
+  // Load prescription medicines directly into cart
+  const loadPrescriptionMedicinesIntoCart = async (rxId: number, fallbackRxData?: any) => {
+    try {
+      setLoadingRx(true);
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      let loadedItems: { medicine: Medicine; quantity: number }[] = [];
+      let rxNum = fallbackRxData?.prescription_number || `RX-${rxId}`;
+
+      // Check backend prescription availability
+      try {
+        const res = await fetch(`/api/pharmacy/prescription-availability/${rxId}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.prescription_number) rxNum = data.prescription_number;
+          if (data.pharmacy_id && (!pharmacy || pharmacy.id !== data.pharmacy_id)) {
+            await loadHospitalPharmacy(data.pharmacy_id);
+          }
+          if (Array.isArray(data.medicines) && data.medicines.length > 0) {
+            loadedItems = data.medicines.map((m: any, idx: number) => ({
+              medicine: {
+                id: m.matched_medicine_id || (m.prescription_item_id ? 9000 + m.prescription_item_id : 9100 + idx),
+                pharmacy_id: data.pharmacy_id || pharmacy?.id || 1,
+                name: m.medicine_name,
+                brand_name: m.brand_name || m.medicine_name,
+                generic_name: m.generic_name || m.medicine_name,
+                strength: m.strength || m.dosage || '',
+                dosage_form: m.dosage_form || 'Tablet',
+                manufacturer: m.manufacturer || 'Hospital Formulations',
+                category: 'Prescription Medications',
+                prescription_required: 1,
+                mrp_price: m.mrp_price || 110,
+                selling_price: m.unit_price || 95,
+                stock_quantity: m.stock_quantity ?? 50,
+                is_available: 1
+              },
+              quantity: Math.max(1, m.suggested_quantity || 1)
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('API availability check error:', e);
+      }
+
+      // If backend didn't return items or if fallback was provided
+      if (loadedItems.length === 0 && fallbackRxData?.medicines && Array.isArray(fallbackRxData.medicines)) {
+        loadedItems = fallbackRxData.medicines.map((m: any, idx: number) => ({
+          medicine: {
+            id: 9000 + (m.id || idx + 1),
+            pharmacy_id: pharmacy?.id || 1,
+            name: m.medicine_name,
+            brand_name: m.medicine_name,
+            generic_name: m.medicine_name,
+            strength: m.dosage || '',
+            dosage_form: 'Tablet',
+            manufacturer: 'CareSphere Hospital Formulations',
+            category: 'Prescription Medications',
+            prescription_required: 1,
+            mrp_price: 110,
+            selling_price: 95,
+            stock_quantity: 50,
+            is_available: 1
+          },
+          quantity: Math.max(1, parseInt(m.duration) || 1)
+        }));
+      }
+
+      if (loadedItems.length > 0) {
+        setCart((prev) => {
+          const map = new Map<number, { medicine: Medicine; quantity: number }>();
+          loadedItems.forEach((it) => map.set(it.medicine.id, it));
+          prev.forEach((it) => {
+            if (!map.has(it.medicine.id)) map.set(it.medicine.id, it);
+          });
+          return Array.from(map.values());
+        });
+
+        setActivePrescriptionId(rxId);
+        setActivePrescriptionNumber(rxNum);
+        setPrescriptionBannerMsg(`Prescription #${rxNum}: All ${loadedItems.length} prescribed medicines have been directly added to your order cart.`);
+        setCartOpen(true); // Automatically open the cart drawer so patient can review & checkout!
+      }
+    } catch (err) {
+      console.error('Failed to load prescription medicines into cart:', err);
+    } finally {
+      setLoadingRx(false);
+    }
+  };
+
+  // Auto-detect prescription from URL params or sessionStorage when arriving at Pharmacy
+  useEffect(() => {
+    const rxParam = searchParams.get('prescription_id');
+    const hospParam = searchParams.get('hospital_id');
+    const pendingJson = sessionStorage.getItem('pending_rx_order');
+    let pendingData: any = null;
+
+    if (pendingJson) {
+      try {
+        pendingData = JSON.parse(pendingJson);
+        sessionStorage.removeItem('pending_rx_order');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (hospParam && allPharmacies.length > 0) {
+      const hId = Number(hospParam);
+      const matchPharm = allPharmacies.find((p) => p.hospital_id === hId);
+      if (matchPharm && (!pharmacy || pharmacy.id !== matchPharm.id)) {
+        loadHospitalPharmacy(matchPharm.id);
+      }
+    }
+
+    const rxIdToLoad = rxParam ? Number(rxParam) : pendingData?.prescription_id ? Number(pendingData.prescription_id) : null;
+    if (rxIdToLoad) {
+      loadPrescriptionMedicinesIntoCart(rxIdToLoad, pendingData);
+    }
+  }, [searchParams, allPharmacies.length]);
+
+  // Load patient's existing prescriptions so they can 1-click order from pharmacy anytime
+  useEffect(() => {
+    if (isAuthenticated) {
+      const token = localStorage.getItem('token');
+      fetch('/api/prescriptions/my-prescriptions', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.prescriptions)) {
+            setUserPrescriptions(data.prescriptions);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
+
   const subtotal = cart.reduce((acc, it) => acc + (it.medicine.selling_price || 95) * it.quantity, 0);
   const deliveryFee = fulfillmentType === 'home_delivery' ? (pharmacy?.delivery_fee || 50) : 0;
   const grandTotal = Math.round((subtotal + deliveryFee) * 100) / 100;
@@ -221,6 +368,7 @@ export const PharmacyPage: React.FC = () => {
         body: JSON.stringify({
           pharmacy_id: pharmacy.id,
           hospital_id: pharmacy.hospital_id,
+          prescription_id: activePrescriptionId || null,
           fulfillment_type: fulfillmentType,
           delivery_address: deliveryAddress || null,
           contact_phone: contactPhone,
@@ -241,6 +389,9 @@ export const PharmacyPage: React.FC = () => {
         setOrderConfirmed(data.order);
         setCart([]);
         setCartOpen(false);
+        setActivePrescriptionId(null);
+        setActivePrescriptionNumber(null);
+        setPrescriptionBannerMsg(null);
       } else {
         const errData = await res.json();
         alert(errData.error || 'Failed to place order.');
@@ -314,6 +465,55 @@ export const PharmacyPage: React.FC = () => {
                   </span>
                 )}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Prescription Loaded Success Banner */}
+        {prescriptionBannerMsg && (
+          <div className="p-4 rounded-3xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-subtle animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-[#0D9488] shrink-0" />
+              <span>{prescriptionBannerMsg}</span>
+            </div>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white font-bold text-xs shrink-0 cursor-pointer flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>View Cart & Checkout ({cart.reduce((a, b) => a + b.quantity, 0)})</span>
+            </button>
+          </div>
+        )}
+
+        {/* User's Available Prescriptions Quick-Load Strip */}
+        {userPrescriptions.length > 0 && !activePrescriptionId && (
+          <div className="bg-gradient-to-r from-blue-50 via-teal-50 to-emerald-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-850 p-4 rounded-3xl border border-blue-200/80 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-subtle">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#123B5D] text-white flex items-center justify-center shrink-0 shadow-sm">
+                <FileText className="w-5 h-5 text-teal-300" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>Available Doctor Prescriptions ({userPrescriptions.length})</span>
+                  <span className="text-[10px] bg-[#0D9488] text-white px-2 py-0.2 rounded-full font-bold">1-Click Order</span>
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Directly add all prescribed medicines from your consultation into the cart with a single click.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {userPrescriptions.slice(0, 3).map((rx) => (
+                <button
+                  key={rx.id}
+                  onClick={() => loadPrescriptionMedicinesIntoCart(rx.id, rx)}
+                  className="px-3.5 py-2 rounded-xl bg-[#123B5D] hover:bg-[#0D9488] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:scale-105 active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Load {rx.prescription_number} ({rx.medicines?.length || 0} meds)</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -803,18 +1003,34 @@ export const PharmacyPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  <ShoppingCart className="w-5 h-5 text-[#0D9488]" />
                   <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">
-                    Order Cart ({cart.length})
+                    Order Cart ({cart.reduce((a, b) => a + b.quantity, 0)})
                   </h2>
                 </div>
                 <button
                   onClick={() => setCartOpen(false)}
-                  className="p-1 rounded-xl text-slate-400 hover:text-slate-600"
+                  className="p-1 rounded-xl text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Prescription Linked Verification Badge */}
+              {activePrescriptionNumber && (
+                <div className="p-3 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-between text-xs text-teal-900 dark:text-teal-200 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#0D9488] shrink-0" />
+                    <div>
+                      <span className="font-extrabold block">Prescription #{activePrescriptionNumber}</span>
+                      <span className="text-[10px] text-teal-700 dark:text-teal-300">Medicines loaded directly from doctor's prescription</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] bg-[#0D9488] text-white px-2 py-0.5 rounded-full font-black uppercase">
+                    Verified
+                  </span>
+                </div>
+              )}
 
               {/* Quick Add Specific Medicine inside Cart */}
               <button

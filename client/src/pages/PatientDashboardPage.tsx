@@ -393,6 +393,19 @@ export const PatientDashboardPage: React.FC = () => {
     (a) => a.status === 'completed' || a.status === 'cancelled' || a.appointment_date < todayStr
   );
 
+  // Directly load prescription medicines into hospital pharmacy cart & navigate
+  const handleOrderFromPrescription = (rx: Prescription) => {
+    sessionStorage.setItem('pending_rx_order', JSON.stringify({
+      prescription_id: rx.id,
+      prescription_number: rx.prescription_number,
+      hospital_id: rx.hospital_id,
+      hospital_name: rx.hospital_name,
+      doctor_name: rx.doctor_name,
+      medicines: rx.medicines || []
+    }));
+    navigate(`/pharmacy?prescription_id=${rx.id}&hospital_id=${rx.hospital_id || ''}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Personalized Welcome Header */}
@@ -722,13 +735,24 @@ export const PatientDashboardPage: React.FC = () => {
                     Official finalized prescriptions signed by verified CareSphere medical doctors.
                   </p>
                 </div>
-                <Link
-                  to="/pharmacy"
-                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Order Medicines Online</span>
-                </Link>
+                {myPrescriptions.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => handleOrderFromPrescription(myPrescriptions[0])}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-teal-200" />
+                    <span>Order Prescribed Medicines</span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/pharmacy"
+                    className="px-3.5 py-2 rounded-xl bg-[#123B5D] hover:bg-[#0D9488] text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>Order Medicines Online</span>
+                  </Link>
+                )}
               </div>
 
               {myPrescriptions.length === 0 ? (
@@ -866,13 +890,14 @@ export const PatientDashboardPage: React.FC = () => {
                           <span>Download Official PDF with Seal</span>
                         </a>
 
-                        <Link
-                          to="/pharmacy"
-                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                        <button
+                          type="button"
+                          onClick={() => handleOrderFromPrescription(rx)}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#123B5D]/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
                         >
-                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <ShoppingBag className="w-3.5 h-3.5 text-teal-200" />
                           <span>Order Prescribed Medicines via Hospital Pharmacy</span>
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   ))}
