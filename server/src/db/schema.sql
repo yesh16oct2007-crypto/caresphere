@@ -698,3 +698,18 @@ CREATE INDEX IF NOT EXISTS idx_ai_logs_hospital ON ai_orchestration_logs(hospita
 CREATE INDEX IF NOT EXISTS idx_ai_logs_agent ON ai_orchestration_logs(agent_type);
 CREATE INDEX IF NOT EXISTS idx_ai_recs_hospital ON ai_hospital_recommendations(hospital_id);
 CREATE INDEX IF NOT EXISTS idx_automation_logs_job ON automation_job_logs(job_name);
+
+-- Conversational AI Session Memory & Action Execution History
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+  message TEXT NOT NULL,
+  language TEXT NOT NULL DEFAULT 'en',
+  action_executed TEXT,
+  context_json TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_session ON ai_conversations(session_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id);

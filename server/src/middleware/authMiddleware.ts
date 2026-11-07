@@ -44,6 +44,25 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+export function optionalAuthenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    req.user = undefined;
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+    const user = db.prepare('SELECT id, name, email, role, preferred_language, hospital_id FROM users WHERE id = ?').get(decoded.id) as AuthUser | undefined;
+    req.user = user || undefined;
+  } catch {
+    req.user = undefined;
+  }
+  next();
+}
+
 export function requireRole(allowedRoles: ('patient' | 'doctor' | 'admin' | 'hospital_admin' | 'superadmin' | 'pharmacy_staff' | 'lab_staff')[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

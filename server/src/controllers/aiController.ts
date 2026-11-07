@@ -14,18 +14,27 @@ import { db } from '../db/database.js';
  */
 export async function chatWithAssistant(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { message, language } = req.body;
+    const { message, language, sessionId, session_id } = req.body;
 
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       res.status(400).json({ error: 'Message text is required.' });
       return;
     }
 
-    const targetLang = language || req.user?.preferred_language || 'en';
+    const sid = sessionId || session_id || (req.user ? `user_${req.user.id}` : undefined);
 
     const result = await processChatMessage({
       message: message.trim(),
-      language: targetLang
+      language: language || req.user?.preferred_language,
+      sessionId: sid,
+      user: req.user ? {
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        hospital_id: req.user.hospital_id,
+        preferred_language: req.user.preferred_language
+      } : undefined
     });
 
     res.json(result);

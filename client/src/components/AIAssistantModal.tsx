@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -10,14 +10,23 @@ import {
   PhoneCall,
   AlertTriangle,
   RefreshCw,
-  HelpCircle,
   ExternalLink,
   Mic,
   MicOff,
   Volume2,
   VolumeX,
   Square,
-  Radio
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Pill,
+  FileText,
+  Check,
+  Globe,
+  ArrowRight,
+  ShieldCheck,
+  Stethoscope
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { Link } from 'react-router-dom';
@@ -30,6 +39,9 @@ interface ChatMessage {
   isEmergency?: boolean;
   contacts?: { name: string; number: string }[];
   suggestedActions?: string[];
+  actionExecuted?: string | null;
+  actionData?: any;
+  requiresConfirmation?: boolean;
   timestamp: Date;
 }
 
@@ -46,27 +58,37 @@ const SPEECH_LANG_MAP: Record<string, string> = {
   pa: 'pa-IN'
 };
 
-const LANG_DISPLAY_NAMES: Record<string, string> = {
-  en: 'English (India)',
-  ta: 'தமிழ் (Tamil)',
-  hi: 'हिन्दी (Hindi)',
-  te: 'తెలుగు (Telugu)',
-  kn: 'ಕನ್ನಡ (Kannada)',
-  ml: 'മലയാളം (Malayalam)',
-  bn: 'বাংলা (Bengali)',
-  mr: 'मराठी (Marathi)',
-  gu: 'ગુજરાતી (Gujarati)',
-  pa: 'ਪੰਜਾਬੀ (Punjabi)'
-};
+const LANG_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'ta', label: 'தமிழ் (Tamil)' },
+  { code: 'hi', label: 'हिन्दी (Hindi)' },
+  { code: 'te', label: 'తెలుగు (Telugu)' },
+  { code: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'ml', label: 'മലയാളം (Malayalam)' },
+  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'gu', label: 'ગુજરાતી (Gujarati)' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ (Punjabi)' }
+];
 
 export const AIAssistantModal: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
+  const { user, token, setLanguage } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<'patient' | 'appointment' | 'pharmacy' | 'report' | 'emergency'>('patient');
+
+  // Stable session ID for context memory across follow-ups in this browser session
+  const sessionId = useMemo(() => {
+    let sid = sessionStorage.getItem('caresphere_ai_sid');
+    if (!sid) {
+      sid = 'cs_' + Math.random().toString(36).substring(2, 12);
+      sessionStorage.setItem('caresphere_ai_sid', sid);
+    }
+    return sid;
+  }, []);
 
   // Multilingual Voice Input (STT) State
   const [isListening, setIsListening] = useState(false);
@@ -110,16 +132,29 @@ export const AIAssistantModal: React.FC = () => {
     }
   }, [i18n.language]);
 
+  // Language Change Handler with profile sync
+  const handleLanguageChange = async (newLang: string) => {
+    try {
+      await setLanguage(newLang);
+    } catch (err) {
+      i18n.changeLanguage(newLang);
+    }
+  };
+
   // Initialize welcome message when opened
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const welcomeText = t('ai.subtitle') + ' — ' + (i18n.language === 'ta'
-        ? 'வணக்கம்! நான் கேர்ஸ்பியர் AI உதவியாளர். நீங்கள் குரல் மூலமாகவும் பேசலாம். மருத்துவமனை தகவல்கள், மருத்துவர்கள் மற்றும் முன்பதிவு குறித்து கேட்கலாம்.'
-        : i18n.language === 'hi'
-        ? 'नमस्ते! मैं केयरस्फ़ीयर एआई सहायक हूँ। आप बोलकर भी सवाल पूछ सकते हैं। मैं अस्पताल की जानकारी और अपॉइंटमेंट में आपकी सहायता करूँगा।'
-        : i18n.language === 'te'
-        ? 'నమస్కారం! నేను కేర్‌స్పియర్ AI సహాయకుడిని. మీరు వాయిస్ ద్వారా కూడా మాట్లాడవచ్చు.'
-        : 'Hello! I am CareSphere AI assistant. You can speak or type in your preferred language to find doctors, explore hospital departments, and get instant guidance.');
+      const welcomeText = activeLangCode === 'ta'
+        ? 'வணக்கம்! நான் கேர்ஸ்பியர் AI உதவியாளர். நீங்கள் உங்கள் தாய்மொழியில் பேசலாம் அல்லது எழுதலாம். மருத்துவர் அப்பாய்ன்ட்மென்ட் பதிவு செய்ய, ரத்து செய்ய அல்லது மருத்துவ தகவல்கள் அறிய நான் தயாராக உள்ளேன்.'
+        : activeLangCode === 'hi'
+        ? 'नमस्ते! मैं केयरस्फ़ीयर AI सहायक हूँ। आप हिंदी या हिंग्लिश में बोलकर या लिखकर अपनी अपॉइंटमेंट देख सकते हैं, नई बुकिंग कर सकते हैं या अस्पताल की जानकारी ले सकते हैं।'
+        : activeLangCode === 'te'
+        ? 'నమస్కారం! నేను కేర్‌స్పియర్ AI సహాయకుడిని. డాక్టర్ అపాయింట్‌మెంట్లు బుక్ చేయడానికి, రద్దు చేయడానికి లేదా మందుల వివరాలు తెలుసుకోవడానికి మీరు నాతో మాట్లాడవచ్చు.'
+        : activeLangCode === 'ml'
+        ? 'നമസ്കാരം! ഞാൻ കെയർസ്ഫിയർ AI അസിസ്റ്റന്റാണ്. ഡോക്ടർ അപ്പോയിന്റ്മെന്റുകൾ, മരുന്നുകൾ, ആശുപത്രി വിവരങ്ങൾ എന്നിവ ചോദിക്കാം.'
+        : activeLangCode === 'kn'
+        ? 'ನಮಸ್ಕಾರ! ನಾನು ಕೇರ್‌ಸ್ಪಿಯರ್ AI ಸಹಾಯಕ. ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಲು ಅಥವಾ ಮಾಹಿತಿ ಪಡೆಯಲು ನನ್ನನ್ನು ಕೇಳಿ.'
+        : 'Hello! I am CareSphere AI Assistant. You can speak or type to check or cancel your appointments, book consultations, search medicines, and get instant medical assistance.';
 
       const welcomeMsg: ChatMessage = {
         id: 'welcome',
@@ -134,7 +169,7 @@ export const AIAssistantModal: React.FC = () => {
         setTimeout(() => speakText(welcomeText, 'welcome'), 600);
       }
     }
-  }, [isOpen, i18n.language, t]);
+  }, [isOpen, activeLangCode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -294,13 +329,28 @@ export const AIAssistantModal: React.FC = () => {
 
     try {
       const endpoint = selectedAgent === 'patient' ? '/api/ai/chat' : '/api/ai/orchestrate';
+      const authToken = token || localStorage.getItem('caresphere_token');
+
       const bodyPayload = selectedAgent === 'patient'
-        ? { message: text, language: activeLangCode }
-        : { agent_type: selectedAgent, message: text, language: activeLangCode, hospital_id: user?.hospital_id };
+        ? {
+            message: text,
+            language: activeLangCode,
+            sessionId
+          }
+        : {
+            agent_type: selectedAgent,
+            message: text,
+            language: activeLangCode,
+            hospital_id: user?.hospital_id,
+            sessionId
+          };
 
       const res = await fetch(apiUrl(endpoint), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        },
         body: JSON.stringify(bodyPayload)
       });
 
@@ -314,6 +364,9 @@ export const AIAssistantModal: React.FC = () => {
         isEmergency: data.is_emergency,
         contacts: data.emergency_contacts,
         suggestedActions: data.suggested_actions,
+        actionExecuted: data.action_executed,
+        actionData: data.action_data,
+        requiresConfirmation: data.requires_confirmation,
         timestamp: new Date()
       };
 
@@ -352,6 +405,38 @@ export const AIAssistantModal: React.FC = () => {
     }
   };
 
+  // Role-Aware Quick Prompt Chips
+  const quickPrompts = useMemo(() => {
+    const role = user?.role;
+    if (role === 'patient') {
+      return [
+        { label: '📅 Show my appointments', query: 'Show my appointments' },
+        { label: '🩺 Book doctor appointment', query: 'Book appointment with Dr. Priya Sharma tomorrow 10 AM' },
+        { label: '💊 Check medicine stock', query: 'Show available medicines' },
+        { label: '📋 View medical records', query: 'Show my medical records' },
+        { label: '🚨 Emergency SOS', query: 'Emergency SOS' }
+      ];
+    } else if (role === 'doctor') {
+      return [
+        { label: '👨‍⚕️ My appointments', query: 'Show my doctor appointments' },
+        { label: '📋 Patient schedule', query: 'Show my appointments today' },
+        { label: '💊 Available medicines', query: 'Show available medicines' }
+      ];
+    } else if (role === 'admin' || role === 'hospital_admin' || role === 'superadmin') {
+      return [
+        { label: '🩺 Pending doctor approvals', query: 'Show pending doctor registrations' },
+        { label: '📊 Today appointments', query: 'Show today appointments' },
+        { label: '💊 Pharmacy inventory', query: 'Show available medicines' }
+      ];
+    } else {
+      return [
+        { label: '🩺 Available doctors', query: 'Show available doctors in the hospital' },
+        { label: '🏥 Hospital departments', query: 'Which departments are available?' },
+        { label: '🚨 Emergency helpline', query: 'Emergency helpline numbers' }
+      ];
+    }
+  }, [user?.role]);
+
   return (
     <>
       {/* Floating Trigger Button */}
@@ -370,7 +455,7 @@ export const AIAssistantModal: React.FC = () => {
             CareSphere AI <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
           </span>
           <span className="text-[11px] text-teal-100 flex items-center gap-1">
-            <span>Voice & Chat</span>
+            <span>Voice & Actions</span>
             <span className="text-[9px] bg-white/20 backdrop-blur-xs px-1.5 py-0.5 rounded-full uppercase font-bold text-white">
               {activeLangCode}
             </span>
@@ -380,23 +465,37 @@ export const AIAssistantModal: React.FC = () => {
 
       {/* Chat Window Modal */}
       {isOpen && (
-        <div className="fixed bottom-3 right-2.5 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-20px)] sm:w-[440px] max-h-[90vh] sm:max-h-[660px] h-[86vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-3 right-2.5 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-20px)] sm:w-[460px] max-h-[92vh] sm:max-h-[690px] h-[88vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
-          <div className="p-4 bg-gradient-to-r from-[#123B5D] via-[#0D9488] to-[#123B5D] text-white flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xs">
-                <Bot className="w-6 h-6 text-teal-200" />
+          <div className="p-3.5 bg-gradient-to-r from-[#123B5D] via-[#0D9488] to-[#123B5D] text-white flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xs">
+                <Bot className="w-5 h-5 text-teal-200" />
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                  {t('ai.title')}
-                  <span className="text-[10px] bg-teal-400/20 text-teal-200 px-2 py-0.5 rounded-full border border-teal-300/30">
-                    Live Assistant
+                  CareSphere AI
+                  <span className="text-[10px] bg-teal-400/20 text-teal-200 px-2 py-0.5 rounded-full border border-teal-300/30 font-semibold">
+                    Live
                   </span>
                 </h3>
-                <p className="text-[11px] text-teal-100/90 truncate max-w-[200px]">
-                  Lang: {LANG_DISPLAY_NAMES[activeLangCode] || activeLangCode.toUpperCase()}
-                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {/* Multilingual Selector Dropdown */}
+                  <div className="flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-lg border border-white/20 text-[10px]">
+                    <Globe className="w-3 h-3 text-teal-200 shrink-0" />
+                    <select
+                      value={activeLangCode}
+                      onChange={(e) => handleLanguageChange(e.target.value)}
+                      className="bg-transparent text-white font-medium focus:outline-none cursor-pointer pr-1 text-[11px]"
+                    >
+                      {LANG_OPTIONS.map((l) => (
+                        <option key={l.code} value={l.code} className="text-slate-900 bg-white">
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -425,7 +524,7 @@ export const AIAssistantModal: React.FC = () => {
                   stopListening();
                   setIsOpen(false);
                 }}
-                className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
@@ -434,7 +533,7 @@ export const AIAssistantModal: React.FC = () => {
           </div>
 
           {/* Medical Disclaimer Banner */}
-          <div className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1.5">
+          <div className="px-3.5 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 truncate">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span className="truncate">{t('ai.disclaimer')}</span>
@@ -445,7 +544,7 @@ export const AIAssistantModal: React.FC = () => {
                 className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full hover:bg-amber-200 cursor-pointer"
               >
                 <Square className="w-2.5 h-2.5 fill-current" />
-                <span>Stop Audio</span>
+                <span>Stop</span>
               </button>
             )}
           </div>
@@ -494,7 +593,7 @@ export const AIAssistantModal: React.FC = () => {
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
             >
-              📑 Lab Reports
+              📑 Reports
             </button>
             <button
               type="button"
@@ -521,18 +620,18 @@ export const AIAssistantModal: React.FC = () => {
 
           {/* Active Speaking Indicator Bar */}
           {isSpeaking && (
-            <div className="px-4 py-1.5 bg-teal-50 dark:bg-teal-950/40 border-b border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-[11px] font-medium flex items-center justify-between animate-in fade-in">
+            <div className="px-4 py-1 bg-teal-50 dark:bg-teal-950/40 border-b border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-[11px] font-medium flex items-center justify-between animate-in fade-in">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-0.5">
                   <span className="w-1 h-3 bg-teal-500 rounded-full animate-pulse" />
                   <span className="w-1 h-4 bg-teal-600 rounded-full animate-pulse delay-75" />
                   <span className="w-1 h-2 bg-teal-400 rounded-full animate-pulse delay-150" />
                 </div>
-                <span>Speaking response in {LANG_DISPLAY_NAMES[activeLangCode] || activeLangCode}...</span>
+                <span>Speaking in {activeLangCode.toUpperCase()}...</span>
               </div>
               <button
                 onClick={stopSpeaking}
-                className="text-[10px] text-teal-700 dark:text-teal-300 font-bold hover:underline"
+                className="text-[10px] text-teal-700 dark:text-teal-300 font-bold hover:underline cursor-pointer"
               >
                 Mute
               </button>
@@ -540,7 +639,7 @@ export const AIAssistantModal: React.FC = () => {
           )}
 
           {/* Messages Body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-slate-900/60">
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 bg-slate-50/50 dark:bg-slate-900/60">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -553,7 +652,7 @@ export const AIAssistantModal: React.FC = () => {
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed relative group ${
+                  className={`max-w-[88%] rounded-2xl px-4 py-3 text-xs leading-relaxed relative group ${
                     m.sender === 'user'
                       ? 'bg-brand-600 text-white rounded-br-none shadow-sm'
                       : m.isEmergency
@@ -563,12 +662,199 @@ export const AIAssistantModal: React.FC = () => {
                 >
                   <p className="whitespace-pre-line font-normal">{m.text}</p>
 
+                  {/* Inline Action Execution Result: Appointments Card List */}
+                  {m.actionExecuted === 'SHOW_MY_APPOINTMENTS' && m.actionData?.appointments && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Your Appointments ({m.actionData.appointments.length})</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {m.actionData.appointments.map((appt: any, idx: number) => (
+                          <div
+                            key={appt.id}
+                            className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-[11px] space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                #{idx + 1}. Dr. {appt.doctor_name}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                appt.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {appt.status}
+                              </span>
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-300 text-[10px] flex items-center gap-2">
+                              <span>📅 {appt.appointment_date}</span>
+                              <span>⏰ {appt.appointment_time}</span>
+                              {appt.room_number && <span>📍 Room {appt.room_number}</span>}
+                            </div>
+                            {appt.status !== 'cancelled' && (
+                              <button
+                                onClick={() => handleSendMessage(`Cancel appointment #${appt.id} with Dr. ${appt.doctor_name}`)}
+                                className="mt-1 text-[10px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 px-2 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800 flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <XCircle className="w-3 h-3" />
+                                <span>Cancel This Appointment</span>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline Action Execution Result: Booking Success Card */}
+                  {m.actionExecuted === 'BOOK_APPOINTMENT' && m.actionData?.appointment && (
+                    <div className="mt-3 pt-2.5 border-t border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border">
+                      <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Booking Confirmed</span>
+                      </div>
+                      <div className="mt-1.5 text-[10px] text-emerald-900 dark:text-emerald-200 space-y-0.5">
+                        <p><strong>Doctor:</strong> Dr. {m.actionData.appointment.doctor_name} ({m.actionData.appointment.specialization})</p>
+                        <p><strong>Date & Time:</strong> {m.actionData.appointment.date} at {m.actionData.appointment.time}</p>
+                        <p><strong>Room:</strong> {m.actionData.appointment.room_number}</p>
+                        <p><strong>Ref Code:</strong> {m.actionData.appointment.reference_number}</p>
+                      </div>
+                      <div className="mt-2">
+                        <Link
+                          to="/appointments"
+                          onClick={() => setIsOpen(false)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-lg"
+                        >
+                          <span>View My Appointments</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline Action Execution: Confirmation Request Safeguard Buttons */}
+                  {m.requiresConfirmation && (
+                    <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border space-y-2">
+                      <div className="text-[11px] font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Please Confirm Your Request</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleSendMessage('Yes, confirm')}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-xs cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Yes, Confirm</span>
+                        </button>
+                        <button
+                          onClick={() => handleSendMessage('No, cancel')}
+                          className="flex-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold py-1.5 px-3 rounded-xl text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>No, Cancel</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline Action Execution: Medicines List */}
+                  {m.actionExecuted === 'SHOW_AVAILABLE_MEDICINES' && m.actionData?.medicines && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Pill className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Pharmacy Stock</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
+                        {m.actionData.medicines.map((med: any) => (
+                          <div
+                            key={med.id}
+                            className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center justify-between text-[10px]"
+                          >
+                            <div>
+                              <span className="font-bold text-slate-900 dark:text-white block">{med.name}</span>
+                              <span className="text-slate-500">{med.category} • ₹{med.unit_price}</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full font-bold bg-purple-100 text-purple-800">
+                              {med.stock_quantity} in stock
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <Link
+                        to="/pharmacy"
+                        onClick={() => setIsOpen(false)}
+                        className="text-[10px] text-purple-600 hover:underline font-bold inline-flex items-center gap-1"
+                      >
+                        <span>Visit Pharmacy</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Inline Action Execution: Medical Records List */}
+                  {m.actionExecuted === 'SHOW_MEDICAL_RECORDS' && m.actionData?.records && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Your Medical Records ({m.actionData.records.length})</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {m.actionData.records.map((rec: any) => (
+                          <div
+                            key={rec.id}
+                            className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-[10px]"
+                          >
+                            <span className="font-bold text-slate-900 dark:text-white block">{rec.title}</span>
+                            <span className="text-slate-500">{rec.record_type} • {rec.created_at?.split('T')[0]}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Link
+                        to="/records"
+                        onClick={() => setIsOpen(false)}
+                        className="text-[10px] text-blue-600 hover:underline font-bold inline-flex items-center gap-1"
+                      >
+                        <span>Open Records Manager</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Inline Action Execution: Pending Doctors List for Admin */}
+                  {m.actionExecuted === 'SHOW_PENDING_DOCTORS' && m.actionData?.doctors && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Stethoscope className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Pending Doctor Registrations ({m.actionData.doctors.length})</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {m.actionData.doctors.map((doc: any) => (
+                          <div
+                            key={doc.id}
+                            className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-[10px]"
+                          >
+                            <span className="font-bold text-slate-900 dark:text-white block">Dr. {doc.name}</span>
+                            <span className="text-slate-500">{doc.specialization} • Lic: {doc.license_number}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsOpen(false)}
+                        className="text-[10px] text-indigo-600 hover:underline font-bold inline-flex items-center gap-1"
+                      >
+                        <span>Open Admin Doctor Approvals</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
+
                   {/* Read Aloud Voice Button for Assistant Messages */}
                   {m.sender === 'assistant' && (
                     <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[10px]">
                       <button
                         onClick={() => speakText(m.text, m.id)}
-                        className={`flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md transition-colors ${
+                        className={`flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
                           isSpeaking && currentlySpeakingId === m.id
                             ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200'
                             : 'text-slate-500 hover:text-brand-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -614,18 +900,17 @@ export const AIAssistantModal: React.FC = () => {
                   )}
 
                   {/* Suggested Quick Actions */}
-                  {m.suggestedActions && (
+                  {m.suggestedActions && m.suggestedActions.length > 0 && (
                     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">
                       {m.suggestedActions.map((act, idx) => (
-                        <Link
+                        <button
                           key={idx}
-                          to={act.includes('Book') ? '/book' : act.includes('Doctor') ? '/doctors' : '/facilities'}
-                          onClick={() => setIsOpen(false)}
-                          className="text-[10px] bg-slate-100 dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 font-medium flex items-center gap-1 transition-colors"
+                          onClick={() => handleSendMessage(act)}
+                          className="text-[10px] bg-slate-100 dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 font-medium flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <span>{act}</span>
-                          <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
-                        </Link>
+                          <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
+                        </button>
                       ))}
                     </div>
                   )}
@@ -652,7 +937,7 @@ export const AIAssistantModal: React.FC = () => {
                 </div>
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-2xl rounded-bl-none flex items-center gap-1.5">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-500" />
-                  <span>Thinking in {LANG_DISPLAY_NAMES[activeLangCode] || activeLangCode}...</span>
+                  <span>Understanding in {activeLangCode.toUpperCase()}...</span>
                 </div>
               </div>
             )}
@@ -669,39 +954,30 @@ export const AIAssistantModal: React.FC = () => {
                   <span className="w-3 h-3 rounded-full bg-red-500 absolute top-0 left-0" />
                 </div>
                 <div>
-                  <span className="font-bold block text-xs">Listening in {LANG_DISPLAY_NAMES[activeLangCode]}...</span>
-                  <span className="text-[10px] text-teal-100">Speak your question clearly into your microphone</span>
+                  <span className="font-bold block text-xs">Listening in {activeLangCode.toUpperCase()}...</span>
+                  <span className="text-[10px] text-teal-100">Speak naturally in your language</span>
                 </div>
               </div>
               <button
                 onClick={stopListening}
-                className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold transition-colors cursor-pointer"
               >
-                Done Speaking
+                Done
               </button>
             </div>
           )}
 
-          {/* Quick Prompts Bar */}
+          {/* Role-Aware Quick Prompts Bar */}
           <div className="px-3 py-2 bg-slate-100/60 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex gap-1.5 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => handleSendMessage(t('ai.q1'))}
-              className="text-[11px] whitespace-nowrap bg-white dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600 transition-colors shadow-2xs"
-            >
-              {t('ai.q1')}
-            </button>
-            <button
-              onClick={() => handleSendMessage(t('ai.q2'))}
-              className="text-[11px] whitespace-nowrap bg-white dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600 transition-colors shadow-2xs"
-            >
-              {t('ai.q2')}
-            </button>
-            <button
-              onClick={() => handleSendMessage(t('ai.q3'))}
-              className="text-[11px] whitespace-nowrap bg-white dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600 transition-colors shadow-2xs"
-            >
-              {t('ai.q3')}
-            </button>
+            {quickPrompts.map((p, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(p.query)}
+                className="text-[11px] whitespace-nowrap bg-white dark:bg-slate-700 hover:bg-brand-50 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600 transition-colors shadow-2xs cursor-pointer"
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
 
           {/* Input Box with Voice Input Button */}
@@ -710,12 +986,12 @@ export const AIAssistantModal: React.FC = () => {
             <button
               type="button"
               onClick={isListening ? stopListening : startListening}
-              className={`p-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center shrink-0 ${
+              className={`p-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-4 ring-red-200 dark:ring-red-900'
                   : 'bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 text-slate-700 dark:text-slate-200 hover:text-brand-600'
               }`}
-              title={isListening ? 'Click to stop listening' : `Click to speak in ${LANG_DISPLAY_NAMES[activeLangCode] || activeLangCode}`}
+              title={isListening ? 'Click to stop listening' : `Click to speak in ${activeLangCode.toUpperCase()}`}
               aria-label="Voice input"
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
@@ -726,7 +1002,7 @@ export const AIAssistantModal: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={isListening ? `Listening in ${LANG_DISPLAY_NAMES[activeLangCode]}...` : t('ai.input_placeholder')}
+              placeholder={isListening ? `Listening in ${activeLangCode.toUpperCase()}...` : 'Ask anything, book doctor, or cancel appointment...'}
               className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
 

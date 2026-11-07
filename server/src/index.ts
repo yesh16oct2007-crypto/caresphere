@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 
 import { initDatabase } from './db/database.js';
 import { ensureDatabaseSeeded } from './db/seed.js';
-import { authenticateToken, requireRole } from './middleware/authMiddleware.js';
+import { authenticateToken, optionalAuthenticateToken, requireRole } from './middleware/authMiddleware.js';
 import {
   registerPatient,
   registerDoctor,
@@ -298,8 +298,8 @@ app.put('/api/notifications/:id/read', authenticateToken, markNotificationRead);
 app.put('/api/notifications/read-all', authenticateToken, markAllNotificationsRead);
 
 // ----------------- AI ASSISTANT & AUTONOMOUS ORCHESTRATION -----------------
-app.post('/api/ai/chat', simpleRateLimiter(40, 60000), chatWithAssistant);
-app.post('/api/ai/orchestrate', simpleRateLimiter(40, 60000), orchestrateAgents);
+app.post('/api/ai/chat', simpleRateLimiter(40, 60000), optionalAuthenticateToken, chatWithAssistant);
+app.post('/api/ai/orchestrate', simpleRateLimiter(40, 60000), optionalAuthenticateToken, orchestrateAgents);
 app.post('/api/ai/admin-assistant', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), hospitalAdminAssistant);
 app.post('/api/ai/verify-doctor/:id', authenticateToken, requireRole(['admin', 'hospital_admin', 'superadmin']), verifyDoctorAI);
 app.get('/api/ai/doctor/:id/verification-report', authenticateToken, getDoctorVerificationReport);

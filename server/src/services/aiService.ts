@@ -1,18 +1,32 @@
 import { db } from '../db/database.js';
+import { detectLanguage, DetectedLanguage } from './languageDetector.js';
+import { parseMultilingualIntent, ParsedIntent } from './multilingualIntentParser.js';
+import { executeAIAction, UserContext, ActionExecutionResult } from './aiActionExecutor.js';
+import {
+  saveConversationMessage,
+  getConversationHistory,
+  getLatestContext,
+  SessionContext
+} from './conversationMemory.js';
 
-interface ChatRequest {
+export interface ChatRequest {
   message: string;
-  language: string; // en, ta, hi, te, kn, ml, bn, mr, gu, pa
+  language?: string; // Optional preferred language
+  sessionId?: string;
+  user?: UserContext;
   conversationHistory?: { role: 'user' | 'assistant'; content: string }[];
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   reply: string;
   language: string;
   is_emergency: boolean;
   emergency_contacts?: { name: string; number: string }[];
   suggested_actions?: string[];
-  source?: 'gemini_api' | 'verified_knowledge_base';
+  action_executed?: string | null;
+  action_data?: any;
+  requires_confirmation?: boolean;
+  source: 'gemini_api' | 'verified_knowledge_base' | 'action_executor';
 }
 
 // Emergency keywords across supported languages
@@ -63,26 +77,146 @@ const EMERGENCY_RESPONSES: Record<string, string> = {
 };
 
 export async function processChatMessage(req: ChatRequest): Promise<ChatResponse> {
-  const { message, language = 'en' } = req;
+  const { message, language: requestedLang, sessionId: passedSessionId, user } = req;
+  const userText = message ? message.trim() : '';
 
-  // 1. Check for urgent medical emergency
-  if (checkEmergency(message, language)) {
-    const reply = EMERGENCY_RESPONSES[language] || EMERGENCY_RESPONSES.en;
-    return {
+  // 1. Language Detection & Preference Synchronization
+  const preferredFallback = (requestedLang || user?.preferred_language || 'en') as DetectedLanguage['lang'];
+  const detected = detectLanguage(userText, preferredFallback);
+  const activeLang = requestedLang || detected.lang || 'en';
+
+  // Persist language to user profile if user is logged in
+  if (user && activeLang && user.preferred_language !== activeLang) {
+    try {
+      db.prepare('UPDATE users SET preferred_language = ? WHERE id = ?').run(activeLang, user.id);
+    } catch (e) {
+      // non-blocking
+    }
+  }
+
+  // 2. Session Context & Multi-Turn Conversational Memory
+  const sessionId = passedSessionId || (user ? `user_${user.id}` : `session_${Date.now()}`);
+  const history = getConversationHistory(sessionId, 6);
+  const latestContext = getLatestContext(sessionId);
+
+  // Record user message into session memory
+  saveConversationMessage(sessionId, user?.id || null, 'user', userText, activeLang);
+
+  // 3. Urgent Medical Emergency Check
+  if (checkEmergency(userText, activeLang)) {
+    const reply = EMERGENCY_RESPONSES[activeLang] || EMERGENCY_RESPONSES.en;
+    const emergencyRes: ChatResponse = {
       reply,
-      language,
+      language: activeLang,
       is_emergency: true,
       emergency_contacts: [
         { name: 'CareSphere 24/7 Trauma Hotline', number: '+91-80-CARE-911' },
         { name: 'National Medical Ambulance', number: '108 / 112' },
-        { name: 'CareSphere Hospital Main Desk', number: '+91-80-4911-2000' }
+        { name: 'CareSphere Main Desk', number: '+91-80-4911-2000' }
       ],
       suggested_actions: ['Call +91-80-CARE-911', 'Visit Emergency Bay Ground Floor', 'Call Ambulance 108'],
       source: 'verified_knowledge_base'
     };
+    saveConversationMessage(sessionId, user?.id || null, 'assistant', reply, activeLang, 'EMERGENCY_SOS');
+    return emergencyRes;
   }
 
-  // 2. Load context from database knowledge base
+  // 4. Intent & Entity Parsing
+  const parsed = parseMultilingualIntent(userText);
+
+  // 5. Check if user is confirming or rejecting a previous pending action
+  if (parsed.intent === 'CONFIRM_ACTION' && latestContext?.pending_action) {
+    const actionResult = await executeAIAction(
+      latestContext.pending_action.action,
+      { ...latestContext.pending_action.params, confirmed: true },
+      user || null,
+      activeLang,
+      latestContext
+    );
+
+    saveConversationMessage(
+      sessionId,
+      user?.id || null,
+      'assistant',
+      actionResult.reply,
+      activeLang,
+      actionResult.action,
+      actionResult.updated_context || null
+    );
+
+    return {
+      reply: actionResult.reply,
+      language: activeLang,
+      is_emergency: false,
+      action_executed: actionResult.action,
+      action_data: actionResult.data,
+      suggested_actions: actionResult.suggested_actions,
+      source: 'action_executor'
+    };
+  }
+
+  if (parsed.intent === 'REJECT_ACTION' && latestContext?.pending_action) {
+    const cancelNotice = activeLang === 'ta'
+      ? 'நடவடிக்கை ரத்து செய்யப்பட்டது. உங்கள் அப்பாய்ன்ட்மென்ட் மாற்றப்படவில்லை.'
+      : activeLang === 'hi'
+      ? 'क्रिया रद्द कर दी गई है। आपकी अपॉइंटमेंट में कोई बदलाव नहीं हुआ है।'
+      : 'Action aborted. No changes were made to your appointment.';
+
+    saveConversationMessage(sessionId, user?.id || null, 'assistant', cancelNotice, activeLang);
+
+    return {
+      reply: cancelNotice,
+      language: activeLang,
+      is_emergency: false,
+      suggested_actions: ['Show my appointments', 'Book Doctor Appointment'],
+      source: 'action_executor'
+    };
+  }
+
+  // 6. Execute User Requested Action if Intent is Actionable
+  const actionableIntents = [
+    'SHOW_MY_APPOINTMENTS',
+    'BOOK_APPOINTMENT',
+    'CANCEL_APPOINTMENT',
+    'RESCHEDULE_APPOINTMENT',
+    'SHOW_MEDICAL_RECORDS',
+    'SHOW_AVAILABLE_MEDICINES',
+    'SHOW_DOCTOR_APPOINTMENTS',
+    'SHOW_PENDING_DOCTORS'
+  ];
+
+  if (actionableIntents.includes(parsed.intent)) {
+    const actionResult = await executeAIAction(
+      parsed.intent,
+      parsed.entities,
+      user || null,
+      activeLang,
+      latestContext
+    );
+
+    saveConversationMessage(
+      sessionId,
+      user?.id || null,
+      'assistant',
+      actionResult.reply,
+      activeLang,
+      actionResult.action,
+      actionResult.updated_context || null
+    );
+
+    return {
+      reply: actionResult.reply,
+      language: activeLang,
+      is_emergency: false,
+      action_executed: actionResult.action,
+      action_data: actionResult.data,
+      requires_confirmation: actionResult.requires_confirmation,
+      suggested_actions: actionResult.suggested_actions,
+      source: 'action_executor'
+    };
+  }
+
+  // 7. Context Loading from Live Hospital Database
   const departments = db.prepare('SELECT name, code, floor, head_of_department, phone_extension FROM departments').all() as any[];
   const doctors = db.prepare(`
     SELECT dp.id, u.name, dp.specialization, dp.experience_years, dp.consultation_fee, d.name as dept_name
@@ -93,40 +227,47 @@ export async function processChatMessage(req: ChatRequest): Promise<ChatResponse
   `).all() as any[];
   const facilities = db.prepare('SELECT name, category, timing, location FROM hospital_facilities').all() as any[];
 
-  // 3. Try Gemini API if key is available
+  // 8. Try LLM API (Gemini 1.5 Flash) if Key Configured
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey) {
     try {
-      const response = await callGeminiAPI(message, language, departments, doctors, facilities, apiKey);
+      const response = await callGeminiAPI(userText, activeLang, departments, doctors, facilities, apiKey, history);
+      saveConversationMessage(sessionId, user?.id || null, 'assistant', response, activeLang);
       return {
         reply: response,
-        language,
+        language: activeLang,
         is_emergency: false,
         source: 'gemini_api'
       };
     } catch (apiErr) {
-      console.warn('Gemini API call failed or timed out. Falling back to knowledge-base engine:', apiErr);
+      console.warn('Gemini API call failed or timed out. Falling back to autonomous grounded knowledge engine:', apiErr);
     }
   }
 
-  // 4. Built-in Multilingual Grounded Knowledge Engine (Fallback & offline-first)
-  const localReply = generateLocalKnowledgeResponse(message, language, departments, doctors, facilities);
+  // 9. Intelligent Multilingual Grounded Knowledge Engine (Fallback & Offline-First)
+  const localReply = generateLocalKnowledgeResponse(userText, activeLang, departments, doctors, facilities);
+  saveConversationMessage(sessionId, user?.id || null, 'assistant', localReply, activeLang);
+
   return {
     reply: localReply,
-    language,
+    language: activeLang,
     is_emergency: false,
-    suggested_actions: ['Book Appointment', 'View Departments', 'Find Doctor', 'Hospital Facilities'],
+    suggested_actions: ['Show my appointments', 'Book Doctor Appointment', 'Available Medicines', 'Hospital Facilities'],
     source: 'verified_knowledge_base'
   };
 }
 
+/**
+ * Call Gemini API with timeout, retry, and conversation history
+ */
 async function callGeminiAPI(
   message: string,
   language: string,
   departments: any[],
   doctors: any[],
   facilities: any[],
-  apiKey: string
+  apiKey: string,
+  history: { role: 'user' | 'assistant'; content: string }[] = []
 ): Promise<string> {
   const languageNames: Record<string, string> = {
     en: 'English',
@@ -143,59 +284,77 @@ async function callGeminiAPI(
 
   const targetLanguage = languageNames[language] || 'English';
 
-  const systemPrompt = `You are CareSphere AI, a polite, compassionate, and precise hospital assistant for CareSphere Multispeciality Hospital.
-Hospital Address: Plot 42, Healthcare Boulevard, Electronic City Phase 1, Bengaluru.
-Emergency Phone: +91-80-CARE-911 | National Ambulance: 108 / 112 | General Desk: +91-80-4911-2000.
+  const systemPrompt = `You are CareSphere AI, an intelligent, empathetic, and multilingual hospital assistant for CareSphere Multispeciality Hospital Network.
+Hospital Emergency Hotline: +91-80-CARE-911 | Ambulance: 108 / 112 | General Desk: +91-80-4911-2000.
 Hospital OPD Timings: Mon-Sat 08:00 AM - 08:00 PM. Emergency: 24/7. Visiting hours: 4-7 PM.
 
 HOSPITAL DEPARTMENTS:
 ${departments.map(d => `- ${d.name} (${d.floor}, HOD: ${d.head_of_department})`).join('\n')}
 
 VERIFIED APPROVED DOCTORS:
-${doctors.map(d => `- ${d.name} (${d.specialization}, Dept: ${d.dept_name}, ${d.experience_years} yrs exp, Fee: ₹${d.consultation_fee})`).join('\n')}
+${doctors.map(d => `- Dr. ${d.name} (${d.specialization}, Dept: ${d.dept_name}, ${d.experience_years} yrs exp, Fee: ₹${d.consultation_fee})`).join('\n')}
 
 FACILITIES:
 ${facilities.map(f => `- ${f.name} (${f.timing}, Location: ${f.location})`).join('\n')}
 
-CRITICAL MEDICAL INSTRUCTIONS:
-- You MUST reply strictly in the requested language: ${targetLanguage}.
-- Never diagnose diseases, prescribe medication dosages, or invent false doctor credentials.
-- Do not fabricate availability. Direct users to the "Book Appointment" tab for real-time slots.
-- For non-emergency symptoms, provide general health education and advise booking a consultation with a qualified doctor.
-- Always append a short respectful disclaimer that you are an AI assistant and not a medical doctor.`;
+INSTRUCTIONS:
+1. You MUST reply in the requested language: ${targetLanguage}.
+2. If the user uses transliterated language (such as Tanglish, Hinglish, Tenglish), reply naturally in that conversational style or native script.
+3. Understand spelling mistakes and grammatical variations sympathetically.
+4. If the user asks to book an appointment or view records, provide direct and clear answers based on verified doctor records.
+5. Never invent doctor names or degrees. Never provide an independent diagnosis or prescribe medication dosages.
+6. Always append a short, respectful medical disclaimer stating that you are an AI assistant and not a medical doctor.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
+  const model = process.env.AI_MODEL || 'gemini-1.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const contents = [
+    ...history.slice(-4).map(h => ({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.content }]
+    })),
+    {
+      role: 'user',
+      parts: [{ text: `${systemPrompt}\n\nUser Message (${targetLanguage}): ${message}` }]
+    }
+  ];
+
   const payload = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: `${systemPrompt}\n\nUser Question (${targetLanguage}): ${message}` }]
-      }
-    ],
+    contents,
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 600
     }
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7500);
 
-  if (!res.ok) {
-    throw new Error(`Gemini API HTTP status ${res.status}`);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`Gemini API HTTP status ${res.status}`);
+    }
+
+    const data = await res.json() as any;
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!answer) throw new Error('No text returned by Gemini API');
+    return answer;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
   }
-
-  const data = await res.json() as any;
-  const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!answer) throw new Error('No text returned by Gemini API');
-  return answer;
 }
 
-// Local knowledge response generator
+// Local grounded knowledge response generator
 function generateLocalKnowledgeResponse(
   query: string,
   lang: string,
@@ -205,93 +364,59 @@ function generateLocalKnowledgeResponse(
 ): string {
   const q = query.toLowerCase();
 
-  // Helper dictionary for localized templates
   const templates: Record<string, any> = {
     en: {
-      doctor_match: (doc: any) => `**${doc.name}** is our approved specialist in **${doc.specialization}** (${doc.dept_name}).\n• Experience: ${doc.experience_years} years\n• Consultation Fee: ₹${doc.consultation_fee}\n\nYou can book an appointment directly from the "Doctors" tab.`,
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** is our approved specialist in **${doc.specialization}** (${doc.dept_name}).\n• Experience: ${doc.experience_years} years\n• Consultation Fee: ₹${doc.consultation_fee}\n\nYou can book an appointment directly by saying *"Book Dr. ${doc.name}"* or via the Doctors directory.`,
       dept_list: `Our verified departments include:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}\n\nYou can filter doctors by department in the Directory.`,
-      booking_info: `**How to Book an Appointment on CareSphere:**\n1. Go to the "Book Appointment" or "Doctors" page.\n2. Choose your preferred department and verified doctor.\n3. Pick your convenient date and 30-minute time slot.\n4. Confirm your booking to receive an instant CareSphere Reference Number (e.g. CS-2026-XXXXX).\n\n*Appointments can be rescheduled or cancelled anytime from your Patient Dashboard.*`,
+      booking_info: `**CareSphere Appointment Booking:**\n• Say *"Book Dr. [Doctor Name]"* or *"Book Cardiology tomorrow at 10 AM"* to schedule instantly.\n• You can also view available specialists in the Doctors tab.\n• Appointments can be rescheduled or cancelled anytime by saying *"Show my appointments"* or *"Cancel my appointment"*.`,
       facilities_info: `**CareSphere Hospital Facilities:**\n• 24/7 Emergency & Trauma Bay (Ground Floor, Direct Ambulance Access)\n• Automated Diagnostic Pathology Lab (NABL Accredited)\n• Digital 3T MRI & 128-Slice CT Scan (Basement 1)\n• 24/7 In-House Pharmacy\n• Multilingual Patient Assistance Desks at Main Entrance.`,
-      general_health: `Thank you for reaching out to CareSphere. For your symptoms, we strongly recommend scheduling a consultation with one of our specialized doctors so you can receive an accurate in-person medical evaluation and tailored treatment plan.\n\n*Note: CareSphere AI provides hospital information and general health guidance. We do not prescribe medication or substitute for professional medical diagnosis.*`,
+      general_health: `Thank you for reaching out to CareSphere. For your symptoms, we recommend scheduling an evaluation with our specialist doctors. You can tell me *"Book an appointment"* or *"Show available doctors"*.\n\n*Note: CareSphere AI provides hospital navigation and guidance. Professional diagnosis requires a clinical consultation.*`,
       visiting_hours: `**Hospital Timings & Visiting Hours:**\n• OPD Clinics: Monday to Saturday, 08:00 AM - 08:00 PM\n• Emergency Trauma Unit: Open 24/7, 365 Days\n• General Ward Visiting Hours: 04:00 PM - 07:00 PM\n• ICU Visiting Hours: 11:00 AM - 12:00 PM & 05:00 PM - 06:00 PM`
     },
     ta: {
-      doctor_match: (doc: any) => `**${doc.name}** அவர்கள் **${doc.specialization}** (${doc.dept_name}) துறையில் எங்கள் சரிபார்க்கப்பட்ட நிபுணர் ஆவார்.\n• அனுபவம்: ${doc.experience_years} ஆண்டுகள்\n• ஆலோசனைக் கட்டணம்: ₹${doc.consultation_fee}\n\nநீங்கள் "Doctors" பக்கத்தில் நேரடியாக முன்பதிவு செய்யலாம்.`,
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** அவர்கள் **${doc.specialization}** (${doc.dept_name}) துறையில் எங்கள் சரிபார்க்கப்பட்ட நிபுணர் ஆவார்.\n• அனுபவம்: ${doc.experience_years} ஆண்டுகள்\n• ஆலோசனைக் கட்டணம்: ₹${doc.consultation_fee}\n\nமுன்பதிவு செய்ய *"Book Dr. ${doc.name}"* என்று சொல்லலாம்.`,
       dept_list: `கேர்ஸ்பியர் மருத்துவமனை துறைகள்:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}\n\nமருத்துவர் பட்டியலில் துறைவாரியாக தேடலாம்.`,
-      booking_info: `**முன்பதிவு செய்வது எப்படி:**\n1. "Book Appointment" அல்லது "Doctors" பக்கத்திற்குச் செல்லவும்.\n2. உங்களுக்குத் தேவையான துறை மற்றும் மருத்துவரைத் தேர்ந்தெடுக்கவும்.\n3. வசதியான தேதி மற்றும் நேரத்தைத் தேர்வு செய்யவும்.\n4. உறுதிசெய்து உடனடியாக CareSphere குறிப்பு எண்ணைப் பெறவும்.`,
+      booking_info: `**அப்பாய்ன்ட்மென்ட் முன்பதிவு:**\n• *"Book Cardiology"* அல்லது *"Dr. ${doctors[0]?.name || 'Doctor'} உடன் நாளை காலை 10 மணிக்கு முன்பதிவு செய்"* என்று கூறலாம்.\n• உங்கள் அப்பாய்ன்ட்மென்ட்களைப் பார்க்க *"Show my appointments"* என்று கூறவும்.`,
       facilities_info: `**கேர்ஸ்பியர் மருத்துவமனை வசதிகள்:**\n• 24/7 அவசர சிகிச்சை மற்றும் விபத்து பிரிவு (தரைத்தளம்)\n• முழு தானியங்கி நோயியல் ஆய்வகம் (NABL அங்கீகாரம்)\n• 3T MRI மற்றும் அதிநவீன CT ஸ்கேன்\n• 24 மணி நேர மருந்தகம்\n• பலமொழி உதவி மையம்.`,
-      general_health: `உங்கள் ஆரோக்கிய விவரங்களுக்கு நன்றி. துல்லியமான மருத்துவ பரிசோதனைக்கு எங்கள் மருத்துவரை நேரில் சந்திக்குமாறு பரிந்துரைக்கிறோம். "Book Appointment" மூலம் முன்பதிவு செய்யலாம்.\n\n*குறிப்பு: இந்த AI உதவி மருத்துவ தகவல்களை மட்டுமே வழங்குகிறது; மருத்துவ ஆலோசனைக்கு மாற்றாகாது.*`,
-      visiting_hours: `**மருத்துவமனை மற்றும் பார்வையாளர் நேரம்:**\n• புறநோயாளிகள் பிரிவு (OPD): திங்கள் முதல் சனி வரை, காலை 08:00 - இரவு 08:00\n• அவசர சிகிச்சை: 24 மணி நேரமும் செயல்படுகிறது\n• பொது வார்டு பார்வையாளர் நேரம்: மாலை 04:00 - 07:00\n• தீவிர சிகிச்சை பிரிவு (ICU): காலை 11:00 - 12:00 மற்றும் மாலை 05:00 - 06:00`
+      general_health: `உங்கள் ஆரோக்கிய விவரங்களுக்கு நன்றி. துல்லியமான மருத்துவ பரிசோதனைக்கு எங்கள் மருத்துவரை நேரில் சந்திக்குமாறு பரிந்துரைக்கிறோம். "Book appointment" மூலம் முன்பதிவு செய்யலாம்.\n\n*குறிப்பு: இந்த AI உதவி மருத்துவ தகவல்களை மட்டுமே வழங்குகிறது; மருத்துவ ஆலோசனைக்கு மாற்றாகாது.*`,
+      visiting_hours: `**மருத்துவமனை நேரம்:**\n• புறநோயாளிகள் பிரிவு (OPD): திங்கள் - சனி, காலை 08:00 - இரவு 08:00\n• அவசர சிகிச்சை: 24 மணி நேரமும் செயல்படுகிறது.`
     },
     hi: {
-      doctor_match: (doc: any) => `**${doc.name}** हमारे **${doc.specialization}** (${doc.dept_name}) के स्वीकृत विशेषज्ञ हैं।\n• अनुभव: ${doc.experience_years} वर्ष\n• परामर्श शुल्क: ₹${doc.consultation_fee}\n\nआप "Doctors" टैब से सीधे अपॉइंटमेंट बुक कर सकते हैं।`,
-      dept_list: `हमारे प्रमुख विभाग:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}\n\nआप डॉक्टर डायरेक्टरी में विभाग अनुसार खोज सकते हैं।`,
-      booking_info: `**केयरस्फ़ीयर पर अपॉइंटमेंट बुक करने के चरण:**\n1. "Book Appointment" पृष्ठ पर जाएं।\n2. उपयुक्त विभाग और स्वीकृत डॉक्टर चुनें।\n3. अपनी सुविधानुसार तारीख और समय स्लॉट चुनें।\n4. पुष्टि करें और तुरंत अपॉइंटमेंट संदर्भ संख्या प्राप्त करें।`,
-      facilities_info: `**केयरस्फ़ीयर अस्पताल सुविधाएं:**\n• 24/7 आपातकालीन एवं ट्रॉमा सेंटर (ग्राउंड फ्लोर)\n• आधुनिक पैथोलॉजी लैब (NABL प्रमाणित)\n• 3T डिजिटल एमआरआई और 128-स्लाइस सीटी स्कैन\n• 24/7 फार्मेसी और बहुभाषी सहायता केंद्र।`,
-      general_health: `आपके स्वास्थ्य से जुड़े प्रश्न के लिए धन्यवाद। लक्षणों के सटीक मूल्यांकन हेतु हम संबंधित विशेषज्ञ डॉक्टर से परामर्श लेने की सलाह देते हैं।\n\n*नोट: यह AI केवल सामान्य जानकारी प्रदान करता है, चिकित्सीय परामर्श का विकल्प नहीं है।*`,
-      visiting_hours: `**अस्पताल और मुलाकात का समय:**\n• ओपीडी (OPD): सोमवार से शनिवार, सुबह 08:00 से रात 08:00 तक\n• आपातकालीन सेवा: 24 घंटे, सातों दिन खुली है\n• वार्ड में मुलाकात: शाम 04:00 से 07:00 बजे\n• आईसीयू (ICU) मुलाकात: सुबह 11:00 से 12:00 और शाम 05:00 से 06:00 बजे`
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** हमारे **${doc.specialization}** (${doc.dept_name}) के स्वीकृत विशेषज्ञ हैं।\n• अनुभव: ${doc.experience_years} वर्ष\n• परामर्श शुल्क: ₹${doc.consultation_fee}\n\nअपॉइंटमेंट के लिए *"Book Dr. ${doc.name}"* कहें।`,
+      dept_list: `प्रमुख विभाग:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
+      booking_info: `**अपॉइंटमेंट बुकिंग:**\n• सीधे बुक करने के लिए *"Dr. ${doctors[0]?.name || 'Specialist'} के साथ कल 10 बजे बुक करो"* कहें।\n• अपनी अपॉइंटमेंट देखने के लिए *"मेरी अपॉइंटमेंट दिखाओ"* कहें।`,
+      facilities_info: `**केयरस्फ़ीयर अस्पताल सुविधाएं:**\n• 24/7 आपातकालीन एवं ट्रॉमा सेंटर\n• आधुनिक पैथोलॉजी लैब व 24 घंटे फार्मेसी।`,
+      general_health: `लक्षणों के सटीक मूल्यांकन हेतु हम संबंधित विशेषज्ञ डॉक्टर से परामर्श लेने की सलाह देते हैं।\n\n*नोट: यह AI केवल सामान्य जानकारी प्रदान करता है, चिकित्सीय परामर्श का विकल्प नहीं है।*`,
+      visiting_hours: `**अस्पताल का समय:**\n• ओपीडी: सोमवार से शनिवार, सुबह 08:00 से रात 08:00 तक\n• इमरजेंसी: 24 घंटे खुली है।`
     },
     te: {
-      doctor_match: (doc: any) => `**${doc.name}** గారు **${doc.specialization}** (${doc.dept_name}) విభాగంలో నిపుణులు.\n• అనుభవం: ${doc.experience_years} సంవత్సరాలు\n• సంప్రదింపు రుసుము: ₹${doc.consultation_fee}`,
-      dept_list: `మా ఆసుపత్రి విభాగాలు:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**అపాయింట్‌మెంట్ బుక్ చేసుకునే విధానం:**\n1. "Book Appointment" పేజీకి వెళ్లండి.\n2. విభాగాన్ని మరియు వైద్యుడిని ఎంచుకోండి.\n3. అనుకూలమైన తేదీ మరియు సమయాన్ని ఎంచుకుని నిర్ధారించండి.`,
-      facilities_info: `**కేర్‌స్పియర్ సౌకర్యాలు:**\n• 24/7 ఎమర్జెన్సీ & ట్రామా బే (గ్రౌండ్ ఫ్లోర్)\n• అధునాతన పాథాలజీ ల్యాబ్ & 24 గంటల ఫార్మసీ\n• డిజిటల్ MRI & CT స్కాన్ సదుపాయం.`,
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** గారు **${doc.specialization}** (${doc.dept_name}) విభాగంలో నిపుణులు.\n• అనుభవం: ${doc.experience_years} సంవత్సరాలు\n• రుసుము: ₹${doc.consultation_fee}`,
+      dept_list: `ఆసుపత్రి విభాగాలు:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
+      booking_info: `**అపాయింట్‌మెంట్ బుకింగ్:**\n• *"Book Dr. ${doctors[0]?.name || 'Doctor'}"* అని చెప్పి వెంటనే బుక్ చేసుకోవచ్చు.`,
+      facilities_info: `**సౌకర్యాలు:**\n• 24/7 ఎమర్జెన్సీ & ట్రామా బే\n• అధునాతన పాథాలజీ ల్యాబ్ & 24 గంటల ఫార్మసీ.`,
       general_health: `సరియైన రోగ నిర్ధారణ కొరకు దయచేసి మా నిపుణులైన వైద్యుడిని సంప్రదించండి.\n\n*గమనిక: ఈ సమాచారం సాధారణ అవగాహన కోసం మాత్రమే.*`,
-      visiting_hours: `**సందర్శన వేళలు:**\n• OPD వేళలు: సోమవారం - శనివారం, ఉదయం 08:00 నుండి రాత్రి 08:00 వరకు\n• ఎమర్జెన్సీ: 24 గంటలు అందుబాటులో ఉంటుంది\n• సాధారణ వార్డు సందర్శన: సాయంత్రం 04:00 - 07:00`
+      visiting_hours: `**సందర్శన వేళలు:**\n• OPD వేళలు: సోమవారం - శనివారం, ఉదయం 08:00 నుండి రాత్రి 08:00 వరకు\n• ఎమర్జెన్సీ: 24 గంటలు అందుబాటులో ఉంటుంది.`
     },
     kn: {
-      doctor_match: (doc: any) => `**${doc.name}** ರವರು **${doc.specialization}** (${doc.dept_name}) ವಿಭಾಗದ ನುರಿತ ತಜ್ಞರು.\n• ಅನುಭವ: ${doc.experience_years} ವರ್ಷಗಳು\n• ಶುಲ್ಕ: ₹${doc.consultation_fee}`,
-      dept_list: `ನಮ್ಮ ಆಸ್ಪತ್ರೆಯ ವಿಭಾಗಗಳು:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡುವುದು ಹೇಗೆ:**\n1. "Book Appointment" ಪುಟಕ್ಕೆ ಹೋಗಿ.\n2. ವಿಭಾಗ ಮತ್ತು ವೈದ್ಯರನ್ನು ಆಯ್ಕೆಮಾಡಿ.\n3. ದಿನಾಂಕ ಮತ್ತು ಸಮಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ ದೃಢೀಕರಿಸಿ.`,
-      facilities_info: `**ಆಸ್ಪತ್ರೆಯ ಸೌಲಭ್ಯಗಳು:**\n• 24/7 ತುರ್ತು ಚಿಕಿತ್ಸಾ ಘಟಕ\n• ಆಧುನಿಕ ಲ್ಯಾಬ್ ಮತ್ತು 24 ಗಂಟೆಗಳ ಔಷಧಾಲಯ.`,
-      general_health: `ಸರಿಯಾದ ವೈದ್ಯಕೀಯ ತಪಾಸಣೆಗಾಗಿ ದಯವಿಟ್ಟು ನಮ್ಮ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.\n\n*ಸೂಚನೆ: ಇದು ಸಾಮಾನ್ಯ ಮಾರ್ಗದರ್ಶನ ಮಾತ್ರ.*`,
-      visiting_hours: `**ಆಸ್ಪತ್ರೆಯ ಸಮಯ:**\n• ಒಪಿಡಿ: ಬೆಳಿಗ್ಗೆ 08:00 ರಿಂದ ರಾತ್ರಿ 08:00 ರವರೆಗೆ\n• ತುರ್ತು ಸೇವೆ: 24 ಗಂಟೆಗಳು ಲಭ್ಯ.`
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** ರವರು **${doc.specialization}** (${doc.dept_name}) ವಿಭಾಗದ ತಜ್ಞರು.\n• ಶುಲ್ಕ: ₹${doc.consultation_fee}`,
+      dept_list: `ವಿಭಾಗಗಳು:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
+      booking_info: `**ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕಿಂಗ್:**\n• *"Book appointment"* ಎಂದು ಹೇಳಿ ಸುಲಭವಾಗಿ ಬುಕ್ ಮಾಡಬಹುದು.`,
+      facilities_info: `**ಸೌಲಭ್ಯಗಳು:**\n• 24/7 ತುರ್ತು ಚಿಕಿತ್ಸಾ ಘಟಕ ಹಾಗೂ ಔಷಧಾಲಯ.`,
+      general_health: `ವೈದ್ಯಕೀಯ ತಪಾಸಣೆಗಾಗಿ ದಯವಿಟ್ಟು ನಮ್ಮ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.`,
+      visiting_hours: `**ಸಮಯ:**\n• ಒಪಿಡಿ: ಬೆಳಿಗ್ಗೆ 08:00 ರಿಂದ ರಾತ್ರಿ 08:00 ರವರೆಗೆ.`
     },
     ml: {
-      doctor_match: (doc: any) => `**${doc.name}** **${doc.specialization}** (${doc.dept_name}) വിഭാഗത്തിലെ വിദഗ്ദ്ധനാണ്.\n• പരിചയം: ${doc.experience_years} വർഷം\n• ഫീസ്: ₹${doc.consultation_fee}`,
-      dept_list: `പ്രധാന വിഭാഗങ്ങൾ:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**അപ്പോയിന്റ്മെന്റ് ബുക്ക് ചെയ്യുന്ന വിധം:**\n1. "Book Appointment" പേജ് തുറക്കുക.\n2. വിഭാഗവും ഡോക്ടറെയും തിരഞ്ഞെടുക്കുക.\n3. തീയതിയും സമയവും തിരഞ്ഞെടുത്ത് സ്ഥിരീകരിക്കുക.`,
-      facilities_info: `**ആശുപത്രി സൗകര്യങ്ങൾ:**\n• 24/7 എമർജൻസി കെയർ\n• പൂർണ്ണ സജ്ജീകരണങ്ങളുള്ള ലാബും ഫാർമസിയും.`,
-      general_health: `കൃത്യമായ പരിശോധനക്കായി ദയവായി ഞങ്ങളുടെ ഡോക്ടറെ നേരിൽ കാണുക.\n\n*ശ്രദ്ധിക്കുക: ഇത് പൊതുവായ ആരോഗ്യ വിവരങ്ങൾ മാത്രമാണ്.*`,
-      visiting_hours: `**സന്ദർശന സമയം:**\n• ഒപിഡി: രാവിലെ 08:00 മുതൽ രാത്രി 08:00 വരെ\n• എമർജൻസി: 24 മണിക്കൂറും പ്രവർത്തിക്കുന്നു.`
-    },
-    bn: {
-      doctor_match: (doc: any) => `**${doc.name}** আমাদের **${doc.specialization}** (${doc.dept_name}) বিভাগের অনুমোদিত বিশেষজ্ঞ।\n• অভিজ্ঞতা: ${doc.experience_years} বছর\n• ফি: ₹${doc.consultation_fee}`,
-      dept_list: `হাসপাতালের বিভাগসমূহ:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**অ্যাপয়েন্টমেন্ট বুকিং পদ্ধতি:**\n১. "Book Appointment" পেজে যান।\n২. বিভাগ এবং ডাক্তার নির্বাচন করুন।\n৩. তারিখ ও সময় নির্বাচন করে নিশ্চিত করুন।`,
-      facilities_info: `**হাসপাতালের সুবিধাসমূহ:**\n• ২৪/৭ জরুরী পরিষেবা\n• আধুনিক ডায়াগনস্টিক ল্যাব এবং সার্বক্ষণিক ফার্মেসী।`,
-      general_health: `সঠিক রোগ নির্ণয়ের জন্য অনুগ্রহ করে আমাদের বিশেষজ্ঞ ডাক্তারের পরামর্শ নিন।`,
-      visiting_hours: `**সময়সূচী:**\n• ওপিডি: সকাল ০৮:০০ থেকে রাত ০৮:০০\n• জরুরী বিভাগ: ২৪ ঘন্টা খোলা থাকে।`
-    },
-    mr: {
-      doctor_match: (doc: any) => `**${doc.name}** हे **${doc.specialization}** (${doc.dept_name}) मधील तज्ञ डॉक्टर आहेत.\n• अनुभव: ${doc.experience_years} वर्षे\n• फी: ₹${doc.consultation_fee}`,
-      dept_list: `रुग्णालयातील प्रमुख विभाग:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**अपॉइंटमेंट कशी बुक करावी:**\n१. "Book Appointment" पानावर जा.\n२. विभाग आणि डॉक्टर निवडा.\n३. योग्य वेळ आणि तारीख निवडून निश्चित करा.`,
-      facilities_info: `**सुविधा:**\n• २४/७ आपत्कालीन विभाग\n• आधुनिक पॅथॉलॉजी लॅब आणि औषधालय.`,
-      general_health: `योग्य वैद्यकीय तपासणीसाठी कृपया संबंधित तज्ञ डॉक्टरांचा सल्ला घ्या.`,
-      visiting_hours: `**भेटण्याची वेळ:**\n• ओपीडी: सकाळी ०८:०० ते रात्री ०८:००\n• आपत्कालीन: २४ तास उपलब्ध.`
-    },
-    gu: {
-      doctor_match: (doc: any) => `**${doc.name}** અમારા **${doc.specialization}** (${doc.dept_name}) ના માન્ય નિષ્ણાત છે.\n• અનુભવ: ${doc.experience_years} વર્ષ\n• ફી: ₹${doc.consultation_fee}`,
-      dept_list: `હોસ્પિટલના વિભાગો:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**એપોઇન્ટમેન્ટ બુક કરવાની રીત:**\n૧. "Book Appointment" પેજ પર જાઓ.\n૨. વિભાગ અને ડૉક્ટર પસંદ કરો.\n૩. તારીખ અને સમય પસંદ કરી કન્ફર્મ કરો.`,
-      facilities_info: `**સુવિધાઓ:**\n• 24/7 ઇમરજન્સી સેવા\n• અદ્યતન લેબોરેટરી અને 24 કલાક ફાર્મસી.`,
-      general_health: `યોગ્ય તબીબી તપાસ માટે કૃપા કરીને અમારા નિષ્ણાત ડૉક્ટરની સલાહ લો.`,
-      visiting_hours: `**સમય:**\n• ઓપીડી: સવારે 08:00 થી રાત્રે 08:00 સુધી\n• ઇમરજન્સી: 24 કલાક ઉપલબ્ધ.`
-    },
-    pa: {
-      doctor_match: (doc: any) => `**${doc.name}** ਸਾਡੇ **${doc.specialization}** (${doc.dept_name}) ਦੇ ਮਾਹਰ ਡਾਕਟਰ ਹਨ।\n• ਤਜਰਬਾ: ${doc.experience_years} ਸਾਲ\n• ਫੀਸ: ₹${doc.consultation_fee}`,
-      dept_list: `ਹਸਪਤਾਲ ਦੇ ਵਿਭਾਗ:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**ਅਪਾਇੰਟਮੈਂਟ ਬੁੱਕ ਕਰਨ ਦਾ ਤਰੀਕਾ:**\n1. "Book Appointment" ਪੇਜ 'ਤੇ ਜਾਓ।\n2. ਵਿਭਾਗ ਅਤੇ ਡਾਕਟਰ ਚੁਣੋ।\n3. ਤਰੀਕ ਅਤੇ ਸਮਾਂ ਚੁਣ ਕੇ ਪੁਸ਼ਟੀ ਕਰੋ।`,
-      facilities_info: `**ਸਹੂਲਤਾਂ:**\n• 24/7 ਐਮਰਜੈਂਸੀ ਵਿਭਾਗ\n• ਆਧੁਨಿಕ ਲੈਬ ਅਤੇ 24 ਘੰਟੇ ਫਾਰਮੇਸੀ।`,
-      general_health: `ਸਹੀ ਇਲਾਜ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਸਾਡੇ ਮਾਹਰ ਡਾਕਟਰ ਨਾਲ ਸੰਪਰਕ ਕਰੋ।`,
-      visiting_hours: `**ਮੁਲਾਕਾਤ ਦਾ ਸਮਾਂ:**\n• ਓਪੀਡੀ: ਸਵੇਰੇ 08:00 ਤੋਂ ਰਾਤ 08:00 ਤੱਕ\n• ਐਮਰਜੈਂਸੀ: 24 ਘੰਟੇ ਖੁੱਲ੍ਹਾ.`
+      doctor_match: (doc: any) => `**Dr. ${doc.name}** **${doc.specialization}** വിഭാഗത്തിലെ വിദഗ്ദ്ധനാണ്.\n• ഫീസ്: ₹${doc.consultation_fee}`,
+      dept_list: `വിഭാഗങ്ങൾ:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
+      booking_info: `**അപ്പോയിന്റ്മെന്റ്:**\n• ബുക്ക് ചെയ്യാൻ *"Book Dr. ${doctors[0]?.name || 'Doctor'}"* എന്ന് പറയുക.`,
+      facilities_info: `**സൗകര്യങ്ങൾ:**\n• 24/7 എമർജൻസി കെയർ, ലാബ്, ഫാർമസി.`,
+      general_health: `കൃത്യമായ പരിശോധനക്കായി ദയവായി ഡോക്ടറെ നേരിൽ കാണുക.`,
+      visiting_hours: `**സമയം:** ഒപിഡി രാവിലെ 08:00 മുതൽ രാത്രി 08:00 വരെ.`
     }
   };
 
   const t = templates[lang] || templates.en;
 
-  // Check if user is asking about specific doctor by name
   for (const doc of doctors) {
     const lastName = doc.name.split(' ').slice(-1)[0].toLowerCase();
     if (q.includes(lastName) || q.includes(doc.name.toLowerCase())) {
@@ -299,26 +424,17 @@ function generateLocalKnowledgeResponse(
     }
   }
 
-  // Check if asking about departments or specialties
-  if (q.includes('department') || q.includes('special') || q.includes('cardio') || q.includes('neuro') || q.includes('ortho') || q.includes('pediatric') || q.includes('துறை') || q.includes('विभाग')) {
+  if (q.includes('department') || q.includes('special') || q.includes('துறை') || q.includes('विभाग') || q.includes('విభాగం')) {
     return t.dept_list;
   }
 
-  // Check if asking about appointment booking / cancellation
-  if (q.includes('book') || q.includes('appointment') || q.includes('cancel') || q.includes('reschedule') || q.includes('பதிவு') || q.includes('अपॉइंटमेंट')) {
-    return t.booking_info;
-  }
-
-  // Check if asking about hospital facilities / pharmacy / lab
-  if (q.includes('facility') || q.includes('pharmacy') || q.includes('lab') || q.includes('mri') || q.includes('ct scan') || q.includes('மருந்தகம்') || q.includes('दवाखाना')) {
+  if (q.includes('facility') || q.includes('pharmacy') || q.includes('lab') || q.includes('மருந்தகம்') || q.includes('दवाखाना')) {
     return t.facilities_info;
   }
 
-  // Check if asking about visiting hours or timings
-  if (q.includes('timing') || q.includes('hour') || q.includes('visit') || q.includes('open') || q.includes('நேரம்') || q.includes('समय')) {
+  if (q.includes('timing') || q.includes('hour') || q.includes('visit') || q.includes('நேரம்') || q.includes('समय')) {
     return t.visiting_hours;
   }
 
-  // General fallback
   return t.general_health;
 }

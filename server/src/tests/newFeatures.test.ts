@@ -147,14 +147,14 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
     });
 
     it('allows patient to book an online video consultation', async () => {
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      const uniqueTime = `21:${Math.floor(10 + Math.random() * 49)}`;
+      const uniqueDate = new Date(Date.now() + 86400000 * 40 + Math.floor(Math.random() * 500) * 86400000).toISOString().slice(0, 10);
+      const uniqueTime = `19:${String(Math.floor(Math.random() * 59)).padStart(2, '0')}`;
       const res = await request(app)
         .post('/api/consultations/book')
         .set('Authorization', `Bearer ${patientToken}`)
         .send({
           doctor_id: doctorId,
-          appointment_date: tomorrow,
+          appointment_date: uniqueDate,
           appointment_time: uniqueTime,
           patient_notes: 'Online follow-up consultation'
         });
