@@ -5,7 +5,7 @@ import { SUPPORTED_LANGUAGES, LanguageOption } from '../i18n/index.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export const LanguageSelector: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { setLanguage } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ export const LanguageSelector: React.FC = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-700/60 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Choose Preferred Language
+            {t('nav.switch_lang')}
           </div>
           <div className="max-h-72 overflow-y-auto py-1">
             {SUPPORTED_LANGUAGES.map(lang => {

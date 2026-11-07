@@ -468,7 +468,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <Calendar className="w-4 h-4 text-[#0D9488]" />
-          <span>Appointments</span>
+          <span>{t('dashboard_tabs.appointments')}</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-bold">
             {upcomingAppointments.length}
           </span>
@@ -483,7 +483,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <FileText className="w-4 h-4 text-[#38BDF8]" />
-          <span>My Prescriptions</span>
+          <span>{t('dashboard_tabs.prescriptions')}</span>
           {myPrescriptions.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
               {myPrescriptions.length}
@@ -500,7 +500,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <FlaskConical className="w-4 h-4 text-emerald-400" />
-          <span>Lab Bookings & Reports</span>
+          <span>{t('dashboard_tabs.lab_reports')}</span>
           {myLabBookings.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
               {myLabBookings.length}
@@ -517,7 +517,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <ShoppingBag className="w-4 h-4 text-sky-400" />
-          <span>Pharmacy Orders</span>
+          <span>{t('dashboard_tabs.pharmacy_orders')}</span>
           {myPharmacyOrders.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 font-bold">
               {myPharmacyOrders.length}
@@ -534,7 +534,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <Pill className="w-4 h-4 text-teal-400" />
-          <span>Reminders</span>
+          <span>{t('dashboard_tabs.reminders')}</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
             {adherenceRate}%
           </span>
@@ -549,7 +549,7 @@ export const PatientDashboardPage: React.FC = () => {
           }`}
         >
           <Activity className="w-4 h-4 text-rose-400" />
-          <span>Follow-Ups</span>
+          <span>{t('dashboard_tabs.followups')}</span>
           {followups.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 font-bold">
               {followups.length}
@@ -729,10 +729,10 @@ export const PatientDashboardPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    Clinical Digital Prescriptions
+                    {t('prescriptions.title')}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Official finalized prescriptions signed by verified CareSphere medical doctors.
+                    {t('prescriptions.subtitle')}
                   </p>
                 </div>
                 {myPrescriptions.length > 0 ? (
@@ -742,7 +742,7 @@ export const PatientDashboardPage: React.FC = () => {
                     className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all cursor-pointer hover:scale-105 active:scale-95"
                   >
                     <ShoppingBag className="w-3.5 h-3.5 text-teal-200" />
-                    <span>Order Prescribed Medicines</span>
+                    <span>{t('prescriptions.order_prescribed_btn')}</span>
                   </button>
                 ) : (
                   <Link
@@ -750,7 +750,7 @@ export const PatientDashboardPage: React.FC = () => {
                     className="px-3.5 py-2 rounded-xl bg-[#123B5D] hover:bg-[#0D9488] text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Order Medicines Online</span>
+                    <span>{t('prescriptions.order_online_btn')}</span>
                   </Link>
                 )}
               </div>
@@ -759,7 +759,7 @@ export const PatientDashboardPage: React.FC = () => {
                 <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-8 text-center">
                   <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    No digital prescriptions issued yet. Consultations with CareSphere doctors will generate certified prescriptions here.
+                    {t('prescriptions.no_prescriptions')}
                   </p>
                 </div>
               ) : (
@@ -775,12 +775,12 @@ export const PatientDashboardPage: React.FC = () => {
                             {rx.prescription_number}
                           </span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
-                            FINALIZED & CERTIFIED
+                            {t('prescriptions.finalized_badge')}
                           </span>
                         </div>
                         <div className="text-xs text-slate-500 flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                          <span>Consultation Date: {rx.consultation_date}</span>
+                          <span>{t('prescriptions.consultation_date')} {rx.consultation_date}</span>
                         </div>
                       </div>
 
@@ -799,14 +799,14 @@ export const PatientDashboardPage: React.FC = () => {
 
                         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/60">
                           <div className="font-bold text-slate-900 dark:text-white mb-0.5">
-                            Diagnosis / Clinical Assessment:
+                            {t('prescriptions.diagnosis_title')}
                           </div>
                           <p className="text-slate-700 dark:text-slate-300 font-medium">
                             {rx.diagnosis}
                           </p>
                           {rx.vitals_summary && (
                             <div className="text-[11px] text-slate-500 mt-1">
-                              Vitals: {rx.vitals_summary}
+                              {t('prescriptions.vitals_label')} {rx.vitals_summary}
                             </div>
                           )}
                         </div>
@@ -815,18 +815,18 @@ export const PatientDashboardPage: React.FC = () => {
                       {/* Prescribed Medicines Table */}
                       <div>
                         <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
-                          Prescribed Medicines ({rx.medicines?.length || 0})
+                          {t('prescriptions.prescribed_meds_title')} ({rx.medicines?.length || 0})
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-xs border-collapse">
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-900/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
-                                <th className="p-2.5">Medicine Name</th>
-                                <th className="p-2.5">Dosage</th>
-                                <th className="p-2.5">Frequency</th>
-                                <th className="p-2.5">Timing</th>
-                                <th className="p-2.5">Duration</th>
-                                <th className="p-2.5">Instructions</th>
+                                <th className="p-2.5">{t('prescriptions.table_med_name')}</th>
+                                <th className="p-2.5">{t('prescriptions.table_dosage')}</th>
+                                <th className="p-2.5">{t('prescriptions.table_frequency')}</th>
+                                <th className="p-2.5">{t('prescriptions.table_timing')}</th>
+                                <th className="p-2.5">{t('prescriptions.table_duration')}</th>
+                                <th className="p-2.5">{t('prescriptions.table_instructions')}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -835,7 +835,7 @@ export const PatientDashboardPage: React.FC = () => {
                                   <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.medicine_name}</td>
                                   <td className="p-2.5 font-semibold text-slate-700 dark:text-slate-300">{m.dosage}</td>
                                   <td className="p-2.5">{m.frequency}</td>
-                                  <td className="p-2.5 capitalize">{m.timing?.replace('_', ' ') || 'After food'}</td>
+                                  <td className="p-2.5 capitalize">{m.timing?.replace('_', ' ') || t('prescriptions.after_food')}</td>
                                   <td className="p-2.5 font-semibold text-teal-600">{m.duration}</td>
                                   <td className="p-2.5 text-slate-500 italic">{m.instructions || '-'}</td>
                                 </tr>
@@ -887,7 +887,7 @@ export const PatientDashboardPage: React.FC = () => {
                           className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors"
                         >
                           <Download className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Download Official PDF with Seal</span>
+                          <span>{t('prescriptions.download_pdf_btn')}</span>
                         </a>
 
                         <button
@@ -896,7 +896,7 @@ export const PatientDashboardPage: React.FC = () => {
                           className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#123B5D]/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
                         >
                           <ShoppingBag className="w-3.5 h-3.5 text-teal-200" />
-                          <span>Order Prescribed Medicines via Hospital Pharmacy</span>
+                          <span>{t('prescriptions.order_via_hospital_pharmacy')}</span>
                         </button>
                       </div>
                     </div>
@@ -912,10 +912,10 @@ export const PatientDashboardPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    Laboratory Diagnostics & Test Reports
+                    {t('lab.title')}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Track sample processing and view verified reports auto-linked to your Medical Records Vault.
+                    {t('lab.subtitle')}
                   </p>
                 </div>
                 <Link
@@ -923,7 +923,7 @@ export const PatientDashboardPage: React.FC = () => {
                   className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow"
                 >
                   <FlaskConical className="w-3.5 h-3.5" />
-                  <span>Book Diagnostic Test</span>
+                  <span>{t('lab.book_test_btn')}</span>
                 </Link>
               </div>
 

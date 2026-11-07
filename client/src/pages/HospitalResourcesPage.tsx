@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Activity,
   Bed,
@@ -20,6 +21,7 @@ import { apiUrl } from '../services/api.js';
 import { HospitalResource } from '../types/index.js';
 
 export const HospitalResourcesPage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const [resources, setResources] = useState<HospitalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +155,7 @@ export const HospitalResourcesPage: React.FC = () => {
         <div className="flex items-center gap-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 p-3 rounded-2xl text-xs text-red-800 dark:text-red-200 shrink-0">
           <PhoneCall className="w-4 h-4 text-red-600 shrink-0" />
           <div>
-            <span className="font-bold">National Ambulance: 108</span> • Emergency Helpline: +91-80-CARE-911
+            <span className="font-bold">{t('footer.dial_108')}</span> • {t('footer.hospital_trauma')}
           </div>
         </div>
       </div>

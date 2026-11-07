@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Upload,
@@ -56,10 +57,17 @@ Notes: Intermittent chest heaviness on exertion.`
 ];
 
 export const AIReportExplainerPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const { user, token } = useAuth();
   const navigate = useNavigate();
 
-  const [language, setLanguage] = useState(user?.preferred_language || 'en');
+  const [language, setLanguage] = useState(user?.preferred_language || i18n.language || 'en');
+
+  useEffect(() => {
+    if (i18n.language && !user?.preferred_language) {
+      setLanguage(i18n.language);
+    }
+  }, [i18n.language, user]);
   const [reportText, setReportText] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -151,16 +159,16 @@ ${analysis.actionable_recommendations.map((r) => `- ${r}`).join('\n')}
             <span>Multilingual Clinical Biomarker Explainer</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
-            AI Medical Report Explainer
+            {t('ai_explainer.title')}
           </h1>
           <p className="text-teal-100 text-sm sm:text-base leading-relaxed mb-4">
-            Upload blood tests, lab panels, or discharge summaries. Our clinical AI parses your biomarkers, checks normal ranges, and explains what each value means in your native language.
+            {t('ai_explainer.subtitle')}
           </p>
 
           <div className="p-3 bg-amber-500/20 border border-amber-400/40 rounded-2xl text-xs text-amber-100 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
             <span>
-              <strong>Clinical Safety Note:</strong> CareSphere AI Explainer provides educational insights only and does not replace doctor diagnoses. Urgent abnormalities should be verified immediately with a physician.
+              <strong>Clinical Safety Note:</strong> {t('ai_explainer.disclaimer')}
             </span>
           </div>
         </div>

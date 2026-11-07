@@ -266,13 +266,13 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-extrabold tracking-tight">CareSphere 24/7 Emergency SOS</h2>
+                <h2 className="text-xl font-extrabold tracking-tight">{t('emergency_sos.title')}</h2>
                 <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-white text-red-700 rounded-full">
-                  Critical Response
+                  {t('emergency_sos.critical_response')}
                 </span>
               </div>
               <p className="text-xs text-red-100 mt-0.5">
-                Immediate clinical assistance and trauma coordination across participating hospitals
+                {t('emergency_sos.subtitle')}
               </p>
             </div>
           </div>
@@ -288,15 +288,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
         <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 p-3 px-5 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold">Life-Threatening Emergency Notice:</span> If the patient is unconscious, not breathing, or experiencing severe acute chest trauma, directly dial{' '}
-            <a href="tel:108" className="font-bold underline text-red-700 dark:text-red-400">
-              108 (National Ambulance)
-            </a>{' '}
-            or{' '}
-            <a href="tel:112" className="font-bold underline text-red-700 dark:text-red-400">
-              112 (ERSS)
-            </a>{' '}
-            without waiting for online forms.
+            <span className="font-bold">{t('emergency_sos.warning_title')}</span> {t('emergency_sos.warning_text')}
           </div>
         </div>
 
@@ -311,7 +303,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             }`}
           >
             <PhoneCall className="w-3.5 h-3.5" />
-            <span>Immediate Call</span>
+            <span>{t('emergency_sos.tab_immediate')}</span>
           </button>
 
           <button
@@ -323,7 +315,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             }`}
           >
             <Ambulance className="w-3.5 h-3.5" />
-            <span>Request Assistance</span>
+            <span>{t('emergency_sos.tab_request')}</span>
           </button>
 
           <button
@@ -335,7 +327,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Emergency Contacts ({emergencyContacts.length})</span>
+            <span>{t('emergency_sos.tab_contacts')} ({emergencyContacts.length})</span>
           </button>
 
           <button
@@ -347,7 +339,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Track Requests ({myRequests.length})</span>
+            <span>{t('emergency_sos.tab_tracking')} ({myRequests.length})</span>
           </button>
         </div>
 
@@ -464,28 +456,28 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Patient Full Name *
+                  {t('emergency_sos.patient_name_label')} *
                 </label>
                 <input
                   type="text"
                   required
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="Patient Name"
+                  placeholder={t('emergency_sos.patient_name_placeholder')}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Callback Phone Number *
+                  {t('emergency_sos.phone_label')} *
                 </label>
                 <input
                   type="tel"
                   required
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
-                  placeholder="+91-9876543210"
+                  placeholder={t('emergency_sos.phone_placeholder')}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -495,27 +487,26 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Emergency Medical Category *
+                  {t('emergency_sos.emergency_type_label')} *
                 </label>
                 <select
                   value={emergencyType}
                   onChange={(e) => setEmergencyType(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                 >
-                  <option value="cardiac">Cardiac Emergency / Chest Pain</option>
-                  <option value="accident_trauma">Severe Road Accident / Trauma</option>
-                  <option value="breathing_distress">Acute Breathing Difficulty / Asthma</option>
-                  <option value="stroke_neuro">Stroke / Paralysis / Sudden Weakness</option>
-                  <option value="burns_fire">Burns / Fire Injury</option>
-                  <option value="pregnancy_delivery">Obstetric / Emergency Labor</option>
-                  <option value="poisoning">Poisoning / Toxic Ingestion</option>
-                  <option value="other">Other Acute Medical Distress</option>
+                  <option value="cardiac">{t('emergency_sos.cardiac')}</option>
+                  <option value="breathing_distress">{t('emergency_sos.breathing')}</option>
+                  <option value="accident_trauma">{t('emergency_sos.accident')}</option>
+                  <option value="stroke_neuro">{t('emergency_sos.stroke')}</option>
+                  <option value="pregnancy_delivery">{t('emergency_sos.maternity')}</option>
+                  <option value="poisoning">{t('emergency_sos.poison')}</option>
+                  <option value="other">{t('emergency_sos.other')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Severity Triage Level *
+                  {t('emergency_sos.triage_level_label')} *
                 </label>
                 <div className="flex gap-2">
                   <button
@@ -527,7 +518,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    RED (Critical)
+                    {t('emergency_sos.triage_red')}
                   </button>
                   <button
                     type="button"
@@ -538,7 +529,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    YELLOW (Urgent)
+                    {t('emergency_sos.triage_yellow')}
                   </button>
                   <button
                     type="button"
@@ -549,7 +540,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    GREEN (Stable)
+                    {t('emergency_sos.triage_green')}
                   </button>
                 </div>
               </div>
@@ -665,7 +656,7 @@ export const EmergencySOSModal: React.FC<EmergencySOSModalProps> = ({
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-extrabold text-sm shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 transition-all"
             >
               <ShieldAlert className="w-5 h-5 animate-pulse" />
-              <span>{submitting ? 'TRANSMITTING SOS REQUEST...' : 'SUBMIT SOS EMERGENCY REQUEST'}</span>
+              <span>{submitting ? t('emergency_sos.submitting') : t('emergency_sos.submit_request_btn')}</span>
             </button>
           </form>
         )}

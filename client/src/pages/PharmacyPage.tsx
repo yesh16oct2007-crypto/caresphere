@@ -415,10 +415,10 @@ export const PharmacyPage: React.FC = () => {
                   <Building className="w-3.5 h-3.5" />
                   <span>
                     {pharmacy.pharmacy_type === 'retail_partner'
-                      ? 'Verified Partner Retail Pharmacy'
+                      ? t('pharmacy.retail_partner')
                       : pharmacy.pharmacy_type === 'central_warehouse'
-                      ? 'CareSphere National Digital Warehouse'
-                      : 'Hospital Campus Pharmacy Counter'}
+                      ? t('pharmacy.central_warehouse')
+                      : t('pharmacy.hospital_counter')}
                   </span>
                 </div>
                 <button
@@ -426,7 +426,7 @@ export const PharmacyPage: React.FC = () => {
                   className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs shadow-md transition-all cursor-pointer"
                 >
                   <ArrowLeftRight className="w-3.5 h-3.5" />
-                  <span>Change Pharmacy / Partner Store ({allPharmacies.length})</span>
+                  <span>{t('pharmacy.change_pharmacy')} ({allPharmacies.length})</span>
                 </button>
               </div>
 
@@ -450,7 +450,7 @@ export const PharmacyPage: React.FC = () => {
                 className="px-4 py-3 rounded-2xl bg-[#0D9488] hover:bg-[#0f766e] text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Add Specific Medicine</span>
+                <span>{t('pharmacy.add_specific_med')}</span>
               </button>
 
               <button
@@ -458,7 +458,7 @@ export const PharmacyPage: React.FC = () => {
                 className="relative px-5 py-3 rounded-2xl bg-white text-[#123B5D] font-extrabold text-sm shadow-lg hover:bg-teal-50 flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5 text-[#0D9488]" />
-                <span>Cart ({cart.reduce((a, b) => a + b.quantity, 0)})</span>
+                <span>{t('pharmacy.cart_title')} ({cart.reduce((a, b) => a + b.quantity, 0)})</span>
                 {cart.length > 0 && (
                   <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-black animate-bounce">
                     {cart.length}
@@ -525,7 +525,7 @@ export const PharmacyPage: React.FC = () => {
               <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search specific medicine, generic formulation, brand (e.g., Telma, Pan 40, Dolo)..."
+                placeholder={t('pharmacy.search_placeholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -537,7 +537,7 @@ export const PharmacyPage: React.FC = () => {
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 whitespace-nowrap cursor-pointer transition-all hover:scale-102"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Add Specific Medicine</span>
+              <span>{t('pharmacy.add_specific_med')}</span>
             </button>
 
             <div className="flex gap-2">
@@ -549,7 +549,7 @@ export const PharmacyPage: React.FC = () => {
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}
               >
-                All Medicines
+                {t('pharmacy.all_medicines')}
               </button>
               <button
                 onClick={() => setRxOnly(false)}
@@ -559,7 +559,7 @@ export const PharmacyPage: React.FC = () => {
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}
               >
-                OTC Only
+                {t('pharmacy.otc_only')}
               </button>
               <button
                 onClick={() => setRxOnly(true)}
@@ -569,7 +569,7 @@ export const PharmacyPage: React.FC = () => {
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}
               >
-                Rx Required
+                {t('pharmacy.prescription_only')}
               </button>
             </div>
           </div>
@@ -608,11 +608,11 @@ export const PharmacyPage: React.FC = () => {
                     </span>
                     {med.prescription_required === 1 ? (
                       <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                        Rx Required
+                        {t('pharmacy.rx_required_badge')}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">
-                        OTC
+                        {t('pharmacy.otc_badge')}
                       </span>
                     )}
                   </div>
@@ -637,7 +637,7 @@ export const PharmacyPage: React.FC = () => {
                         }`}
                       />
                       <span className="text-slate-600 dark:text-slate-300">
-                        {med.stock_quantity > 0 ? `${med.stock_quantity} units in stock` : 'Out of stock'}
+                        {med.stock_quantity > 0 ? `${med.stock_quantity} ${t('pharmacy.in_stock')}` : t('pharmacy.out_of_stock')}
                       </span>
                     </div>
                   )}
@@ -680,7 +680,7 @@ export const PharmacyPage: React.FC = () => {
                       className="px-3.5 py-2 rounded-xl bg-[#123B5D] hover:bg-[#0D9488] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-subtle transition-all cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Add to Order</span>
+                      <span>{t('pharmacy.add_to_order')}</span>
                     </button>
                   )}
                 </div>
@@ -1005,7 +1005,7 @@ export const PharmacyPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-[#0D9488]" />
                   <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">
-                    Order Cart ({cart.reduce((a, b) => a + b.quantity, 0)})
+                    {t('pharmacy.cart_title')} ({cart.reduce((a, b) => a + b.quantity, 0)})
                   </h2>
                 </div>
                 <button
@@ -1022,12 +1022,12 @@ export const PharmacyPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[#0D9488] shrink-0" />
                     <div>
-                      <span className="font-extrabold block">Prescription #{activePrescriptionNumber}</span>
-                      <span className="text-[10px] text-teal-700 dark:text-teal-300">Medicines loaded directly from doctor's prescription</span>
+                      <span className="font-extrabold block">{t('pharmacy.prescription_linked')} #{activePrescriptionNumber}</span>
+                      <span className="text-[10px] text-teal-700 dark:text-teal-300">{t('prescriptions.subtitle')}</span>
                     </div>
                   </div>
                   <span className="text-[10px] bg-[#0D9488] text-white px-2 py-0.5 rounded-full font-black uppercase">
-                    Verified
+                    {t('common.verified')}
                   </span>
                 </div>
               )}
@@ -1038,7 +1038,7 @@ export const PharmacyPage: React.FC = () => {
                 className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Add Another Specific Medicine</span>
+                <span>{t('pharmacy.add_specific_med')}</span>
               </button>
 
               {/* Cart Items List */}
@@ -1087,7 +1087,7 @@ export const PharmacyPage: React.FC = () => {
               {/* Fulfillment Options */}
               <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
-                  Select Fulfillment Mode
+                  {t('pharmacy.fulfillment_mode')}
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
@@ -1101,11 +1101,8 @@ export const PharmacyPage: React.FC = () => {
                   >
                     <div className="font-extrabold flex items-center gap-1.5">
                       <Building className="w-3.5 h-3.5" />
-                      <span>Counter Pickup</span>
+                      <span>{t('pharmacy.hospital_pickup')}</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
-                      Express Token at Store Counter (FREE)
-                    </span>
                   </button>
 
                   <button
@@ -1119,23 +1116,20 @@ export const PharmacyPage: React.FC = () => {
                   >
                     <div className="font-extrabold flex items-center gap-1.5">
                       <Truck className="w-3.5 h-3.5" />
-                      <span>Home Delivery</span>
+                      <span>{t('pharmacy.home_delivery')}</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
-                      Direct to Doorstep (+₹{pharmacy?.delivery_fee || 50})
-                    </span>
                   </button>
                 </div>
 
                 {fulfillmentType === 'home_delivery' && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Delivery Street Address:
+                      {t('pharmacy.delivery_address_label')}:
                     </label>
                     <textarea
                       rows={2}
                       required
-                      placeholder="Flat/House number, Apartment, Landmark, Pincode..."
+                      placeholder={t('pharmacy.delivery_address_placeholder')}
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
                       className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
@@ -1145,12 +1139,12 @@ export const PharmacyPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Contact Phone Number:
+                    {t('pharmacy.contact_phone_label')}:
                   </label>
                   <input
                     type="tel"
                     required
-                    placeholder="+91 98765 43210"
+                    placeholder={t('pharmacy.contact_phone_placeholder')}
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
@@ -1163,17 +1157,17 @@ export const PharmacyPage: React.FC = () => {
             <div className="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-3">
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between text-slate-500">
-                  <span>Subtotal</span>
+                  <span>{t('pharmacy.item_total')}</span>
                   <span>₹{subtotal}</span>
                 </div>
                 {fulfillmentType === 'home_delivery' && (
                   <div className="flex justify-between text-slate-500">
-                    <span>Delivery Fee</span>
+                    <span>{t('pharmacy.delivery_fee')}</span>
                     <span>₹{deliveryFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-black text-base text-slate-900 dark:text-white pt-1">
-                  <span>Grand Total</span>
+                  <span>{t('pharmacy.grand_total')}</span>
                   <span>₹{grandTotal}</span>
                 </div>
               </div>
@@ -1183,7 +1177,7 @@ export const PharmacyPage: React.FC = () => {
                 onClick={handleCheckout}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-lg shadow-blue-500/25 transition-transform hover:scale-[1.02] cursor-pointer"
               >
-                {ordering ? 'Placing Order...' : `Proceed to Pay ₹${grandTotal}`}
+                {ordering ? t('common.loading') : `${t('pharmacy.proceed_to_order')} (₹${grandTotal})`}
               </button>
             </div>
           </div>
@@ -1200,13 +1194,13 @@ export const PharmacyPage: React.FC = () => {
 
             <div className="space-y-1">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">
-                Order Placed Successfully
+                {t('pharmacy.order_confirmed_title')}
               </span>
               <h3 className="font-black text-xl text-slate-900 dark:text-white">
                 #{orderConfirmed.order_number}
               </h3>
               <p className="text-xs text-slate-500">
-                Dispensing Pharmacy: {orderConfirmed.pharmacy_name || pharmacy?.name}
+                {orderConfirmed.pharmacy_name || pharmacy?.name}
               </p>
             </div>
 

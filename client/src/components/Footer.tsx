@@ -36,9 +36,9 @@ export const Footer: React.FC = () => {
             </span>
             <span className="font-extrabold text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-              <span>National & Hospital Emergency Response:</span>
+              <span>{t('footer.emergency_response')}</span>
             </span>
-            <span className="text-slate-400 hidden sm:inline">24x7 Critical Care & Trauma Dispatch</span>
+            <span className="text-slate-400 hidden sm:inline">{t('footer.critical_dispatch')}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
@@ -47,21 +47,21 @@ export const Footer: React.FC = () => {
               className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 text-white px-3 py-1 rounded-lg transition-colors shadow-2xs"
             >
               <PhoneCall className="w-3.5 h-3.5" />
-              <span>Dial 108 (National Ambulance)</span>
+              <span>{t('footer.dial_108')}</span>
             </a>
             <a
               href="tel:+918022739911"
               className="flex items-center gap-1.5 text-teal-300 hover:text-white transition-colors"
             >
               <PhoneCall className="w-3.5 h-3.5 text-[#0D9488]" />
-              <span>Hospital Trauma: +91-80-CARE-911</span>
+              <span>{t('footer.hospital_trauma')}</span>
             </a>
             <span className="text-slate-400 hidden lg:inline">|</span>
             <a
               href="tel:+918049112000"
               className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
             >
-              <span>General OPD: +91-80-4911-2000</span>
+              <span>{t('footer.general_opd')}</span>
             </a>
           </div>
         </div>
@@ -85,7 +85,7 @@ export const Footer: React.FC = () => {
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
-              CareSphere is an AI-powered multi-hospital healthcare platform offering inclusive, multilingual medical consultations, online pharmacy orders, digital prescriptions, and emergency assistance across partner medical institutions.
+              {t('footer.about_text')}
             </p>
 
             {/* Accreditations Badges */}
@@ -107,31 +107,31 @@ export const Footer: React.FC = () => {
 
           {/* Quick Navigation */}
           <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">Clinical Care</h4>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">{t('footer.clinical_care')}</h4>
             <ul className="space-y-2 text-xs sm:text-sm">
               <li>
                 <Link to="/doctors" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                  Find Doctor Specialists
+                  {t('footer.find_doctors')}
                 </Link>
               </li>
               <li>
                 <Link to="/book" className="hover:text-teal-300 transition-colors font-medium text-teal-400 flex items-center gap-1.5">
-                  Book OPD Appointment
+                  {t('footer.book_opd')}
                 </Link>
               </li>
               <li>
                 <Link to="/teleconsult" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                  Online Video Teleconsult
+                  {t('footer.online_teleconsult')}
                 </Link>
               </li>
               <li>
                 <Link to="/pharmacy" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                  Online Pharmacy & Medicines
+                  {t('footer.online_pharmacy')}
                 </Link>
               </li>
               <li>
                 <Link to="/lab" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                  Diagnostic Lab Tests
+                  {t('footer.diagnostic_labs')}
                 </Link>
               </li>
             </ul>
@@ -141,7 +141,7 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-[#0D9488]" />
-              <span>Hospital Network</span>
+              <span>{t('footer.hospital_network')}</span>
             </h4>
             <ul className="space-y-1.5 text-xs text-slate-400">
               <li className="hover:text-slate-200">CareSphere Multispeciality (Bengaluru)</li>
@@ -157,9 +157,9 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Globe className="w-4 h-4 text-[#38BDF8]" />
-              <span>Languages</span>
+              <span>{t('footer.languages')}</span>
             </h4>
-            <p className="text-xs text-slate-400 mb-2">Instant language switch:</p>
+            <p className="text-xs text-slate-400 mb-2">{t('footer.instant_switch')}</p>
             <div className="flex flex-wrap gap-1.5">
               {SUPPORTED_LANGUAGES.map(lang => (
                 <button
@@ -177,14 +177,14 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            © 2026 CareSphere Multi-Hospital Technology Platform. All rights reserved.
+            {t('footer.copyright')}
           </div>
           <div className="flex items-center gap-4 text-slate-400">
-            <span>HIPAA-Compliant Architecture</span>
+            <span>{t('footer.hipaa')}</span>
             <span>•</span>
-            <span>ABDM Ready</span>
+            <span>{t('footer.abdm')}</span>
             <span>•</span>
-            <span>Demonstration System</span>
+            <span>{t('footer.demo_system')}</span>
           </div>
         </div>
       </div>

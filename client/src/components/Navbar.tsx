@@ -91,7 +91,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <Video className="w-3.5 h-3.5 text-[#0D9488]" />
-            <span>Teleconsult</span>
+            <span>{t('nav.teleconsult')}</span>
           </Link>
 
           <Link
@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <Pill className="w-3.5 h-3.5 text-sky-600" />
-            <span>Pharmacy</span>
+            <span>{t('nav.pharmacy')}</span>
           </Link>
 
           <Link
@@ -115,7 +115,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <FlaskConical className="w-3.5 h-3.5 text-[#0D9488]" />
-            <span>Lab Tests</span>
+            <span>{t('nav.lab_tests')}</span>
           </Link>
 
           <Link
@@ -127,7 +127,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <Shield className="w-3.5 h-3.5 text-amber-500" />
-            <span>Insurance</span>
+            <span>{t('nav.insurance')}</span>
           </Link>
 
           <Link
@@ -139,7 +139,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-rose-500" />
-            <span>AI Explainer</span>
+            <span>{t('nav.ai_explainer')}</span>
           </Link>
 
           {/* Role specific dashboard link */}
@@ -293,35 +293,35 @@ export const Navbar: React.FC = () => {
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
           >
-            Online Video Teleconsult
+            {t('nav.online_video_teleconsult')}
           </Link>
           <Link
             to="/pharmacy"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-slate-800"
           >
-            Hospital Pharmacy & Medicine Orders
+            {t('nav.hospital_pharmacy_orders')}
           </Link>
           <Link
             to="/lab"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800"
           >
-            Laboratory Tests & Diagnostic Booking
+            {t('nav.lab_tests_booking')}
           </Link>
           <Link
             to="/insurance"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            Health Insurance & TPA Desk
+            {t('nav.insurance_desk_long')}
           </Link>
           <Link
             to="/ai-report-explainer"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            AI Medical Report Explainer
+            {t('nav.ai_explainer_long')}
           </Link>
 
           {/* Mobile Emergency SOS Button */}
@@ -334,7 +334,7 @@ export const Navbar: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4" />
-              <span>EMERGENCY SOS ASSISTANCE</span>
+              <span>{t('nav.emergency_sos_caps')}</span>
             </div>
             <span className="text-[10px] bg-white text-red-700 px-2 py-0.5 rounded-full font-black">24x7</span>
           </button>

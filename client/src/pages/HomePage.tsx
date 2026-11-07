@@ -151,7 +151,7 @@ export const HomePage: React.FC = () => {
                     type="text"
                     value={heroSearchQuery}
                     onChange={(e) => setHeroSearchQuery(e.target.value)}
-                    placeholder="Search doctor, specialty (e.g. Cardiologist), or hospital..."
+                    placeholder={t('doctors.search_placeholder')}
                     className="w-full text-xs sm:text-sm text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none py-2"
                   />
                 </div>
@@ -160,7 +160,7 @@ export const HomePage: React.FC = () => {
                   className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#123B5D] to-[#0D9488] hover:from-[#0e304d] hover:to-[#0f766e] text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2"
                 >
                   <Search className="w-4 h-4" />
-                  <span>Find Care</span>
+                  <span>{t('common.search')}</span>
                 </button>
               </div>
             </form>
@@ -179,7 +179,7 @@ export const HomePage: React.FC = () => {
                 className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-bold text-sm sm:text-base border border-white/25 flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 <Video className="w-5 h-5 text-teal-300" />
-                <span>Online Video Teleconsult</span>
+                <span>{t('nav.online_video_teleconsult')}</span>
               </Link>
             </div>
           </div>
@@ -241,7 +241,7 @@ export const HomePage: React.FC = () => {
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#0D9488] transition-colors flex items-center justify-between">
-                  <span>Online Teleconsult</span>
+                  <span>{t('nav.teleconsult')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#0D9488] transition-transform" />
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -249,7 +249,7 @@ export const HomePage: React.FC = () => {
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0D9488]">
-                Verified Specialists • Direct Booking
+                {t('common.verified')} • {t('booking.title')}
               </div>
             </div>
           </Link>
@@ -268,21 +268,21 @@ export const HomePage: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
               <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#123B5D] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
                 <Pill className="w-3.5 h-3.5" />
-                <span>Hospital Linked</span>
+                <span>{t('pharmacy.hospital_counter')}</span>
               </div>
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#123B5D] transition-colors flex items-center justify-between">
-                  <span>Online Pharmacy</span>
+                  <span>{t('nav.pharmacy')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#123B5D] transition-transform" />
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Order prescribed medications directly from the pharmacy connected to your consultation hospital.
+                  {t('pharmacy.subtitle')}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#123B5D] dark:text-[#38BDF8]">
-                Prescription Refills • Fast Delivery
+                {t('pharmacy.all_medicines')} • {t('pharmacy.home_delivery')}
               </div>
             </div>
           </Link>
@@ -301,21 +301,21 @@ export const HomePage: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
               <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#0D9488] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
                 <FlaskConical className="w-3.5 h-3.5" />
-                <span>NABL Accredited</span>
+                <span>{t('lab.nabl_accredited')}</span>
               </div>
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#0D9488] transition-colors flex items-center justify-between">
-                  <span>Diagnostic Lab Tests</span>
+                  <span>{t('nav.lab_tests')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#0D9488] transition-transform" />
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Book doctor-recommended blood tests, radiology, and diagnostics with home sample pickup or hospital visit.
+                  {t('lab.subtitle')}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0D9488]">
-                Digital PDF Reports • Rapid Turnaround
+                {t('lab.browse_catalogue')} • {t('lab.home_pickup_avail')}
               </div>
             </div>
           </Link>
@@ -340,11 +340,11 @@ export const HomePage: React.FC = () => {
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-rose-600 transition-colors flex items-center justify-between">
-                  <span>AI Report Explainer</span>
+                  <span>{t('nav.ai_explainer')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-rose-600 transition-transform" />
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Decode complex lab values, biomarkers, and clinical findings explained simply in 10 Indian regional languages.
+                  {t('ai_explainer.subtitle')}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-rose-600">
@@ -384,7 +384,7 @@ export const HomePage: React.FC = () => {
               to="/doctors"
               className="text-xs sm:text-sm font-semibold text-[#0D9488] hover:underline shrink-0 flex items-center gap-1"
             >
-              <span>View All</span>
+              <span>{t('common.view_all')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -484,7 +484,7 @@ export const HomePage: React.FC = () => {
               className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white text-red-700 hover:bg-red-50 font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
             >
               <PhoneCall className="w-4 h-4 text-red-600" />
-              <span>Call 108 (Ambulance)</span>
+              <span>{t('footer.dial_108')}</span>
             </a>
             <button
               onClick={() => {
@@ -494,7 +494,7 @@ export const HomePage: React.FC = () => {
               className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-950/40 hover:bg-slate-950/60 backdrop-blur-md text-white font-bold text-sm border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <ShieldAlert className="w-4 h-4" />
-              <span>Open SOS Assistance</span>
+              <span>{t('emergency_sos.title')}</span>
             </button>
           </div>
         </div>

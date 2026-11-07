@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ShieldCheck,
   Building2,
@@ -19,6 +20,7 @@ import { apiUrl } from '../services/api.js';
 import { InsuranceProvider, HospitalInsurancePartner, PatientInsurancePolicy } from '../types/index.js';
 
 export const InsuranceAssistancePage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, token, isAuthenticated } = useAuth();
 
   const [providers, setProviders] = useState<InsuranceProvider[]>([]);
@@ -151,13 +153,13 @@ export const InsuranceAssistancePage: React.FC = () => {
         <div className="max-w-2xl relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-4 text-emerald-300">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Cashless Hospitalization Assistance</span>
+            <span>{t('insurance.cashless_desk')}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
-            Health Insurance & TPA Helpdesk
+            {t('insurance.title')}
           </h1>
           <p className="text-teal-100 text-sm sm:text-base leading-relaxed mb-6">
-            Verify cashless insurance coverage, track third-party administrator (TPA) approvals, and manage your policy cards securely in one place.
+            {t('insurance.subtitle')}
           </p>
           <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
             <span className="bg-black/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5">

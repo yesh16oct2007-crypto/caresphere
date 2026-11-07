@@ -121,13 +121,13 @@ export const TeleconsultDirectoryPage: React.FC = () => {
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-4 text-amber-200">
             <Video className="w-3.5 h-3.5" />
-            <span>Encrypted WebRTC Telehealth</span>
+            <span>{t('teleconsult.webrtc_encrypted')}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
-            Online Doctor Video Consultation
+            {t('teleconsult.title')}
           </h1>
           <p className="text-teal-100 text-sm sm:text-base leading-relaxed mb-6">
-            Consult accredited hospital specialists from the safety and comfort of your home. Real-time video, instant digital prescriptions, and direct pharmacy integration.
+            {t('teleconsult.subtitle')}
           </p>
           <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-white/90">
             <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-xl">

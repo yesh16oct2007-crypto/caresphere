@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Video,
   Mic,
@@ -23,6 +24,7 @@ import { apiUrl } from '../services/api.js';
 import { ConsultationRoom, PrescriptionData, PrescriptionMedicine } from '../types/index.js';
 
 export const ConsultationRoomPage: React.FC = () => {
+  const { t } = useTranslation();
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { user, token } = useAuth();
@@ -391,7 +393,7 @@ export const ConsultationRoomPage: React.FC = () => {
                 className={`p-2.5 rounded-xl transition-colors ${
                   micActive ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-red-600 text-white'
                 }`}
-                title={micActive ? 'Mute Microphone' : 'Unmute Microphone'}
+                title={micActive ? t('teleconsult.mute') : t('teleconsult.unmute')}
               >
                 {micActive ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
               </button>
@@ -401,7 +403,7 @@ export const ConsultationRoomPage: React.FC = () => {
                 className={`p-2.5 rounded-xl transition-colors ${
                   videoActive ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-red-600 text-white'
                 }`}
-                title={videoActive ? 'Turn Off Camera' : 'Turn On Camera'}
+                title={videoActive ? t('teleconsult.camera_off') : t('teleconsult.camera_on')}
               >
                 {videoActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
               </button>
@@ -409,7 +411,7 @@ export const ConsultationRoomPage: React.FC = () => {
               <button
                 onClick={handleEndCall}
                 className="p-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-colors"
-                title="Hang Up Consultation"
+                title={t('teleconsult.end_call')}
               >
                 <PhoneOff className="w-4 h-4" />
               </button>

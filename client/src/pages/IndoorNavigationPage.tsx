@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Compass,
   MapPin,
@@ -17,6 +18,7 @@ import { apiUrl } from '../services/api.js';
 import { HospitalFloorMap, HospitalLocation } from '../types/index.js';
 
 export const IndoorNavigationPage: React.FC = () => {
+  const { t } = useTranslation();
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number>(1);
   const [activeFloor, setActiveFloor] = useState<number>(0);
