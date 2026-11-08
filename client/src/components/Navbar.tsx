@@ -19,7 +19,10 @@ import {
   FlaskConical,
   Pill,
   ShieldAlert,
-  ChevronDown
+  ChevronDown,
+  Activity,
+  Navigation,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
@@ -32,6 +35,7 @@ export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -141,6 +145,68 @@ export const Navbar: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5 text-rose-500" />
             <span>{t('nav.ai_explainer')}</span>
           </Link>
+
+          {/* More Services Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              onBlur={() => setTimeout(() => setMoreMenuOpen(false), 250)}
+              className={`px-3 py-2 rounded-xl transition-all duration-200 flex items-center gap-1 cursor-pointer ${
+                isActive('/resources') || isActive('/indoor-navigation') || isActive('/records')
+                  ? 'text-[#0D9488] dark:text-teal-300 font-bold bg-teal-50 dark:bg-slate-800'
+                  : 'hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <span>{t('nav.facilities')}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${moreMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {moreMenuOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Link
+                  to="/resources"
+                  onClick={() => setMoreMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors ${
+                    isActive('/resources') ? 'text-[#0D9488] font-bold' : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <Activity className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <div>
+                    <div>{t('nav.resources')}</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Live ICU, beds & ambulances</div>
+                  </div>
+                </Link>
+                <Link
+                  to="/indoor-navigation"
+                  onClick={() => setMoreMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors ${
+                    isActive('/indoor-navigation') ? 'text-[#0D9488] font-bold' : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <Navigation className="w-4 h-4 text-sky-500 shrink-0" />
+                  <div>
+                    <div>{t('nav.indoor_navigation')}</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Hospital floor maps & turn-by-turn</div>
+                  </div>
+                </Link>
+                {isAuthenticated && (
+                  <Link
+                    to="/records"
+                    onClick={() => setMoreMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-4 py-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors ${
+                      isActive('/records') ? 'text-[#0D9488] font-bold' : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 text-teal-500 shrink-0" />
+                    <div>
+                      <div>{t('nav.medical_records')}</div>
+                      <div className="text-[10px] text-slate-400 font-normal">Encrypted digital health vault</div>
+                    </div>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Role specific dashboard link */}
           {isAuthenticated && role === 'patient' && (
@@ -322,6 +388,20 @@ export const Navbar: React.FC = () => {
             className="block px-3 py-2 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {t('nav.ai_explainer_long')}
+          </Link>
+          <Link
+            to="/resources"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800"
+          >
+            {t('nav.resources')}
+          </Link>
+          <Link
+            to="/indoor-navigation"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-xl font-medium text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-slate-800"
+          >
+            {t('nav.indoor_navigation')}
           </Link>
 
           {/* Mobile Emergency SOS Button */}

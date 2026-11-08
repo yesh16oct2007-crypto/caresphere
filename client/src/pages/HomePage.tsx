@@ -25,6 +25,7 @@ import {
   Pill,
   FlaskConical,
   Activity,
+  Navigation,
   Globe,
   Star
 } from 'lucide-react';
@@ -349,6 +350,138 @@ export const HomePage: React.FC = () => {
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-rose-600">
                 10 Regional Languages • Clinical Safety
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 5: Live Hospital Resources */}
+          <Link
+            to="/resources"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80"
+                alt="Hospital Bed and ICU Telemetry"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Activity className="w-3.5 h-3.5" />
+                <span>Live Telemetry</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-emerald-600 transition-colors flex items-center justify-between">
+                  <span>{t('nav.resources')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Real-time bed availability, ICU ventilators, oxygen reserves, and live emergency ambulances across city hospitals.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-emerald-600">
+                Real-Time Updates • City Filtering
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 6: Indoor Navigation */}
+          <Link
+            to="/indoor-navigation"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80"
+                alt="Hospital Corridors and Navigation"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-sky-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Indoor GPS</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-sky-600 transition-colors flex items-center justify-between">
+                  <span>{t('nav.indoor_navigation')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-sky-600 transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Interactive multi-floor maps with turn-by-turn guidance and wheelchair-accessible elevator routes.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-sky-600">
+                Multi-Floor Maps • Step Guidance
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 7: Health Insurance Assistance */}
+          <Link
+            to="/insurance"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80"
+                alt="Insurance and Mediclaim Desk"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-amber-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Cashless TPA</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-amber-600 transition-colors flex items-center justify-between">
+                  <span>{t('nav.insurance')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Instant cashless eligibility check across leading providers and government healthcare schemes.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-amber-600">
+                Cashless Empanelment • Policy Storage
+              </div>
+            </div>
+          </Link>
+
+          {/* Service Card 8: Digital Medical Records */}
+          <Link
+            to="/records"
+            className="group rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-subtle hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex flex-col"
+          >
+            <div className="relative h-44 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=800&q=80"
+                alt="Digital Medical Records"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-[#123B5D] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                <FileCheck className="w-3.5 h-3.5" />
+                <span>ABDM Compliant</span>
+              </div>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5 group-hover:text-[#123B5D] dark:group-hover:text-[#38BDF8] transition-colors flex items-center justify-between">
+                  <span>{t('nav.medical_records')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-[#123B5D] transition-transform" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  HIPAA-grade encrypted vault for lab tests, scans, and prescriptions with doctor-sharing controls.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#123B5D] dark:text-[#38BDF8]">
+                End-to-End Encrypted • Audit Trail
               </div>
             </div>
           </Link>

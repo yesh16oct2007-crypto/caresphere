@@ -134,6 +134,21 @@ export const Footer: React.FC = () => {
                   {t('footer.diagnostic_labs')}
                 </Link>
               </li>
+              <li>
+                <Link to="/resources" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
+                  {t('nav.resources')}
+                </Link>
+              </li>
+              <li>
+                <Link to="/indoor-navigation" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
+                  {t('nav.indoor_navigation')}
+                </Link>
+              </li>
+              <li>
+                <Link to="/ai-report-explainer" className="hover:text-teal-300 transition-colors flex items-center gap-1.5">
+                  {t('nav.ai_explainer')}
+                </Link>
+              </li>
             </ul>
           </div>
 

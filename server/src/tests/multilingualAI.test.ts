@@ -201,7 +201,7 @@ describe('CareSphere Multilingual AI Understanding & Real Action Execution Tests
 
     it('books a real doctor appointment through natural language request', async () => {
       const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 2);
+      tomorrow.setDate(tomorrow.getDate() + 10 + Math.floor(Math.random() * 30));
       const dateStr = tomorrow.toISOString().split('T')[0];
 
       const res = await request(app)
@@ -226,7 +226,7 @@ describe('CareSphere Multilingual AI Understanding & Real Action Execution Tests
 
     it('books a second appointment in Tamil/Tanglish', async () => {
       const dayAfter = new Date();
-      dayAfter.setDate(dayAfter.getDate() + 3);
+      dayAfter.setDate(dayAfter.getDate() + 50 + Math.floor(Math.random() * 30));
       const dateStr = dayAfter.toISOString().split('T')[0];
 
       const res = await request(app)

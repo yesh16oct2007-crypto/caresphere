@@ -69,7 +69,11 @@ export function getHospitalFloorData(req: Request, res: Response): void {
 // 3. Compute Turn-by-Turn Route
 export function computeIndoorRoute(req: Request, res: Response): void {
   try {
-    const { hospital_id, from_id, to_id, wheelchair_accessible = 'true' } = req.query;
+    const hospital_id = req.query.hospital_id;
+    const to_id = req.query.to_id || req.query.destination_id;
+    const from_id = req.query.from_id;
+    const start_location = req.query.start_location as string | undefined;
+    const wheelchair_accessible = req.query.wheelchair_accessible;
 
     if (!hospital_id || !to_id) {
       res.status(400).json({ error: 'hospital_id and to_id are required.' });
@@ -89,25 +93,46 @@ export function computeIndoorRoute(req: Request, res: Response): void {
     }
 
     let origin: any = null;
-    if (from_id) {
+    if (from_id && !isNaN(Number(from_id))) {
       origin = db.prepare(`
         SELECT hl.*, hfm.floor_number, hfm.floor_name
         FROM hospital_locations hl
         JOIN hospital_floor_maps hfm ON hl.floor_id = hfm.id
         WHERE hl.id = ? AND hl.hospital_id = ?
       `).get(Number(from_id), Number(hospital_id)) as any;
-    } else {
-      // Default to Main Entrance
+    } else if (start_location) {
       origin = db.prepare(`
         SELECT hl.*, hfm.floor_number, hfm.floor_name
         FROM hospital_locations hl
         JOIN hospital_floor_maps hfm ON hl.floor_id = hfm.id
-        WHERE hl.hospital_id = ? AND hl.category = 'reception'
+        WHERE hl.hospital_id = ? AND (hl.name LIKE ? OR hl.room_number LIKE ?)
+        LIMIT 1
+      `).get(Number(hospital_id), `%${start_location}%`, `%${start_location}%`) as any;
+    }
+
+    if (!origin) {
+      // Default to Main Entrance / Reception
+      origin = db.prepare(`
+        SELECT hl.*, hfm.floor_number, hfm.floor_name
+        FROM hospital_locations hl
+        JOIN hospital_floor_maps hfm ON hl.floor_id = hfm.id
+        WHERE hl.hospital_id = ? AND (hl.category = 'reception' OR hl.category = 'emergency')
         ORDER BY hl.id ASC LIMIT 1
       `).get(Number(hospital_id)) as any;
     }
 
-    const isWheelchair = wheelchair_accessible === 'true';
+    if (!origin) {
+      // Fallback to first available location in hospital
+      origin = db.prepare(`
+        SELECT hl.*, hfm.floor_number, hfm.floor_name
+        FROM hospital_locations hl
+        JOIN hospital_floor_maps hfm ON hl.floor_id = hfm.id
+        WHERE hl.hospital_id = ?
+        ORDER BY hl.id ASC LIMIT 1
+      `).get(Number(hospital_id)) as any;
+    }
+
+    const isWheelchair = wheelchair_accessible === 'true' || wheelchair_accessible === '1';
     const sameFloor = origin && origin.floor_number === destination.floor_number;
 
     const steps: string[] = [];
@@ -139,21 +164,32 @@ export function computeIndoorRoute(req: Request, res: Response): void {
 
     steps.push(`You have arrived at ${destination.name}.`);
 
+    const resultDestination = {
+      id: destination.id,
+      name: destination.name,
+      room_number: destination.room_number,
+      floor_number: destination.floor_number,
+      floor_name: destination.floor_name,
+      wing: destination.wing,
+      category: destination.category
+    };
+
+    const resultOrigin = origin ? { id: origin.id, name: origin.name, floor: origin.floor_name } : null;
+
     res.json({
-      origin: origin ? { id: origin.id, name: origin.name, floor: origin.floor_name } : null,
-      destination: {
-        id: destination.id,
-        name: destination.name,
-        room_number: destination.room_number,
-        floor_number: destination.floor_number,
-        floor_name: destination.floor_name,
-        wing: destination.wing,
-        category: destination.category
-      },
+      origin: resultOrigin,
+      destination: resultDestination,
       is_wheelchair_accessible: isWheelchair,
       estimated_time_minutes: sameFloor ? 2 : 4,
       total_steps: steps.length,
-      directions: steps
+      directions: steps,
+      route: {
+        steps,
+        destination: resultDestination,
+        origin: resultOrigin,
+        is_wheelchair_accessible: isWheelchair,
+        estimated_time_minutes: sameFloor ? 2 : 4
+      }
     });
   } catch (err: any) {
     console.error('Compute route error:', err);

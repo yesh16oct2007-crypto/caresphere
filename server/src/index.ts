@@ -385,7 +385,9 @@ app.delete('/api/insurance/policies/:id', authenticateToken, requireRole(['patie
 // ----------------- 8. HOSPITAL INDOOR NAVIGATION -----------------
 app.get('/api/navigation/hospitals', getNavigationHospitals);
 app.get('/api/navigation/hospital/:hospitalId/floors', getHospitalFloorData);
+app.get('/api/navigation/hospital/:hospitalId', getHospitalFloorData);
 app.get('/api/navigation/route', computeIndoorRoute);
+app.get('/api/navigation/directions', computeIndoorRoute);
 
 // ----------------- 9. REMOTE PATIENT FOLLOW-UP -----------------
 app.get('/api/followups/my', authenticateToken, requireRole(['patient']), getMyFollowUps);

@@ -78,8 +78,8 @@ export const App: React.FC = () => {
                 <Route path="/insurance" element={<InsuranceAssistancePage />} />
                 <Route path="/pharmacy" element={<PharmacyPage />} />
                 <Route path="/lab" element={<LabBookingPage />} />
-                <Route path="/resources" element={<Navigate to="/" replace />} />
-                <Route path="/indoor-navigation" element={<Navigate to="/" replace />} />
+                <Route path="/resources" element={<HospitalResourcesPage />} />
+                <Route path="/indoor-navigation" element={<IndoorNavigationPage />} />
 
                 {/* Role Protected Dashboard Routes */}
                 <Route
