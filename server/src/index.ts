@@ -66,7 +66,7 @@ import {
   getAutomationLogs
 } from './controllers/aiController.js';
 import { startAutomationWorker } from './services/automationEngine.js';
-import { uploadRecord, uploadReport, uploadMedicalRecordMiddleware } from './middleware/uploadMiddleware.js';
+import { uploadRecord, uploadReport, uploadMedicalRecordMiddleware, uploadReportMiddleware } from './middleware/uploadMiddleware.js';
 import {
   uploadMedicalRecord,
   getPatientMedicalRecords,
@@ -353,7 +353,9 @@ app.get('/api/analytics/hospital/:hospitalId', authenticateToken, requireRole(['
 app.get('/api/analytics/export', authenticateToken, requireRole(['admin', 'superadmin', 'hospital_admin']), exportAnalyticsReport);
 
 // ----------------- 4. AI MEDICAL REPORT EXPLAINER -----------------
-app.post('/api/ai/explain-report', authenticateToken, uploadReport.single('file'), explainMedicalReport);
+app.post('/api/ai-report/analyze', optionalAuthenticateToken, uploadReportMiddleware, explainMedicalReport);
+app.post('/api/ai/explain-report', optionalAuthenticateToken, uploadReportMiddleware, explainMedicalReport);
+app.get('/api/ai-report/history', authenticateToken, getReportExplainerHistory);
 app.get('/api/ai/report-history', authenticateToken, getReportExplainerHistory);
 
 // ----------------- 5. LIVE HOSPITAL RESOURCE AVAILABILITY -----------------

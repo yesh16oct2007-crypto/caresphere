@@ -313,6 +313,50 @@ describe('CareSphere 9 Advanced Features Integration Tests', () => {
       const hgb = res.body.analysis.parameters.find((p: any) => p.code === 'HGB');
       expect(hgb.explanation).toContain('ஹீமோகுளோபின்');
     });
+
+    it('analyzes medical report via /api/ai-report/analyze endpoint used by frontend UI', async () => {
+      const sampleText = `
+        PATIENT DIAGNOSTIC LAB REPORT
+        Test: Complete Blood Count (CBC)
+        Hemoglobin: 10.2 g/dL - Low
+        WBC: 14,800 /mcL - High
+        Platelets: 210,000 /mcL - Normal
+        RBC: 3.9 mil/mcL - Low
+      `;
+
+      const res = await request(app)
+        .post('/api/ai-report/analyze')
+        .set('Authorization', `Bearer ${patientToken}`)
+        .send({
+          report_text: sampleText,
+          language: 'en'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.analysis).toBeDefined();
+      expect(Array.isArray(res.body.analysis.biomarkers)).toBe(true);
+      expect(res.body.analysis.biomarkers.length).toBeGreaterThanOrEqual(3);
+      expect(res.body.analysis.simplified_summary).toBeDefined();
+      expect(Array.isArray(res.body.analysis.actionable_recommendations)).toBe(true);
+
+      const hgb = res.body.analysis.biomarkers.find((b: any) => b.name === 'HEMOGLOBIN');
+      expect(hgb).toBeDefined();
+      expect(hgb.status).toBe('low');
+    });
+
+    it('allows guest visitors to analyze medical reports via /api/ai-report/analyze without token', async () => {
+      const res = await request(app)
+        .post('/api/ai-report/analyze')
+        .send({
+          report_text: 'Fasting Blood Sugar: 165 mg/dL\nTotal Cholesterol: 245 mg/dL',
+          language: 'hi'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.analysis).toBeDefined();
+      expect(res.body.analysis.language).toBe('hi');
+      expect(res.body.analysis.biomarkers.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   describe('Feature 5: Live Hospital Resource Availability', () => {

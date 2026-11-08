@@ -96,6 +96,24 @@ export const uploadReport = multer({
   fileFilter: documentFilter
 });
 
+// Middleware that accepts either 'file' or 'report_file' form field
+export const uploadReportMiddleware = (req: any, res: any, next: any) => {
+  uploadReport.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'report_file', maxCount: 1 }
+  ])(req, res, (err: any) => {
+    if (err) return next(err);
+    if (req.files) {
+      if (req.files['report_file'] && req.files['report_file'][0]) {
+        req.file = req.files['report_file'][0];
+      } else if (req.files['file'] && req.files['file'][0]) {
+        req.file = req.files['file'][0];
+      }
+    }
+    next();
+  });
+};
+
 export const uploadDoctorCert = multer({
   storage: doctorDocsStorage,
   limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB max
