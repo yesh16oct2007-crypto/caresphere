@@ -313,6 +313,97 @@ export function initDatabase(): void {
       }
     }
 
+    // Auto-seed physician-registered and community affiliated hospitals if none exist
+    const affHospCount = db.prepare(`
+      SELECT COUNT(*) as count FROM hospitals 
+      WHERE is_active = 1 
+        AND NOT (LOWER(name) LIKE '%caresphere%' OR LOWER(name) LIKE '%apollo%' OR LOWER(name) LIKE '%fortis%' OR LOWER(name) LIKE '%manipal%' OR LOWER(name) LIKE '%max%' OR LOWER(name) LIKE '%narayana%')
+    `).get() as any;
+
+    if (!affHospCount || affHospCount.count === 0) {
+      const insHosp = db.prepare(`
+        INSERT OR IGNORE INTO hospitals (name, code, location, city, state, address, contact_phone, contact_email, emergency_hotline, rating, total_beds, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `);
+      
+      const hStj = insHosp.run(
+        "St. John's Community Hospital",
+        'STJ-BLR-01',
+        '100 Feet Road, Koramangala',
+        'Bengaluru',
+        'Karnataka',
+        'Plot 18, 100 Feet Road, Koramangala 4th Block, Bengaluru 560034',
+        '+91-80-2553-2000',
+        'stjohns.community@caresphere.health',
+        '+91-80-2553-9911',
+        4.8,
+        140
+      );
+      const stjId = Number(hStj.lastInsertRowid);
+
+      const hChd = insHosp.run(
+        'City Health & Diagnostic Clinic',
+        'CHD-CHN-01',
+        '2nd Avenue, Anna Nagar East',
+        'Chennai',
+        'Tamil Nadu',
+        'Plot 45, 2nd Avenue, Anna Nagar East, Chennai 600102',
+        '+91-44-2621-3300',
+        'cityhealth.clinic@caresphere.health',
+        '+91-44-2621-9911',
+        4.7,
+        85
+      );
+      const chdId = Number(hChd.lastInsertRowid);
+
+      // Seed resources for affiliated facilities
+      const insRes = db.prepare(`
+        INSERT OR IGNORE INTO hospital_resources (hospital_id, resource_type, total_capacity, available_count, occupied_count, status, details_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'available', ?, datetime('now'))
+      `);
+      insRes.run(stjId, 'general_beds', 100, 35, 65, JSON.stringify({ ward: 'Medical Ward A', floor: '1st Floor' }));
+      insRes.run(stjId, 'icu_beds', 15, 4, 11, JSON.stringify({ ventilator_equipped: true }));
+      insRes.run(stjId, 'ambulance', 3, 2, 1, JSON.stringify({ contact: '+91-80-2553-9911' }));
+
+      insRes.run(chdId, 'general_beds', 60, 22, 38, JSON.stringify({ ward: 'General Care Ward' }));
+      insRes.run(chdId, 'icu_beds', 8, 3, 5, JSON.stringify({ ventilator_equipped: true }));
+      insRes.run(chdId, 'ambulance', 2, 1, 1, JSON.stringify({ contact: '+91-44-2621-9911' }));
+
+      // Add verified onboarding doctors for affiliated hospitals
+      const docPass = '$2a$10$wTqgI7Xo94s9p2w0PqK0yeLzG39P1wL3zHh8C8a2tZ0n3ZqLqT7q2';
+      const insU = db.prepare("INSERT INTO users (name, email, phone, password_hash, role, preferred_language, hospital_id) VALUES (?, ?, ?, ?, 'doctor', 'en', ?)");
+      
+      const uStj = insU.run('Dr. Sandeep Kulkarni', 'dr.sandeep@stjohns.caresphere.health', '+91-9876543211', docPass, stjId);
+      const uStjId = Number(uStj.lastInsertRowid);
+      db.prepare(`
+        INSERT INTO doctor_profiles (user_id, hospital_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications, experience_years, consultation_fee, bio, verification_status, verified_at, teleconsultation_available, teleconsultation_fee)
+        VALUES (?, ?, ?, '100 Feet Road, Koramangala', 'KMC-2012-77192', 'Karnataka Medical Council', 5, 'Consultant Physician - Internal Medicine', 'MBBS, MD (General Medicine)', 13, 600, 'Senior community physician specializing in preventative care and diabetes management.', 'verified', datetime('now'), 1, 600)
+      `).run(uStjId, stjId, "St. John's Community Hospital");
+
+      const uChd = insU.run('Dr. Preeti Nambiar', 'dr.preeti@cityhealth.caresphere.health', '+91-9876543212', docPass, chdId);
+      const uChdId = Number(uChd.lastInsertRowid);
+      db.prepare(`
+        INSERT INTO doctor_profiles (user_id, hospital_id, hospital_name, hospital_location, registration_number, state_medical_council, department_id, specialization, qualifications, experience_years, consultation_fee, bio, verification_status, verified_at, teleconsultation_available, teleconsultation_fee)
+        VALUES (?, ?, 'City Health & Diagnostic Clinic', '2nd Avenue, Anna Nagar East', 'TNC-2016-83419', 'Tamil Nadu Medical Council', 6, 'Dermatologist & Cosmetologist', 'MBBS, MD (Dermatology)', 8, 550, 'Consultant dermatologist focusing on clinical dermatology and pediatric skin health.', 'verified', datetime('now'), 1, 550)
+      `).run(uChdId, chdId);
+
+      // Seed appointments to populate visits & teleconsults metrics
+      const dpStj = db.prepare('SELECT id FROM doctor_profiles WHERE user_id = ?').get(uStjId) as any;
+      const dpChd = db.prepare('SELECT id FROM doctor_profiles WHERE user_id = ?').get(uChdId) as any;
+      const patient = db.prepare("SELECT id FROM users WHERE role = 'patient' LIMIT 1").get() as any;
+
+      if (dpStj && dpChd && patient) {
+        const insAppt = db.prepare(`
+          INSERT INTO appointments (reference_no, patient_id, doctor_id, department_id, hospital_id, appointment_date, appointment_time, consultation_type, status, patient_notes)
+          VALUES (?, ?, ?, ?, ?, date('now', '-3 days'), '10:30', ?, 'completed', 'Community physician consultation')
+        `);
+        insAppt.run(`CS-STJ-${Date.now().toString().slice(-4)}1`, patient.id, dpStj.id, 5, stjId, 'in_person');
+        insAppt.run(`CS-STJ-${Date.now().toString().slice(-4)}2`, patient.id, dpStj.id, 5, stjId, 'online_video');
+        insAppt.run(`CS-CHD-${Date.now().toString().slice(-4)}1`, patient.id, dpChd.id, 6, chdId, 'in_person');
+        insAppt.run(`CS-CHD-${Date.now().toString().slice(-4)}2`, patient.id, dpChd.id, 6, chdId, 'online_video');
+      }
+    }
+
     // Sync all doctor users with their doctor_profiles hospital_id
     db.prepare(`
       UPDATE users
