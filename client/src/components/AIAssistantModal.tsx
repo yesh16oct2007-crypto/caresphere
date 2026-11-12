@@ -71,6 +71,286 @@ const LANG_OPTIONS = [
   { code: 'pa', label: 'ਪੰਜਾਬੀ (Punjabi)' }
 ];
 
+// Multilingual UI Text Dictionaries for All 10 Supported Indian Regional Languages
+const UI_TEXT: Record<string, Record<string, string>> = {
+  your_appointments: {
+    en: 'Your Appointments',
+    ta: 'உங்கள் அப்பாய்ன்ட்மென்ட்கள்',
+    hi: 'आपकी अपॉइंटमेंट्स',
+    te: 'మీ అపాయింట్‌మెంట్‌లు',
+    kn: 'ನಿಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳು',
+    ml: 'നിങ്ങളുടെ അപ്പോയിന്റ്മെന്റുകൾ',
+    bn: 'আপনার অ্যাপয়েন্টমেন্টসমূহ',
+    mr: 'आपल्या अपॉइंटमेंट्स',
+    gu: 'તમારી એપોઇન્ટમેન્ટ્સ',
+    pa: 'ਤੁਹਾਡੀਆਂ ਮੁਲਾਕਾਤਾਂ'
+  },
+  cancel_this_appointment: {
+    en: 'Cancel This Appointment',
+    ta: 'இந்த அப்பாய்ன்ட்மென்ட்டை ரத்து செய்',
+    hi: 'यह अपॉइंटमेंट रद्द करें',
+    te: 'ఈ అపాయింట్‌మెంట్‌ను రద్దు చేయండి',
+    kn: 'ಈ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ರದ್ದುಮಾಡಿ',
+    ml: 'ഈ അപ്പോയിന്റ്മെന്റ് റദ്ദാക്കുക',
+    bn: 'এই অ্যাপয়েন্টমেন্ট বাতিল করুন',
+    mr: 'ही अपॉइंटमेंट रद्द करा',
+    gu: 'આ એપોઇન્ટમેન્ટ રદ કરો',
+    pa: 'ਇਹ ਮੁਲਾਕਾਤ ਰੱਦ ਕਰੋ'
+  },
+  booking_confirmed: {
+    en: 'Booking Confirmed',
+    ta: 'முன்பதிவு உறுதி செய்யப்பட்டது',
+    hi: 'बुकिंग कन्फर्म हो गई',
+    te: 'బుకింగ్ నిర్ధారించబడింది',
+    kn: 'ಬುಕಿಂಗ್ ದೃಢಪಟ್ಟಿದೆ',
+    ml: 'ബുക്കിംഗ് സ്ഥിരീകരിച്ചു',
+    bn: 'বুকিং নিশ্চিত হয়েছে',
+    mr: 'बुकिंग निश्चित झाले',
+    gu: 'બુકિંગ કન્ફર્મ થયું',
+    pa: 'ਬੁਕਿੰਗ ਦੀ ਪੁਸ਼ਟੀ ਹੋਈ'
+  },
+  doctor: {
+    en: 'Doctor',
+    ta: 'மருத்துவர்',
+    hi: 'डॉक्टर',
+    te: 'వైద్యుడు',
+    kn: 'ವೈದ್ಯರು',
+    ml: 'ഡോക്ടർ',
+    bn: 'ডাক্তার',
+    mr: 'डॉक्टर',
+    gu: 'ડૉક્ટર',
+    pa: 'ਡਾਕਟਰ'
+  },
+  date_time: {
+    en: 'Date & Time',
+    ta: 'தேதி & நேரம்',
+    hi: 'तारीख व समय',
+    te: 'తేదీ & సమయం',
+    kn: 'ದಿನಾಂಕ & ಸಮಯ',
+    ml: 'തീയതി & സമയം',
+    bn: 'তারিখ ও সময়',
+    mr: 'तारीख व वेळ',
+    gu: 'તારીખ અને સમય',
+    pa: 'ਮਿਤੀ ਅਤੇ ਸਮਾਂ'
+  },
+  room: {
+    en: 'Room',
+    ta: 'அறை',
+    hi: 'कमरा',
+    te: 'గది',
+    kn: 'ಕೊಠಡಿ',
+    ml: 'മുറി',
+    bn: 'কক্ষ',
+    mr: 'खोली',
+    gu: 'રૂમ',
+    pa: 'ਕਮਰਾ'
+  },
+  ref_code: {
+    en: 'Ref Code',
+    ta: 'குறிப்பு எண்',
+    hi: 'संदर्भ संख्या',
+    te: 'రెఫరెన్స్ కోడ్',
+    kn: 'ಉಲ್ಲೇಖ ಸಂಖ್ಯೆ',
+    ml: 'റഫറൻസ് കോഡ്',
+    bn: 'রেফারেন্স কোড',
+    mr: 'संदर्भ कोड',
+    gu: 'સંદર્ભ કોડ',
+    pa: 'ਹਵਾਲਾ ਕੋਡ'
+  },
+  view_my_appointments: {
+    en: 'View My Appointments',
+    ta: 'என் அப்பாய்ன்ட்மென்ட்களைப் பார்',
+    hi: 'मेरी अपॉइंटमेंट्स देखें',
+    te: 'నా అపాయింట్‌మెంట్‌లు చూడండి',
+    kn: 'ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳನ್ನು ನೋಡಿ',
+    ml: 'എന്റെ അപ്പോയിന്റ്മെന്റുകൾ കാണുക',
+    bn: 'আমার অ্যাপয়েন্টমেন্ট দেখুন',
+    mr: 'माझ्या अपॉइंटमेंट्स पहा',
+    gu: 'મારી એપોઇન્ટમેન્ટ્સ જુઓ',
+    pa: 'ਮੇਰੀਆਂ ਮੁਲਾਕਾਤਾਂ ਵੇਖੋ'
+  },
+  please_confirm: {
+    en: 'Please Confirm Your Request',
+    ta: 'தயவுசெய்து உறுதிப்படுத்தவும்',
+    hi: 'कृपया अपने अनुरोध की पुष्टि करें',
+    te: 'దయచేసి మీ అభ్యర్థనను నిర్ధారించండి',
+    kn: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ದೃಢೀಕರಿಸಿ',
+    ml: 'ദയവായി നിങ്ങളുടെ അഭ്യർത്ഥന സ്ഥിരീകരിക്കുക',
+    bn: 'অনুগ্রহ করে আপনার অনুরোধ নিশ্চিত করুন',
+    mr: 'कृपया आपल्या विनंतीची पुष्टी करा',
+    gu: 'કૃપા કરીને તમારી વિનંતીની પુષ્ટિ કરો',
+    pa: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਬੇਨਤੀ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ'
+  },
+  yes_confirm: {
+    en: 'Yes, Confirm',
+    ta: 'ஆம், உறுதிசெய்',
+    hi: 'हाँ, पुष्टि करें',
+    te: 'అవును, నిర్ధారించు',
+    kn: 'ಹೌದು, ದೃಢೀಕರಿಸಿ',
+    ml: 'അതെ, സ്ഥിരീകരിക്കുക',
+    bn: 'হ্যাঁ, নিশ্চিত করুন',
+    mr: 'होय, पुष्टी करा',
+    gu: 'હા, પુષ્ટિ કરો',
+    pa: 'ਹਾਂ, ਪੁਸ਼ਟੀ ਕਰੋ'
+  },
+  no_cancel: {
+    en: 'No, Cancel',
+    ta: 'இல்லை, ரத்து செய்',
+    hi: 'नहीं, रद्द करें',
+    te: 'వద్దు, రద్దు చేయి',
+    kn: 'ಇಲ್ಲ, ರದ್ದುಮಾಡಿ',
+    ml: 'അല്ല, റദ്ദാക്കുക',
+    bn: 'না, বাতিল করুন',
+    mr: 'नाही, रद्द करा',
+    gu: 'ના, રદ કરો',
+    pa: 'ਨਹੀਂ, ਰੱਦ ਕਰੋ'
+  },
+  pharmacy_stock: {
+    en: 'Pharmacy Stock',
+    ta: 'மருந்தக இருப்பு',
+    hi: 'फार्मेसी स्टॉक',
+    te: 'ఫార్మసీ నిల్వలు',
+    kn: 'ಔಷಧಾಲಯ ದಾಸ್ತಾನು',
+    ml: 'ഫാർമസി സ്റ്റോക്ക്',
+    bn: 'ফার্মেসি স্টক',
+    mr: 'फार्मसी साठा',
+    gu: 'ફાર્મસી સ્ટોક',
+    pa: 'ਫਾਰਮੇਸੀ ਸਟਾਕ'
+  },
+  visit_pharmacy: {
+    en: 'Visit Pharmacy',
+    ta: 'மருந்தகம் செல்லவும்',
+    hi: 'फार्मेसी देखें',
+    te: 'ఫార్మసీని సందర్శించండి',
+    kn: 'ಔಷಧಾಲಯಕ್ಕೆ ಭೇಟಿ ನೀಡಿ',
+    ml: 'ഫാർമസി സന്ദർശിക്കുക',
+    bn: 'ফার্মেসিতে যান',
+    mr: 'फार्मसीला भेट द्या',
+    gu: 'ફાર્મસીની મુલાકાત લો',
+    pa: 'ਫਾਰਮੇਸੀ ਜਾਓ'
+  },
+  medical_records: {
+    en: 'Your Medical Records',
+    ta: 'உங்கள் மருத்துவ ஆவணங்கள்',
+    hi: 'आपके मेडिकल रिकॉर्ड्स',
+    te: 'మీ వైద్య రికార్డులు',
+    kn: 'ನಿಮ್ಮ ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು',
+    ml: 'നിങ്ങളുടെ മെഡിക്കൽ റെക്കോർഡുകൾ',
+    bn: 'আপনার মেডিকেল রেকর্ডসমূহ',
+    mr: 'आपल्या वैद्यकीय नोंदी',
+    gu: 'તમારા મેડિકલ રેકોર્ડ્સ',
+    pa: 'ਤੁਹਾਡੇ ਮੈਡੀਕਲ ਰਿਕਾਰਡ'
+  },
+  open_records: {
+    en: 'Open Records Manager',
+    ta: 'ஆவண மேலாளர்',
+    hi: 'रिकॉर्ड्स मैनेजर खोलें',
+    te: 'రికార్డుల మేనేజర్ తెరవండి',
+    kn: 'ದಾಖಲೆಗಳ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ',
+    ml: 'റെക്കോർഡ്സ് മാനേജർ തുറക്കുക',
+    bn: 'রেকর্ড ম্যানেজার খুলুন',
+    mr: 'रेकॉर्ड मॅनेजर उघडा',
+    gu: 'રેકોર્ડ્સ મેનેજર ખોલો',
+    pa: 'ਰਿਕਾਰਡ ਮੈਨੇਜਰ ਖੋਲ੍ਹੋ'
+  },
+  pending_doctors: {
+    en: 'Pending Doctor Registrations',
+    ta: 'சரிபார்ப்பு நிலுவையில் உள்ள மருத்துவர்கள்',
+    hi: 'सत्यापन हेतु लंबित डॉक्टर',
+    te: 'పరిశీలనలో ఉన్న డాక్టర్ దరఖాస్తులు',
+    kn: 'ಬಾಕಿ ಇರುವ ವೈದ್ಯರ ನೋಂದಣಿಗಳು',
+    ml: 'പരിശോധനയിലുള്ള ഡോക്ടർ അപേക്ഷകൾ',
+    bn: 'অনুমোদনের অপেক্ষায় ডাক্তারদের তালিকা',
+    mr: 'प्रलंबित डॉक्टर नोंदणी',
+    gu: 'બાકી ડૉક્ટર નોંધણીઓ',
+    pa: 'ਬਕਾਇਆ ਡਾਕਟਰ ਰਜਿਸਟ੍ਰੇਸ਼ਨ'
+  },
+  open_admin_approvals: {
+    en: 'Open Admin Doctor Approvals',
+    ta: 'மருத்துவர் ஒப்புதல் பிரிவு',
+    hi: 'डॉक्टर अनुमोदन खोलें',
+    te: 'డాక్టర్ ఆమోదాలు తెరవండి',
+    kn: 'ವೈದ್ಯರ ಅನುಮೋದನೆ ಪುಟ ತೆರೆಯಿರಿ',
+    ml: 'അഡ്മിൻ അപ്രൂവൽ തുറക്കുക',
+    bn: 'অ্যাডমিন ডাক্তার অনুমোদন খুলুন',
+    mr: 'प्रशासक डॉक्टर मान्यता उघडा',
+    gu: 'એડમિન ડૉક્ટર મંજૂરી ખોલો',
+    pa: 'ਡਾਕਟਰ ਪ੍ਰਵਾਨਗੀ ਖੋਲ੍ਹੋ'
+  },
+  read_aloud: {
+    en: 'Read Aloud',
+    ta: 'ஒலி வாசிப்பு',
+    hi: 'बोलकर सुनाएं',
+    te: 'వినండి',
+    kn: 'ಓದಿ ಕೇಳಿ',
+    ml: 'വായിച്ചു കേൾക്കുക',
+    bn: 'পড়ে শোনান',
+    mr: 'ऐका',
+    gu: 'વાંચી સંભળાવો',
+    pa: 'ਪੜ੍ਹ ਕੇ ਸੁਣਾਓ'
+  },
+  stop_speaking: {
+    en: 'Stop Speaking',
+    ta: 'நிறுத்து',
+    hi: 'बोलना बंद करें',
+    te: 'ఆపండి',
+    kn: 'ನಿಲ್ಲಿಸಿ',
+    ml: 'നിർത്തുക',
+    bn: 'বন্ধ করুন',
+    mr: 'थांबवा',
+    gu: 'બંધ કરો',
+    pa: 'ਬੰਦ ਕਰੋ'
+  },
+  input_placeholder: {
+    en: 'Ask any question like ChatGPT, book a doctor, or check medicines...',
+    ta: 'ChatGPT போல எதையும் கேளுங்கள், மருத்துவரை முன்பதிவு செய்யுங்கள்...',
+    hi: 'ChatGPT की तरह कोई भी सवाल पूछें, डॉक्टर बुक करें या दवाएं देखें...',
+    te: 'ChatGPT వలే ఏదైనా ప్రశ్న అడగండి, డాక్టర్‌ను బుక్ చేయండి...',
+    kn: 'ChatGPT ರೀತಿಯಲ್ಲಿ ಯಾವುದೇ ಪ್ರಶ್ನೆ ಕೇಳಿ, ವೈದ್ಯರನ್ನು ಬುಕ್ ಮಾಡಿ...',
+    ml: 'ChatGPT പോലെ ഏതു സംശയവും ചോദിക്കാം, ഡോക്ടറെ ബുക്ക് ചെയ്യാം...',
+    bn: 'চ্যাটজিপিটির মতো যেকোনো প্রশ্ন করুন, ডাক্তার বুক করুন...',
+    mr: 'ChatGPT प्रमाणे कोणताही प्रश्न विचारा, डॉक्टर बुक करा...',
+    gu: 'ChatGPT ની જેમ કોઈપણ પ્રશ્ન પૂછો, ડૉક્ટર બુક કરો...',
+    pa: 'ChatGPT ਵਾਂਗ ਕੋਈ ਵੀ ਸਵਾਲ ਪੁੱਛੋ, ਡਾਕਟਰ ਬੁੱਕ ਕਰੋ...'
+  },
+  listening: {
+    en: 'Listening...',
+    ta: 'கேட்கிறது...',
+    hi: 'सुन रहा हूँ...',
+    te: 'వింటున్నాను...',
+    kn: 'ಕೇಳಿಸಿಕೊಳ್ಳುತ್ತಿದ್ದೇನೆ...',
+    ml: 'കേൾക്കുന്നു...',
+    bn: 'শুনছি...',
+    mr: 'ऐकत आहे...',
+    gu: 'સાંભળી રહ્યો છું...',
+    pa: 'ਸੁਣ ਰਿਹਾ ਹਾਂ...'
+  },
+  speaking_in: {
+    en: 'Speaking in',
+    ta: 'பேசுகிறது',
+    hi: 'बोल रहा है',
+    te: 'మాట్లాడుతోంది',
+    kn: 'ಮಾತನಾಡುತ್ತಿದೆ',
+    ml: 'സംസാരിക്കുന്നു',
+    bn: 'বলছে',
+    mr: 'बोलत आहे',
+    gu: 'બોલી રહ્યો છે',
+    pa: 'ਬੋਲ ਰਿਹਾ ਹੈ'
+  },
+  mute: {
+    en: 'Mute',
+    ta: 'ஒலி நிறுத்து',
+    hi: 'म्यूट',
+    te: 'మ్యూట్',
+    kn: 'ಮ್ಯೂಟ್',
+    ml: 'മ്യൂട്ട്',
+    bn: 'মিউট',
+    mr: 'म्यूट',
+    gu: 'મ્યૂટ',
+    pa: 'ਮਿਊਟ'
+  }
+};
+
 export const AIAssistantModal: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user, token, setLanguage } = useAuth();
@@ -104,6 +384,11 @@ export const AIAssistantModal: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeLangCode = i18n.language || user?.preferred_language || 'en';
+
+  // Helper for UI text in active language
+  const tUI = (key: string): string => {
+    return UI_TEXT[key]?.[activeLangCode] || UI_TEXT[key]?.en || key;
+  };
 
   // Save voice output preference
   useEffect(() => {
@@ -141,32 +426,36 @@ export const AIAssistantModal: React.FC = () => {
     }
   };
 
-  // Initialize welcome message when opened
+  // Initialize and synchronize welcome message when language changes or modal opens
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      const welcomeText = activeLangCode === 'ta'
-        ? 'வணக்கம்! நான் கேர்ஸ்பியர் AI உதவியாளர். நீங்கள் உங்கள் தாய்மொழியில் பேசலாம் அல்லது எழுதலாம். மருத்துவர் அப்பாய்ன்ட்மென்ட் பதிவு செய்ய, ரத்து செய்ய அல்லது மருத்துவ தகவல்கள் அறிய நான் தயாராக உள்ளேன்.'
-        : activeLangCode === 'hi'
-        ? 'नमस्ते! मैं केयरस्फ़ीयर AI सहायक हूँ। आप हिंदी या हिंग्लिश में बोलकर या लिखकर अपनी अपॉइंटमेंट देख सकते हैं, नई बुकिंग कर सकते हैं या अस्पताल की जानकारी ले सकते हैं।'
-        : activeLangCode === 'te'
-        ? 'నమస్కారం! నేను కేర్‌స్పియర్ AI సహాయకుడిని. డాక్టర్ అపాయింట్‌మెంట్లు బుక్ చేయడానికి, రద్దు చేయడానికి లేదా మందుల వివరాలు తెలుసుకోవడానికి మీరు నాతో మాట్లాడవచ్చు.'
-        : activeLangCode === 'ml'
-        ? 'നമസ്കാരം! ഞാൻ കെയർസ്ഫിയർ AI അസിസ്റ്റന്റാണ്. ഡോക്ടർ അപ്പോയിന്റ്മെന്റുകൾ, മരുന്നുകൾ, ആശുപത്രി വിവരങ്ങൾ എന്നിവ ചോദിക്കാം.'
-        : activeLangCode === 'kn'
-        ? 'ನಮಸ್ಕಾರ! ನಾನು ಕೇರ್‌ಸ್ಪಿಯರ್ AI ಸಹಾಯಕ. ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಲು ಅಥವಾ ಮಾಹಿತಿ ಪಡೆಯಲು ನನ್ನನ್ನು ಕೇಳಿ.'
-        : 'Hello! I am CareSphere AI Assistant. You can speak or type to check or cancel your appointments, book consultations, search medicines, and get instant medical assistance.';
-
-      const welcomeMsg: ChatMessage = {
-        id: 'welcome',
-        sender: 'assistant',
-        text: welcomeText,
-        timestamp: new Date()
+    if (isOpen) {
+      const welcomeMap: Record<string, string> = {
+        en: 'Hello! I am CareSphere AI Assistant. You can speak or type to ask ANY health question like ChatGPT, check or cancel appointments, book consultations, and search medicines.',
+        ta: 'வணக்கம்! நான் கேர்ஸ்பியர் AI உதவியாளர். நீங்கள் உங்கள் தாய்மொழியில் பேசலாம் அல்லது எழுதலாம். ChatGPT போன்று எந்த கேள்விக்கும் விளக்கம் பெறவும், மருத்துவர் முன்பதிவு மற்றும் ரத்து செய்யவும் நான் தயாராக உள்ளேன்.',
+        hi: 'नमस्ते! मैं केयरस्फ़ीयर AI सहायक हूँ। आप हिंदी में बोलकर या लिखकर ChatGPT की तरह कोई भी सवाल पूछ सकते हैं, अपनी अपॉइंटमेंट देख सकते हैं, नई बुकिंग कर सकते हैं या अस्पताल की जानकारी ले सकते हैं।',
+        te: 'నమస్కారం! నేను కేర్‌స్పియర్ AI సహాయకుడిని. ChatGPT వలే మీ ఆరోగ్య ప్రశ్నలన్నింటికీ సమాధానాలు పొందవచ్చు, డాక్టర్ అపాయింట్‌మెంట్లు బుక్ చేసుకోవచ్చు లేదా రద్దు చేయవచ్చు.',
+        kn: 'ನಮಸ್ಕಾರ! ನಾನು ಕೇರ್‌ಸ್ಪಿಯರ್ AI ಸಹಾಯಕ. ChatGPT ರೀತಿಯಲ್ಲಿ ಯಾವುದೇ ಆರೋಗ್ಯ ಪ್ರಶ್ನೆಗಳಿಗೆ ಮಾಹಿತಿ ಪಡೆಯಲು, ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಲು ಅಥವಾ ರದ್ದುಗೊಳಿಸಲು ನನ್ನನ್ನು ಕೇಳಿ.',
+        ml: 'നമസ്കാരം! ഞാൻ കെയർസ്ഫിയർ AI അസിസ്റ്റന്റാണ്. ChatGPT പോലെ ഏതു സംശയങ്ങൾക്കും ഉത്തരം നൽകാനും, ഡോക്ടർ അപ്പോയിന്റ്മെന്റുകൾ ബുക്ക് ചെയ്യാനും റദ്ദാക്കാനും ഞാൻ സജ്ജനാണ്.',
+        bn: 'নমস্কার! আমি কেয়ারস্ফিয়ার এআই সহকারী। চ্যাটজিপিটির মতো যেকোনো স্বাস্থ্য প্রশ্নের উত্তর, ডাক্তার বুকিং বা বাতিলের জন্য আমাকে জিজ্ঞাসা করুন।',
+        mr: 'नमस्कार! मी केअरस्फीअर AI सहाय्यक आहे. ChatGPT प्रमाणे कोणत्याही आरोग्य प्रश्नाचे उत्तर, डॉक्टर अपॉइंटमेंट किंवा औषधांच्या माहितीसाठी मला विचारा.',
+        gu: 'નમસ્તે! હું કેરસ્ફિયર AI સહાયક છું. ChatGPT ની જેમ કોઈપણ સ્વાસ્થ્ય પ્રશ્નોના ઉત્તર મેળવવા, ડૉક્ટર બુક કરવા કે રદ કરવા માટે મને કહો.',
+        pa: 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਕੇਅਰਸਫੀਅਰ AI ਸਹਾਇਕ ਹਾਂ। ChatGPT ਵਾਂਗ ਕਿਸੇ ਵੀ ਸਿਹਤ ਸਵਾਲ ਦਾ ਜਵਾਬ, ਡਾਕਟਰ ਮੁਲਾਕਾਤ ਬੁੱਕ ਕਰਨ ਜਾਂ ਰੱਦ ਕਰਨ ਲਈ ਮੇਰੇ ਨਾਲ ਗੱਲ ਕਰੋ।'
       };
 
-      setMessages([welcomeMsg]);
+      const welcomeText = welcomeMap[activeLangCode] || welcomeMap.en;
 
-      if (autoVoiceOutput) {
-        setTimeout(() => speakText(welcomeText, 'welcome'), 600);
+      if (messages.length === 0 || (messages.length === 1 && messages[0].id === 'welcome')) {
+        const welcomeMsg: ChatMessage = {
+          id: 'welcome',
+          sender: 'assistant',
+          text: welcomeText,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMsg]);
+
+        if (autoVoiceOutput && messages.length === 0) {
+          setTimeout(() => speakText(welcomeText, 'welcome'), 600);
+        }
       }
     }
   }, [isOpen, activeLangCode]);
@@ -380,12 +669,20 @@ export const AIAssistantModal: React.FC = () => {
       }
     } catch (err) {
       console.error('AI chat failed:', err);
-      const fallbackText =
-        activeLangCode === 'ta'
-          ? 'தற்போது மருத்துவமனை தகவல் சேவையை இணைக்க முடியவில்லை. அவசர உதவிக்கு +91-80-CARE-911 என்ற எண்ணை அழைக்கவும்.'
-          : activeLangCode === 'hi'
-          ? 'वर्तमान में अस्पताल सूचना सेवा से संपर्क नहीं हो पा रहा है। आपातकालीन सहायता के लिए +91-80-CARE-911 पर कॉल करें।'
-          : 'We are unable to connect to the hospital information service right now. For urgent help, please call our 24/7 hotline +91-80-CARE-911.';
+      const fallbackMap: Record<string, string> = {
+        en: 'We are unable to connect to the hospital information service right now. For urgent help, please call our 24/7 hotline +91-80-CARE-911.',
+        ta: 'தற்போது மருத்துவமனை தகவல் சேவையை இணைக்க முடியவில்லை. அவசர உதவிக்கு +91-80-CARE-911 என்ற எண்ணை அழைக்கவும்.',
+        hi: 'वर्तमान में अस्पताल सूचना सेवा से संपर्क नहीं हो पा रहा है। आपातकालीन सहायता के लिए +91-80-CARE-911 पर कॉल करें।',
+        te: 'ప్రస్తుతం ఆసుపత్రి సమాచార సేవను అనుసంధానించలేకపోతున్నాము. అత్యవసర సహాయం కోసం +91-80-CARE-911 కు కాల్ చేయండి.',
+        kn: 'ಆಸ್ಪತ್ರೆ ಮಾಹಿತಿ ಸೇವೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ. ತುರ್ತು ಸಹಾಯಕ್ಕಾಗಿ +91-80-CARE-911 ಗೆ ಕರೆ ಮಾಡಿ.',
+        ml: 'ആശുപത്രി വിവര സേവനവുമായി ബന്ധപ്പെടാൻ സാധിക്കുന്നില്ല. അടിയന്തിര സഹായത്തിന് +91-80-CARE-911 എന്ന നമ്പറിൽ വിളിക്കുക.',
+        bn: 'বর্তমানে হাসপাতাল তথ্য সেবায় সংযোগ করা যাচ্ছে না। জরুরী সহায়তার জন্য +91-80-CARE-911 নম্বরে কল করুন।',
+        mr: 'सध्या रुग्णालय माहिती सेवेशी संपर्क होऊ शकत नाही. तातडीच्या मदतीसाठी +91-80-CARE-911 वर कॉल करा.',
+        gu: 'હાલમાં હોસ્પિટલ સેવા સાથે કનેક્ટ થઈ શકતું નથી. તાત્કાલિક સહાય માટે +91-80-CARE-911 પર કૉલ કરો.',
+        pa: 'ਇਸ ਸਮੇਂ ਹਸਪਤਾਲ ਸੂਚਨਾ ਸੇਵਾ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਹੋ ਰਿਹਾ। ਐਮਰਜੈਂਸੀ ਮਦਦ ਲਈ +91-80-CARE-911 ਤੇ ਕਾਲ ਕਰੋ।'
+      };
+
+      const fallbackText = fallbackMap[activeLangCode] || fallbackMap.en;
 
       const errMessage: ChatMessage = {
         id: String(Date.now() + 1),
@@ -405,37 +702,154 @@ export const AIAssistantModal: React.FC = () => {
     }
   };
 
-  // Role-Aware Quick Prompt Chips
+  // Role-Aware Quick Prompt Chips localized in user's preferred language
   const quickPrompts = useMemo(() => {
     const role = user?.role;
+    const l = activeLangCode;
+
     if (role === 'patient') {
-      return [
-        { label: '📅 Show my appointments', query: 'Show my appointments' },
-        { label: '🩺 Book doctor appointment', query: 'Book appointment with Dr. Priya Sharma tomorrow 10 AM' },
-        { label: '💊 Check medicine stock', query: 'Show available medicines' },
-        { label: '📋 View medical records', query: 'Show my medical records' },
-        { label: '🚨 Emergency SOS', query: 'Emergency SOS' }
-      ];
+      const patientPrompts: Record<string, { label: string; query: string }[]> = {
+        ta: [
+          { label: '📅 என் அப்பாய்ன்ட்மென்ட்கள்', query: 'என் அப்பாய்ன்ட்மென்ட்களை காட்டு' },
+          { label: '🩺 மருத்துவர் முன்பதிவு', query: 'மருத்துவர் அப்பாய்ன்ட்மென்ட் முன்பதிவு செய்' },
+          { label: '💊 மருந்துகள் இருப்பு', query: 'மருந்துகள் இருப்பை காட்டு' },
+          { label: '📋 மருத்துவ ஆவணங்கள்', query: 'என் மருத்துவ ஆவணங்களை காட்டு' },
+          { label: '🚨 அவசர உதவி', query: 'அவசர மருத்துவ உதவி தேவை' }
+        ],
+        hi: [
+          { label: '📅 मेरी अपॉइंटमेंट्स', query: 'मेरी अपॉइंटमेंट दिखाओ' },
+          { label: '🩺 डॉक्टर बुक करें', query: 'डॉक्टर अपॉइंटमेंट बुक करो' },
+          { label: '💊 उपलब्ध दवाएं', query: 'उपलब्ध दवाएं दिखाओ' },
+          { label: '📋 मेडिकल रिकॉर्ड्स', query: 'मेरे मेडिकल रिकॉर्ड दिखाओ' },
+          { label: '🚨 आपातकालीन SOS', query: 'आपातकालीन सहायता' }
+        ],
+        te: [
+          { label: '📅 నా అపాయింట్‌మెంట్‌లు', query: 'నా అపాయింట్‌మెంట్‌లు చూపించు' },
+          { label: '🩺 డాక్టర్ బుకింగ్', query: 'డాక్టర్ అపాయింట్‌మెంట్ బుక్ చేయి' },
+          { label: '💊 మందుల నిల్వలు', query: 'అందుబాటులో ఉన్న మందులు చూపించు' },
+          { label: '📋 వైద్య రికార్డులు', query: 'నా వైద్య రికార్డులు చూపించు' },
+          { label: '🚨 ఎమర్జెన్సీ SOS', query: 'అత్యవసర సహాయం' }
+        ],
+        kn: [
+          { label: '📅 ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್', query: 'ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ತೋರಿಸಿ' },
+          { label: '🩺 ವೈದ್ಯರ ಭೇಟಿ', query: 'ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಿ' },
+          { label: '💊 ಔಷಧಿಗಳು', query: 'ಲಭ್ಯವಿರುವ ಔಷಧಿಗಳನ್ನು ತೋರಿಸಿ' },
+          { label: '📋 ಮೆಡಿಕಲ್ ರೆಕಾರ್ಡ್', query: 'ನನ್ನ ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳನ್ನು ತೋರಿಸಿ' },
+          { label: '🚨 ತುರ್ತು SOS', query: 'ತುರ್ತು ಸಹಾಯ' }
+        ],
+        ml: [
+          { label: '📅 എന്റെ അപ്പോയിന്റ്മെന്റുകൾ', query: 'എന്റെ അപ്പോയിന്റ്മെന്റുകൾ കാണിക്കുക' },
+          { label: '🩺 ഡോക്ടറെ ബുക്ക് ചെയ്യുക', query: 'ഡോക്ടറെ കാണാൻ സമയം ബുക്ക് ചെയ്യുക' },
+          { label: '💊 മരുന്നുകൾ', query: 'ലഭ്യമായ മരുന്നുകൾ കാണിക്കുക' },
+          { label: '📋 മെഡിക്കൽ രേഖകൾ', query: 'എന്റെ മെഡിക്കൽ രേഖകൾ കാണിക്കുക' },
+          { label: '🚨 അടിയന്തിര SOS', query: 'അടിയന്തിര സഹായം' }
+        ],
+        bn: [
+          { label: '📅 আমার অ্যাপয়েন্টমেন্ট', query: 'আমার অ্যাপয়েন্টমেন্ট দেখাও' },
+          { label: '🩺 ডাক্তার বুকিং', query: 'ডাক্তার অ্যাপয়েন্টমেন্ট বুক করো' },
+          { label: '💊 ওষুধের স্টক', query: 'উপলব্ধ ওষুধ দেখাও' },
+          { label: '📋 মেডিকেল রেকর্ড', query: 'আমার মেডিকেল রেকর্ড দেখাও' },
+          { label: '🚨 জরুরী SOS', query: 'জরুরী চিকিৎসা সহায়তা' }
+        ],
+        mr: [
+          { label: '📅 माझी अपॉइंटमेंट', query: 'माझी अपॉइंटमेंट दाखवा' },
+          { label: '🩺 डॉक्टर बुकिंग', query: 'डॉक्टर अपॉइंटमेंट बुक करा' },
+          { label: '💊 औषधांचा साठा', query: 'उपलब्ध औषधे दाखवा' },
+          { label: '📋 वैद्यकीय नोंदी', query: 'माझ्या वैद्यकीय नोंदी दाखवा' },
+          { label: '🚨 आपत्कालीन SOS', query: 'आपत्कालीन मदत' }
+        ],
+        gu: [
+          { label: '📅 મારી એપોઇન્ટમેન્ટ', query: 'મારી એપોઇન્ટમેન્ટ બતાવો' },
+          { label: '🩺 ડૉક્ટર બુકિંગ', query: 'ડૉક્ટર એપોઇન્ટમેન્ટ બુક કરો' },
+          { label: '💊 દવાનો સ્ટોક', query: 'ઉપલબ્ધ દવાઓ બતાવો' },
+          { label: '📋 મેડિકલ રેકોર્ડ', query: 'મારા મેડિકલ રેકોર્ડ બતાવો' },
+          { label: '🚨 કટોકટી SOS', query: 'કટોકટી સહાય' }
+        ],
+        pa: [
+          { label: '📅 ਮੇਰੀ ਮੁਲਾਕਾਤ', query: 'ਮੇਰੀ ਮੁਲਾਕਾਤ ਦਿਖਾਓ' },
+          { label: '🩺 ਡਾਕਟਰ ਬੁੱਕ ਕਰੋ', query: 'ਡਾਕਟਰ ਮੁਲਾਕਾਤ ਬੁੱਕ ਕਰੋ' },
+          { label: '💊 ਦਵਾਈਆਂ ਦਾ ਸਟਾਕ', query: 'ਉਪਲਬਧ ਦਵਾਈਆਂ ਦਿਖਾਓ' },
+          { label: '📋 ਮੈਡੀਕਲ ਰਿਕਾਰਡ', query: 'ਮੇਰੇ ਮੈਡੀਕਲ ਰਿਕਾਰਡ ਦਿਖਾਓ' },
+          { label: '🚨 ਐਮਰਜੈਂਸੀ SOS', query: 'ਐਮਰਜੈਂਸੀ ਸਹਾਇਤਾ' }
+        ],
+        en: [
+          { label: '📅 Show my appointments', query: 'Show my appointments' },
+          { label: '🩺 Book doctor appointment', query: 'Book doctor appointment' },
+          { label: '💊 Check medicine stock', query: 'Show available medicines' },
+          { label: '📋 View medical records', query: 'Show my medical records' },
+          { label: '🚨 Emergency SOS', query: 'Emergency SOS' }
+        ]
+      };
+      return patientPrompts[l] || patientPrompts.en;
     } else if (role === 'doctor') {
-      return [
-        { label: '👨‍⚕️ My appointments', query: 'Show my doctor appointments' },
-        { label: '📋 Patient schedule', query: 'Show my appointments today' },
-        { label: '💊 Available medicines', query: 'Show available medicines' }
-      ];
+      const docPrompts: Record<string, { label: string; query: string }[]> = {
+        ta: [
+          { label: '👨‍⚕️ என் நோயாளிகள் அட்டவணை', query: 'Show my doctor appointments' },
+          { label: '📋 இன்றைய அட்டவணை', query: 'Show my appointments today' },
+          { label: '💊 மருந்தக இருப்பு', query: 'Show available medicines' }
+        ],
+        hi: [
+          { label: '👨‍⚕️ मेरा मरीज शेड्यूल', query: 'Show my doctor appointments' },
+          { label: '📋 आज की अपॉइंटमेंट्स', query: 'Show my appointments today' },
+          { label: '💊 फार्मेसी स्टॉक', query: 'Show available medicines' }
+        ],
+        en: [
+          { label: '👨‍⚕️ My appointments', query: 'Show my doctor appointments' },
+          { label: '📋 Patient schedule', query: 'Show my appointments today' },
+          { label: '💊 Available medicines', query: 'Show available medicines' }
+        ]
+      };
+      return docPrompts[l] || docPrompts.en;
     } else if (role === 'admin' || role === 'hospital_admin' || role === 'superadmin') {
-      return [
-        { label: '🩺 Pending doctor approvals', query: 'Show pending doctor registrations' },
-        { label: '📊 Today appointments', query: 'Show today appointments' },
-        { label: '💊 Pharmacy inventory', query: 'Show available medicines' }
-      ];
+      const adminPrompts: Record<string, { label: string; query: string }[]> = {
+        ta: [
+          { label: '🩺 மருத்துவர் ஒப்புதல்கள்', query: 'Show pending doctor registrations' },
+          { label: '📊 இன்றைய அப்பாய்ன்ட்மென்ட்கள்', query: 'Show today appointments' },
+          { label: '💊 மருந்தக இருப்பு', query: 'Show available medicines' }
+        ],
+        hi: [
+          { label: '🩺 लंबित डॉक्टर अनुमोदन', query: 'Show pending doctor registrations' },
+          { label: '📊 आज की अपॉइंटमेंट्स', query: 'Show today appointments' },
+          { label: '💊 फार्मेसी इन्वेंटरी', query: 'Show available medicines' }
+        ],
+        en: [
+          { label: '🩺 Pending doctor approvals', query: 'Show pending doctor registrations' },
+          { label: '📊 Today appointments', query: 'Show today appointments' },
+          { label: '💊 Pharmacy inventory', query: 'Show available medicines' }
+        ]
+      };
+      return adminPrompts[l] || adminPrompts.en;
     } else {
-      return [
-        { label: '🩺 Available doctors', query: 'Show available doctors in the hospital' },
-        { label: '🏥 Hospital departments', query: 'Which departments are available?' },
-        { label: '🚨 Emergency helpline', query: 'Emergency helpline numbers' }
-      ];
+      // General inquiries / Exploring user like ChatGPT
+      const guestPrompts: Record<string, { label: string; query: string }[]> = {
+        ta: [
+          { label: '🩺 மருத்துவர்கள் விவரம்', query: 'மருத்துவமனையில் உள்ள சிறப்பு மருத்துவர்கள் விவரம் காட்டு' },
+          { label: '🏥 மருத்துவமனை துறைகள்', query: 'எந்தெந்த துறைகள் செயல்படுகின்றன?' },
+          { label: '🩸 இரத்த சர்க்கரை அளவு', query: 'இயல்பான இரத்த சர்க்கரை அளவு எவ்வளவு?' },
+          { label: '🚨 அவசர எண்கள்', query: 'அவசர உதவி எண்கள் காட்டு' }
+        ],
+        hi: [
+          { label: '🩺 उपलब्ध विशेषज्ञ', query: 'अस्पताल के विशेषज्ञ डॉक्टरों की सूची दिखाओ' },
+          { label: '🏥 अस्पताल के विभाग', query: 'अस्पताल में कौन-कौन से विभाग हैं?' },
+          { label: '🩸 सामान्य ब्लड शुगर', query: 'सामान्य ब्लड शुगर का स्तर क्या होना चाहिए?' },
+          { label: '🚨 इमरजेंसी हेल्पलाइन', query: 'आपातकालीन हेल्पलाइन नंबर' }
+        ],
+        te: [
+          { label: '🩺 వైద్యుల వివరాలు', query: 'ఆసుపత్రిలో అందుబాటులో ఉన్న వైద్యులు ఎవరు?' },
+          { label: '🏥 ఆసుపత్రి విభాగాలు', query: 'ఏయే విభాగాలు అందుబాటులో ఉన్నాయి?' },
+          { label: '🩸 సాధారణ షుగర్ లెవెల్స్', query: 'నార్మల్ బ్లడ్ షుగర్ లెవెల్స్ ఎంత ఉండాలి?' },
+          { label: '🚨 అత్యవసర హెల్ప్‌లైన్', query: 'ఎమర్జెన్సీ హెల్ప్‌లైన్ నంబర్లు' }
+        ],
+        en: [
+          { label: '🩺 Available doctors', query: 'Show available doctors in the hospital' },
+          { label: '🏥 Hospital departments', query: 'Which clinical departments are available?' },
+          { label: '🩸 Blood sugar guide', query: 'What are normal blood glucose reference levels?' },
+          { label: '🚨 Emergency helpline', query: 'Emergency helpline numbers' }
+        ]
+      };
+      return guestPrompts[l] || guestPrompts.en;
     }
-  }, [user?.role]);
+  }, [user?.role, activeLangCode]);
 
   return (
     <>
@@ -544,7 +958,7 @@ export const AIAssistantModal: React.FC = () => {
                 className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full hover:bg-amber-200 cursor-pointer"
               >
                 <Square className="w-2.5 h-2.5 fill-current" />
-                <span>Stop</span>
+                <span>{tUI('stop_speaking')}</span>
               </button>
             )}
           </div>
@@ -627,13 +1041,13 @@ export const AIAssistantModal: React.FC = () => {
                   <span className="w-1 h-4 bg-teal-600 rounded-full animate-pulse delay-75" />
                   <span className="w-1 h-2 bg-teal-400 rounded-full animate-pulse delay-150" />
                 </div>
-                <span>Speaking in {activeLangCode.toUpperCase()}...</span>
+                <span>{tUI('speaking_in')} {activeLangCode.toUpperCase()}...</span>
               </div>
               <button
                 onClick={stopSpeaking}
                 className="text-[10px] text-teal-700 dark:text-teal-300 font-bold hover:underline cursor-pointer"
               >
-                Mute
+                {tUI('mute')}
               </button>
             </div>
           )}
@@ -667,7 +1081,7 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                        <span>Your Appointments ({m.actionData.appointments.length})</span>
+                        <span>{tUI('your_appointments')} ({m.actionData.appointments.length})</span>
                       </div>
                       <div className="space-y-1.5">
                         {m.actionData.appointments.map((appt: any, idx: number) => (
@@ -696,7 +1110,7 @@ export const AIAssistantModal: React.FC = () => {
                                 className="mt-1 text-[10px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 px-2 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800 flex items-center gap-1 transition cursor-pointer"
                               >
                                 <XCircle className="w-3 h-3" />
-                                <span>Cancel This Appointment</span>
+                                <span>{tUI('cancel_this_appointment')}</span>
                               </button>
                             )}
                           </div>
@@ -710,13 +1124,13 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2.5 border-t border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border">
                       <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Booking Confirmed</span>
+                        <span>{tUI('booking_confirmed')}</span>
                       </div>
                       <div className="mt-1.5 text-[10px] text-emerald-900 dark:text-emerald-200 space-y-0.5">
-                        <p><strong>Doctor:</strong> Dr. {m.actionData.appointment.doctor_name} ({m.actionData.appointment.specialization})</p>
-                        <p><strong>Date & Time:</strong> {m.actionData.appointment.date} at {m.actionData.appointment.time}</p>
-                        <p><strong>Room:</strong> {m.actionData.appointment.room_number}</p>
-                        <p><strong>Ref Code:</strong> {m.actionData.appointment.reference_number}</p>
+                        <p><strong>{tUI('doctor')}:</strong> Dr. {m.actionData.appointment.doctor_name} ({m.actionData.appointment.specialization})</p>
+                        <p><strong>{tUI('date_time')}:</strong> {m.actionData.appointment.date} at {m.actionData.appointment.time}</p>
+                        <p><strong>{tUI('room')}:</strong> {m.actionData.appointment.room_number}</p>
+                        <p><strong>{tUI('ref_code')}:</strong> {m.actionData.appointment.reference_number}</p>
                       </div>
                       <div className="mt-2">
                         <Link
@@ -724,7 +1138,7 @@ export const AIAssistantModal: React.FC = () => {
                           onClick={() => setIsOpen(false)}
                           className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-lg"
                         >
-                          <span>View My Appointments</span>
+                          <span>{tUI('view_my_appointments')}</span>
                           <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -736,7 +1150,7 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border space-y-2">
                       <div className="text-[11px] font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Please Confirm Your Request</span>
+                        <span>{tUI('please_confirm')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -744,14 +1158,14 @@ export const AIAssistantModal: React.FC = () => {
                           className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-xs cursor-pointer"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>Yes, Confirm</span>
+                          <span>{tUI('yes_confirm')}</span>
                         </button>
                         <button
                           onClick={() => handleSendMessage('No, cancel')}
                           className="flex-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold py-1.5 px-3 rounded-xl text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
-                          <span>No, Cancel</span>
+                          <span>{tUI('no_cancel')}</span>
                         </button>
                       </div>
                     </div>
@@ -762,7 +1176,7 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                         <Pill className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Pharmacy Stock</span>
+                        <span>{tUI('pharmacy_stock')}</span>
                       </div>
                       <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
                         {m.actionData.medicines.map((med: any) => (
@@ -772,7 +1186,7 @@ export const AIAssistantModal: React.FC = () => {
                           >
                             <div>
                               <span className="font-bold text-slate-900 dark:text-white block">{med.name}</span>
-                              <span className="text-slate-500">{med.category} • ₹{med.unit_price}</span>
+                              <span className="text-slate-500">{med.category || med.generic_name} • ₹{med.selling_price || med.unit_price}</span>
                             </div>
                             <span className="px-2 py-0.5 rounded-full font-bold bg-purple-100 text-purple-800">
                               {med.stock_quantity} in stock
@@ -785,7 +1199,7 @@ export const AIAssistantModal: React.FC = () => {
                         onClick={() => setIsOpen(false)}
                         className="text-[10px] text-purple-600 hover:underline font-bold inline-flex items-center gap-1"
                       >
-                        <span>Visit Pharmacy</span>
+                        <span>{tUI('visit_pharmacy')}</span>
                         <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
@@ -796,7 +1210,7 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Your Medical Records ({m.actionData.records.length})</span>
+                        <span>{tUI('medical_records')} ({m.actionData.records.length})</span>
                       </div>
                       <div className="space-y-1.5">
                         {m.actionData.records.map((rec: any) => (
@@ -805,7 +1219,7 @@ export const AIAssistantModal: React.FC = () => {
                             className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-[10px]"
                           >
                             <span className="font-bold text-slate-900 dark:text-white block">{rec.title}</span>
-                            <span className="text-slate-500">{rec.record_type} • {rec.created_at?.split('T')[0]}</span>
+                            <span className="text-slate-500">{rec.document_type || rec.record_type} • {rec.record_date || rec.created_at?.split('T')[0]}</span>
                           </div>
                         ))}
                       </div>
@@ -814,7 +1228,7 @@ export const AIAssistantModal: React.FC = () => {
                         onClick={() => setIsOpen(false)}
                         className="text-[10px] text-blue-600 hover:underline font-bold inline-flex items-center gap-1"
                       >
-                        <span>Open Records Manager</span>
+                        <span>{tUI('open_records')}</span>
                         <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
@@ -825,7 +1239,7 @@ export const AIAssistantModal: React.FC = () => {
                     <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                         <Stethoscope className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Pending Doctor Registrations ({m.actionData.doctors.length})</span>
+                        <span>{tUI('pending_doctors')} ({m.actionData.doctors.length})</span>
                       </div>
                       <div className="space-y-1.5">
                         {m.actionData.doctors.map((doc: any) => (
@@ -834,7 +1248,7 @@ export const AIAssistantModal: React.FC = () => {
                             className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-[10px]"
                           >
                             <span className="font-bold text-slate-900 dark:text-white block">Dr. {doc.name}</span>
-                            <span className="text-slate-500">{doc.specialization} • Lic: {doc.license_number}</span>
+                            <span className="text-slate-500">{doc.specialization} • Reg: {doc.registration_number || doc.license_number}</span>
                           </div>
                         ))}
                       </div>
@@ -843,7 +1257,7 @@ export const AIAssistantModal: React.FC = () => {
                         onClick={() => setIsOpen(false)}
                         className="text-[10px] text-indigo-600 hover:underline font-bold inline-flex items-center gap-1"
                       >
-                        <span>Open Admin Doctor Approvals</span>
+                        <span>{tUI('open_admin_approvals')}</span>
                         <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
@@ -864,12 +1278,12 @@ export const AIAssistantModal: React.FC = () => {
                         {isSpeaking && currentlySpeakingId === m.id ? (
                           <>
                             <Square className="w-3 h-3 fill-current text-teal-600" />
-                            <span>Stop Speaking</span>
+                            <span>{tUI('stop_speaking')}</span>
                           </>
                         ) : (
                           <>
                             <Volume2 className="w-3 h-3 text-brand-600 dark:text-brand-400" />
-                            <span>Read Aloud</span>
+                            <span>{tUI('read_aloud')}</span>
                           </>
                         )}
                       </button>
@@ -954,7 +1368,7 @@ export const AIAssistantModal: React.FC = () => {
                   <span className="w-3 h-3 rounded-full bg-red-500 absolute top-0 left-0" />
                 </div>
                 <div>
-                  <span className="font-bold block text-xs">Listening in {activeLangCode.toUpperCase()}...</span>
+                  <span className="font-bold block text-xs">{tUI('listening')} ({activeLangCode.toUpperCase()})</span>
                   <span className="text-[10px] text-teal-100">Speak naturally in your language</span>
                 </div>
               </div>
@@ -1002,7 +1416,7 @@ export const AIAssistantModal: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={isListening ? `Listening in ${activeLangCode.toUpperCase()}...` : 'Ask anything, book doctor, or cancel appointment...'}
+              placeholder={isListening ? `${tUI('listening')} (${activeLangCode.toUpperCase()})...` : tUI('input_placeholder')}
               className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
 

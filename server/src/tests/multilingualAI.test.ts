@@ -413,4 +413,71 @@ describe('CareSphere Multilingual AI Understanding & Real Action Execution Tests
       expect(res.body.reply).toContain('आपातकालीन');
     });
   });
+
+  // ==========================================
+  // 8. UNIVERSAL MULTILINGUAL CHATGPT-STYLE ARBITRARY QUESTION ANSWERING
+  // ==========================================
+  describe('Universal Multilingual ChatGPT-Style Knowledge Answering', () => {
+    it('answers arbitrary medical question in English with rich structured markdown and disclaimer', async () => {
+      const res = await request(app)
+        .post('/api/ai/chat')
+        .send({
+          message: 'What causes kidney stones and how does cellular hydration prevent them?',
+          language: 'en'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.reply).toBeDefined();
+      expect(res.body.reply.length).toBeGreaterThan(100);
+      expect(res.body.reply).toContain('CareSphere');
+      expect(res.body.suggested_actions).toBeDefined();
+      expect(res.body.suggested_actions).toContain('Show my appointments');
+    });
+
+    it('answers diabetes inquiry in native Tamil with localized advice and disclaimer', async () => {
+      const res = await request(app)
+        .post('/api/ai/chat')
+        .send({
+          message: 'சர்க்கரை நோய் மேலாண்மை மற்றும் உணவு முறைகள் பற்றி கூறுங்கள்',
+          language: 'ta'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.language).toBe('ta');
+      expect(res.body.reply).toContain('நீரிழிவு');
+      expect(res.body.reply).toContain('HbA1c');
+      expect(res.body.suggested_actions).toBeDefined();
+      expect(res.body.suggested_actions[0]).toBe('என் அப்பாய்ன்ட்மென்ட்கள்');
+    });
+
+    it('answers hypertension question in native Hindi with localized advice', async () => {
+      const res = await request(app)
+        .post('/api/ai/chat')
+        .send({
+          message: 'उच्च रक्तचाप (हाई ब्लड प्रेशर) को नियंत्रित करने के उपाय बताएं',
+          language: 'hi'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.language).toBe('hi');
+      expect(res.body.reply).toContain('रक्तचाप');
+      expect(res.body.suggested_actions).toBeDefined();
+      expect(res.body.suggested_actions[0]).toBe('मेरी अपॉइंटमेंट');
+    });
+
+    it('answers arbitrary general questions in Telugu with localized response', async () => {
+      const res = await request(app)
+        .post('/api/ai/chat')
+        .send({
+          message: 'మానవ శరీరంలో రోగనిరోధక శక్తిని పెంచడానికి ఉత్తమ మార్గాలు ఏమిటి?',
+          language: 'te'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.language).toBe('te');
+      expect(res.body.reply).toContain('ఆరోగ్య');
+      expect(res.body.suggested_actions).toBeDefined();
+      expect(res.body.suggested_actions[0]).toBe('నా అపాయింట్‌మెంట్‌లు');
+    });
+  });
 });

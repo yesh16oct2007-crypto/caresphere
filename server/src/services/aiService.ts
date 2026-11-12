@@ -8,6 +8,12 @@ import {
   getLatestContext,
   SessionContext
 } from './conversationMemory.js';
+import {
+  generateUniversalKnowledgeResponse,
+  normalizeLanguage,
+  SupportedLanguage,
+  MEDICAL_DISCLAIMERS
+} from './aiKnowledgeBrain.js';
 
 export interface ChatRequest {
   message: string;
@@ -76,6 +82,33 @@ const EMERGENCY_RESPONSES: Record<string, string> = {
   pa: `🚨 **ਮੈਡੀਕਲ ਐਮਰਜੈਂਸੀ ਅਲਰਟ**\n\nਤੁਹਾਡੇ ਸੁਨੇਹੇ ਅਨੁਸਾਰ ਇਹ ਇੱਕ ਗੰਭੀਰ ਐਮਰਜੈਂਸੀ ਹੋ ਸਕਦੀ ਹੈ। **ਕਿਰਪਾ ਕਰਕੇ ਔਨਲਾਈਨ ਮੁਲਾਕਾਤ ਦੀ ਉਡੀਕ ਨਾ ਕਰੋ।**\n\n**ਤੁਰੰਤ ਕਾਰਵਾਈ:**\n1. ਸਾਡੇ 24/7 ਹਸਪਤਾਲ ਐਮਰਜੈਂਸੀ ਨੰਬਰ ਤੇ ਕਾਲ ਕਰੋ: **+91-80-CARE-911**\n2. ਨੈਸ਼ਨਲ ਐਂਬੂਲੈਂਸ ਸੇਵਾ: **108** ਜਾਂ **112**\n3. ਬਿਨਾਂ ਦੇਰੀ ਕੀਤੇ ਤੁਰੰਤ ਨਜ਼ਦੀਕੀ ਹਸਪਤਾਲ ਦੇ ਐਮਰਜੈਂਸੀ ਰੂਮ ਵਿੱਚ ਪਹੁੰਚੋ।`
 };
 
+// Localized Suggested Actions across 10 Indian Regional Languages
+export const SUGGESTED_ACTIONS_BY_LANG: Record<string, string[]> = {
+  en: ['Show my appointments', 'Book Doctor Appointment', 'Available Medicines', 'Hospital Facilities'],
+  ta: ['என் அப்பாய்ன்ட்மென்ட்கள்', 'மருத்துவர் முன்பதிவு', 'மருந்துகள் இருப்பு', 'மருத்துவமனை வசதிகள்'],
+  hi: ['मेरी अपॉइंटमेंट', 'डॉक्टर बुक करें', 'उपलब्ध दवाएं', 'अस्पताल सुविधाएं'],
+  te: ['నా అపాయింట్‌మెంట్‌లు', 'డాక్టర్‌ను బుక్ చేయండి', 'అందుబాటులో ఉన్న మందులు', 'ఆసుపత్రి సౌకర్యాలు'],
+  kn: ['ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್', 'ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕಿಂಗ್', 'ಲಭ್ಯವಿರುವ ಔಷಧಿಗಳು', 'ಆಸ್ಪತ್ರೆ ಸೌಲಭ್ಯಗಳು'],
+  ml: ['എന്റെ അപ്പോയിന്റ്മെന്റുകൾ', 'ഡോക്ടറെ ബുക്ക് ചെയ്യുക', 'ലഭ്യമായ മരുന്നുകൾ', 'ആശുപത്രി സൗകര്യങ്ങൾ'],
+  bn: ['আমার অ্যাপয়েন্টমেন্ট', 'ডাক্তার বুক করুন', 'উপলব্ধ ওষুধ', 'হাসপাতালের সুবিধাসমূহ'],
+  mr: ['माझी अपॉइंटमेंट', 'डॉक्टर बुक करा', 'उपलब्ध औषधे', 'रुग्णालय सुविधा'],
+  gu: ['મારી એપોઇન્ટમેન્ટ', 'ડૉક્ટર બુક કરો', 'ઉપલબ્ધ દવાઓ', 'હોસ્પિટલ સુવિધાઓ'],
+  pa: ['ਮੇਰੀ ਮੁਲਾਕਾਤ', 'ਡਾਕਟਰ ਬੁੱਕ ਕਰੋ', 'ਉਪਲਬਧ ਦਵਾਈਆਂ', 'ਹਸਪਤਾਲ ਦੀਆਂ ਸਹੂਲਤਾਂ']
+};
+
+export const EMERGENCY_SUGGESTED_ACTIONS: Record<string, string[]> = {
+  en: ['Call +91-80-CARE-911', 'Visit Emergency Bay Ground Floor', 'Call Ambulance 108'],
+  ta: ['அழைக்கவும் +91-80-CARE-911', 'அவசர சிகிச்சை பிரிவு (தரைத்தளம்)', 'ஆம்புலன்ஸ் 108 அழைக்கவும்'],
+  hi: ['कॉल करें +91-80-CARE-911', 'इमरजेंसी वार्ड ग्राउंड फ्लोर जाएं', 'एम्बुलेंस 108 पर कॉल करें'],
+  te: ['కాల్ చేయండి +91-80-CARE-911', 'ఎమర్జెన్సీ వార్డుకు వెళ్లండి', 'అంబులెన్స్ 108'],
+  kn: ['ಕರೆ ಮಾಡಿ +91-80-CARE-911', 'ತುರ್ತು ಚಿಕಿತ್ಸಾ ವಿಭಾಗಕ್ಕೆ ಭೇಟಿ ನೀಡಿ', 'ಆಂಬ್ಯುಲೆನ್ಸ್ 108'],
+  ml: ['വിളിക്കുക +91-80-CARE-911', 'അത്യാഹിത വിഭാഗത്തിൽ എത്തുക', 'ആംബുലൻസ് 108'],
+  bn: ['কল করুন +91-80-CARE-911', 'জরুরী ট্রমা বিভাগে যান', 'অ্যাম্বুলেন্স ১০৮'],
+  mr: ['कॉल करा +91-80-CARE-911', 'आपत्कालीन वॉर्डमध्ये जा', 'रुग्णवाहिका 108'],
+  gu: ['કૉલ કરો +91-80-CARE-911', 'ઇમરજન્સી રૂમમાં જાઓ', 'એમ્બ્યુલન્સ 108'],
+  pa: ['ਕਾਲ ਕਰੋ +91-80-CARE-911', 'ਐਮਰਜੈਂਸੀ ਰੂਮ ਪਹੁੰਚੋ', 'ਐਂਬੂਲੈਂਸ 108']
+};
+
 export async function processChatMessage(req: ChatRequest): Promise<ChatResponse> {
   const { message, language: requestedLang, sessionId: passedSessionId, user } = req;
   const userText = message ? message.trim() : '';
@@ -114,7 +147,7 @@ export async function processChatMessage(req: ChatRequest): Promise<ChatResponse
         { name: 'National Medical Ambulance', number: '108 / 112' },
         { name: 'CareSphere Main Desk', number: '+91-80-4911-2000' }
       ],
-      suggested_actions: ['Call +91-80-CARE-911', 'Visit Emergency Bay Ground Floor', 'Call Ambulance 108'],
+      suggested_actions: EMERGENCY_SUGGESTED_ACTIONS[activeLang] || EMERGENCY_SUGGESTED_ACTIONS.en,
       source: 'verified_knowledge_base'
     };
     saveConversationMessage(sessionId, user?.id || null, 'assistant', reply, activeLang, 'EMERGENCY_SOS');
@@ -156,11 +189,19 @@ export async function processChatMessage(req: ChatRequest): Promise<ChatResponse
   }
 
   if (parsed.intent === 'REJECT_ACTION' && latestContext?.pending_action) {
-    const cancelNotice = activeLang === 'ta'
-      ? 'நடவடிக்கை ரத்து செய்யப்பட்டது. உங்கள் அப்பாய்ன்ட்மென்ட் மாற்றப்படவில்லை.'
-      : activeLang === 'hi'
-      ? 'क्रिया रद्द कर दी गई है। आपकी अपॉइंटमेंट में कोई बदलाव नहीं हुआ है।'
-      : 'Action aborted. No changes were made to your appointment.';
+    const cancelNoticeMap: Record<string, string> = {
+      en: 'Action aborted. No changes were made to your appointment.',
+      ta: 'நடவடிக்கை ரத்து செய்யப்பட்டது. உங்கள் அப்பாய்ன்ட்மென்ட் மாற்றப்படவில்லை.',
+      hi: 'क्रिया रद्द कर दी गई है। आपकी अपॉइंटमेंट में कोई बदलाव नहीं हुआ है।',
+      te: 'చర్య రద్దు చేయబడింది. మీ అపాయింట్‌మెంట్‌లో ఎలాంటి మార్పులు జరగలేదు.',
+      kn: 'ಕ್ರಿಯೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ನಲ್ಲಿ ಯಾವುದೇ ಬದಲಾವಣೆಗಳಾಗಿಲ್ಲ.',
+      ml: 'നടപടി റദ്ദാക്കി. നിങ്ങളുടെ അപ്പോയിന്റ്മെന്റിൽ മാറ്റങ്ങളൊന്നും വരുത്തിയിട്ടില്ല.',
+      bn: 'পদক্ষেপ বাতিল করা হয়েছে। আপনার অ্যাপয়েন্টমেন্টে কোনো পরিবর্তন করা হয়নি।',
+      mr: 'क्रिया रद्द केली आहे. आपल्या अपॉइंटमेंटमध्ये कोणताही बदल झालेला नाही.',
+      gu: 'ક્રિયા રદ કરવામાં આવી છે. તમારી એપોઇન્ટમેન્ટમાં કોઈ ફેરફાર થયો નથી.',
+      pa: 'ਕਾਰਵਾਈ ਰੱਦ ਕਰ ਦਿੱਤੀ ਗਈ ਹੈ। ਤੁਹਾਡੀ ਮੁਲਾਕਾਤ ਵਿੱਚ ਕੋਈ ਬਦਲਾਅ ਨਹੀਂ ਹੋਇਆ।'
+    };
+    const cancelNotice = cancelNoticeMap[activeLang] || cancelNoticeMap.en;
 
     saveConversationMessage(sessionId, user?.id || null, 'assistant', cancelNotice, activeLang);
 
@@ -168,7 +209,7 @@ export async function processChatMessage(req: ChatRequest): Promise<ChatResponse
       reply: cancelNotice,
       language: activeLang,
       is_emergency: false,
-      suggested_actions: ['Show my appointments', 'Book Doctor Appointment'],
+      suggested_actions: SUGGESTED_ACTIONS_BY_LANG[activeLang] || SUGGESTED_ACTIONS_BY_LANG.en,
       source: 'action_executor'
     };
   }
@@ -227,46 +268,56 @@ export async function processChatMessage(req: ChatRequest): Promise<ChatResponse
   `).all() as any[];
   const facilities = db.prepare('SELECT name, category, timing, location FROM hospital_facilities').all() as any[];
 
-  // 8. Try LLM API (Gemini 1.5 Flash) if Key Configured
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey) {
+  // 8. Try LLM API (Gemini or OpenAI) if Key Configured
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (geminiKey || openaiKey) {
     try {
-      const response = await callGeminiAPI(userText, activeLang, departments, doctors, facilities, apiKey, history);
+      const response = await callLLMAPI(userText, activeLang, departments, doctors, facilities, { geminiKey, openaiKey }, history);
       saveConversationMessage(sessionId, user?.id || null, 'assistant', response, activeLang);
       return {
         reply: response,
         language: activeLang,
         is_emergency: false,
+        suggested_actions: SUGGESTED_ACTIONS_BY_LANG[activeLang] || SUGGESTED_ACTIONS_BY_LANG.en,
         source: 'gemini_api'
       };
     } catch (apiErr) {
-      console.warn('Gemini API call failed or timed out. Falling back to autonomous grounded knowledge engine:', apiErr);
+      console.warn('LLM API call failed or timed out. Falling back to autonomous grounded knowledge engine:', apiErr);
     }
   }
 
   // 9. Intelligent Multilingual Grounded Knowledge Engine (Fallback & Offline-First)
-  const localReply = generateLocalKnowledgeResponse(userText, activeLang, departments, doctors, facilities);
+  const localReply = generateUniversalKnowledgeResponse(userText, activeLang, {
+    departments,
+    doctors,
+    facilities,
+    history,
+    userName: user?.name,
+    userRole: user?.role
+  });
   saveConversationMessage(sessionId, user?.id || null, 'assistant', localReply, activeLang);
 
   return {
     reply: localReply,
     language: activeLang,
     is_emergency: false,
-    suggested_actions: ['Show my appointments', 'Book Doctor Appointment', 'Available Medicines', 'Hospital Facilities'],
+    suggested_actions: SUGGESTED_ACTIONS_BY_LANG[activeLang] || SUGGESTED_ACTIONS_BY_LANG.en,
     source: 'verified_knowledge_base'
   };
 }
 
 /**
- * Call Gemini API with timeout, retry, and conversation history
+ * Call Gemini or OpenAI LLM API with timeout, retry, and full conversation history
+ * Configured to answer ANY question thoroughly like ChatGPT in the requested language
  */
-async function callGeminiAPI(
+async function callLLMAPI(
   message: string,
   language: string,
   departments: any[],
   doctors: any[],
   facilities: any[],
-  apiKey: string,
+  keys: { geminiKey?: string; openaiKey?: string },
   history: { role: 'user' | 'assistant'; content: string }[] = []
 ): Promise<string> {
   const languageNames: Record<string, string> = {
@@ -284,7 +335,7 @@ async function callGeminiAPI(
 
   const targetLanguage = languageNames[language] || 'English';
 
-  const systemPrompt = `You are CareSphere AI, an intelligent, empathetic, and multilingual hospital assistant for CareSphere Multispeciality Hospital Network.
+  const systemPrompt = `You are CareSphere AI, an intelligent, empathetic, and comprehensive conversational healthcare AI assistant like ChatGPT for the CareSphere Multi-Hospital Network.
 Hospital Emergency Hotline: +91-80-CARE-911 | Ambulance: 108 / 112 | General Desk: +91-80-4911-2000.
 Hospital OPD Timings: Mon-Sat 08:00 AM - 08:00 PM. Emergency: 24/7. Visiting hours: 4-7 PM.
 
@@ -297,144 +348,106 @@ ${doctors.map(d => `- Dr. ${d.name} (${d.specialization}, Dept: ${d.dept_name}, 
 FACILITIES:
 ${facilities.map(f => `- ${f.name} (${f.timing}, Location: ${f.location})`).join('\n')}
 
-INSTRUCTIONS:
+CRITICAL INSTRUCTIONS:
 1. You MUST reply in the requested language: ${targetLanguage}.
-2. If the user uses transliterated language (such as Tanglish, Hinglish, Tenglish), reply naturally in that conversational style or native script.
-3. Understand spelling mistakes and grammatical variations sympathetically.
-4. If the user asks to book an appointment or view records, provide direct and clear answers based on verified doctor records.
-5. Never invent doctor names or degrees. Never provide an independent diagnosis or prescribe medication dosages.
-6. Always append a short, respectful medical disclaimer stating that you are an AI assistant and not a medical doctor.`;
+2. Answer ANY user question thoroughly, accurately, empathetically, and comprehensively like ChatGPT in ${targetLanguage}.
+3. You can answer medical science, human anatomy, symptoms, medications, home remedies, laboratory tests, diet, lifestyle, disease mechanisms, general inquiries, and hospital navigation.
+4. Format your response with clear headings, bullet points, and well-structured markdown.
+5. If the user uses transliterated language (such as Tanglish, Hinglish, Tenglish), reply naturally in that conversational style or native script.
+6. Understand spelling mistakes, colloquial terms, and grammatical variations sympathetically.
+7. If the user asks to book an appointment or view records, provide direct and clear answers based on verified doctor records.
+8. Never refuse a question or say you cannot answer. You have full clinical and general knowledge.
+9. Always append a short, respectful medical disclaimer in ${targetLanguage} stating that you are an AI assistant and not a medical doctor.`;
 
-  const model = process.env.AI_MODEL || 'gemini-1.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  if (keys.geminiKey) {
+    const model = process.env.AI_MODEL || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keys.geminiKey}`;
 
-  const contents = [
-    ...history.slice(-4).map(h => ({
-      role: h.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: h.content }]
-    })),
-    {
-      role: 'user',
-      parts: [{ text: `${systemPrompt}\n\nUser Message (${targetLanguage}): ${message}` }]
-    }
-  ];
+    const contents = [
+      ...history.slice(-4).map(h => ({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }]
+      })),
+      {
+        role: 'user',
+        parts: [{ text: `${systemPrompt}\n\nUser Message (${targetLanguage}): ${message}` }]
+      }
+    ];
 
-  const payload = {
-    contents,
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 600
-    }
-  };
+    const payload = {
+      contents,
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 900
+      }
+    };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7500);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7500);
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      throw new Error(`Gemini API HTTP status ${res.status}`);
-    }
+      if (!res.ok) {
+        throw new Error(`Gemini API HTTP status ${res.status}`);
+      }
 
-    const data = await res.json() as any;
-    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!answer) throw new Error('No text returned by Gemini API');
-    return answer;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
-  }
-}
-
-// Local grounded knowledge response generator
-function generateLocalKnowledgeResponse(
-  query: string,
-  lang: string,
-  departments: any[],
-  doctors: any[],
-  facilities: any[]
-): string {
-  const q = query.toLowerCase();
-
-  const templates: Record<string, any> = {
-    en: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** is our approved specialist in **${doc.specialization}** (${doc.dept_name}).\n• Experience: ${doc.experience_years} years\n• Consultation Fee: ₹${doc.consultation_fee}\n\nYou can book an appointment directly by saying *"Book Dr. ${doc.name}"* or via the Doctors directory.`,
-      dept_list: `Our verified departments include:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}\n\nYou can filter doctors by department in the Directory.`,
-      booking_info: `**CareSphere Appointment Booking:**\n• Say *"Book Dr. [Doctor Name]"* or *"Book Cardiology tomorrow at 10 AM"* to schedule instantly.\n• You can also view available specialists in the Doctors tab.\n• Appointments can be rescheduled or cancelled anytime by saying *"Show my appointments"* or *"Cancel my appointment"*.`,
-      facilities_info: `**CareSphere Hospital Facilities:**\n• 24/7 Emergency & Trauma Bay (Ground Floor, Direct Ambulance Access)\n• Automated Diagnostic Pathology Lab (NABL Accredited)\n• Digital 3T MRI & 128-Slice CT Scan (Basement 1)\n• 24/7 In-House Pharmacy\n• Multilingual Patient Assistance Desks at Main Entrance.`,
-      general_health: `Thank you for reaching out to CareSphere. For your symptoms, we recommend scheduling an evaluation with our specialist doctors. You can tell me *"Book an appointment"* or *"Show available doctors"*.\n\n*Note: CareSphere AI provides hospital navigation and guidance. Professional diagnosis requires a clinical consultation.*`,
-      visiting_hours: `**Hospital Timings & Visiting Hours:**\n• OPD Clinics: Monday to Saturday, 08:00 AM - 08:00 PM\n• Emergency Trauma Unit: Open 24/7, 365 Days\n• General Ward Visiting Hours: 04:00 PM - 07:00 PM\n• ICU Visiting Hours: 11:00 AM - 12:00 PM & 05:00 PM - 06:00 PM`
-    },
-    ta: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** அவர்கள் **${doc.specialization}** (${doc.dept_name}) துறையில் எங்கள் சரிபார்க்கப்பட்ட நிபுணர் ஆவார்.\n• அனுபவம்: ${doc.experience_years} ஆண்டுகள்\n• ஆலோசனைக் கட்டணம்: ₹${doc.consultation_fee}\n\nமுன்பதிவு செய்ய *"Book Dr. ${doc.name}"* என்று சொல்லலாம்.`,
-      dept_list: `கேர்ஸ்பியர் மருத்துவமனை துறைகள்:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}\n\nமருத்துவர் பட்டியலில் துறைவாரியாக தேடலாம்.`,
-      booking_info: `**அப்பாய்ன்ட்மென்ட் முன்பதிவு:**\n• *"Book Cardiology"* அல்லது *"Dr. ${doctors[0]?.name || 'Doctor'} உடன் நாளை காலை 10 மணிக்கு முன்பதிவு செய்"* என்று கூறலாம்.\n• உங்கள் அப்பாய்ன்ட்மென்ட்களைப் பார்க்க *"Show my appointments"* என்று கூறவும்.`,
-      facilities_info: `**கேர்ஸ்பியர் மருத்துவமனை வசதிகள்:**\n• 24/7 அவசர சிகிச்சை மற்றும் விபத்து பிரிவு (தரைத்தளம்)\n• முழு தானியங்கி நோயியல் ஆய்வகம் (NABL அங்கீகாரம்)\n• 3T MRI மற்றும் அதிநவீன CT ஸ்கேன்\n• 24 மணி நேர மருந்தகம்\n• பலமொழி உதவி மையம்.`,
-      general_health: `உங்கள் ஆரோக்கிய விவரங்களுக்கு நன்றி. துல்லியமான மருத்துவ பரிசோதனைக்கு எங்கள் மருத்துவரை நேரில் சந்திக்குமாறு பரிந்துரைக்கிறோம். "Book appointment" மூலம் முன்பதிவு செய்யலாம்.\n\n*குறிப்பு: இந்த AI உதவி மருத்துவ தகவல்களை மட்டுமே வழங்குகிறது; மருத்துவ ஆலோசனைக்கு மாற்றாகாது.*`,
-      visiting_hours: `**மருத்துவமனை நேரம்:**\n• புறநோயாளிகள் பிரிவு (OPD): திங்கள் - சனி, காலை 08:00 - இரவு 08:00\n• அவசர சிகிச்சை: 24 மணி நேரமும் செயல்படுகிறது.`
-    },
-    hi: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** हमारे **${doc.specialization}** (${doc.dept_name}) के स्वीकृत विशेषज्ञ हैं।\n• अनुभव: ${doc.experience_years} वर्ष\n• परामर्श शुल्क: ₹${doc.consultation_fee}\n\nअपॉइंटमेंट के लिए *"Book Dr. ${doc.name}"* कहें।`,
-      dept_list: `प्रमुख विभाग:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**अपॉइंटमेंट बुकिंग:**\n• सीधे बुक करने के लिए *"Dr. ${doctors[0]?.name || 'Specialist'} के साथ कल 10 बजे बुक करो"* कहें।\n• अपनी अपॉइंटमेंट देखने के लिए *"मेरी अपॉइंटमेंट दिखाओ"* कहें।`,
-      facilities_info: `**केयरस्फ़ीयर अस्पताल सुविधाएं:**\n• 24/7 आपातकालीन एवं ट्रॉमा सेंटर\n• आधुनिक पैथोलॉजी लैब व 24 घंटे फार्मेसी।`,
-      general_health: `लक्षणों के सटीक मूल्यांकन हेतु हम संबंधित विशेषज्ञ डॉक्टर से परामर्श लेने की सलाह देते हैं।\n\n*नोट: यह AI केवल सामान्य जानकारी प्रदान करता है, चिकित्सीय परामर्श का विकल्प नहीं है।*`,
-      visiting_hours: `**अस्पताल का समय:**\n• ओपीडी: सोमवार से शनिवार, सुबह 08:00 से रात 08:00 तक\n• इमरजेंसी: 24 घंटे खुली है।`
-    },
-    te: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** గారు **${doc.specialization}** (${doc.dept_name}) విభాగంలో నిపుణులు.\n• అనుభవం: ${doc.experience_years} సంవత్సరాలు\n• రుసుము: ₹${doc.consultation_fee}`,
-      dept_list: `ఆసుపత్రి విభాగాలు:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**అపాయింట్‌మెంట్ బుకింగ్:**\n• *"Book Dr. ${doctors[0]?.name || 'Doctor'}"* అని చెప్పి వెంటనే బుక్ చేసుకోవచ్చు.`,
-      facilities_info: `**సౌకర్యాలు:**\n• 24/7 ఎమర్జెన్సీ & ట్రామా బే\n• అధునాతన పాథాలజీ ల్యాబ్ & 24 గంటల ఫార్మసీ.`,
-      general_health: `సరియైన రోగ నిర్ధారణ కొరకు దయచేసి మా నిపుణులైన వైద్యుడిని సంప్రదించండి.\n\n*గమనిక: ఈ సమాచారం సాధారణ అవగాహన కోసం మాత్రమే.*`,
-      visiting_hours: `**సందర్శన వేళలు:**\n• OPD వేళలు: సోమవారం - శనివారం, ఉదయం 08:00 నుండి రాత్రి 08:00 వరకు\n• ఎమర్జెన్సీ: 24 గంటలు అందుబాటులో ఉంటుంది.`
-    },
-    kn: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** ರವರು **${doc.specialization}** (${doc.dept_name}) ವಿಭಾಗದ ತಜ್ಞರು.\n• ಶುಲ್ಕ: ₹${doc.consultation_fee}`,
-      dept_list: `ವಿಭಾಗಗಳು:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕಿಂಗ್:**\n• *"Book appointment"* ಎಂದು ಹೇಳಿ ಸುಲಭವಾಗಿ ಬುಕ್ ಮಾಡಬಹುದು.`,
-      facilities_info: `**ಸೌಲಭ್ಯಗಳು:**\n• 24/7 ತುರ್ತು ಚಿಕಿತ್ಸಾ ಘಟಕ ಹಾಗೂ ಔಷಧಾಲಯ.`,
-      general_health: `ವೈದ್ಯಕೀಯ ತಪಾಸಣೆಗಾಗಿ ದಯವಿಟ್ಟು ನಮ್ಮ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.`,
-      visiting_hours: `**ಸಮಯ:**\n• ಒಪಿಡಿ: ಬೆಳಿಗ್ಗೆ 08:00 ರಿಂದ ರಾತ್ರಿ 08:00 ರವರೆಗೆ.`
-    },
-    ml: {
-      doctor_match: (doc: any) => `**Dr. ${doc.name}** **${doc.specialization}** വിഭാഗത്തിലെ വിദഗ്ദ്ധനാണ്.\n• ഫീസ്: ₹${doc.consultation_fee}`,
-      dept_list: `വിഭാഗങ്ങൾ:\n${departments.map(d => `• **${d.name}** (${d.floor})`).join('\n')}`,
-      booking_info: `**അപ്പോയിന്റ്മെന്റ്:**\n• ബുക്ക് ചെയ്യാൻ *"Book Dr. ${doctors[0]?.name || 'Doctor'}"* എന്ന് പറയുക.`,
-      facilities_info: `**സൗകര്യങ്ങൾ:**\n• 24/7 എമർജൻസി കെയർ, ലാബ്, ഫാർമസി.`,
-      general_health: `കൃത്യമായ പരിശോധനക്കായി ദയവായി ഡോക്ടറെ നേരിൽ കാണുക.`,
-      visiting_hours: `**സമയം:** ഒപിഡി രാവിലെ 08:00 മുതൽ രാത്രി 08:00 വരെ.`
-    }
-  };
-
-  const t = templates[lang] || templates.en;
-
-  for (const doc of doctors) {
-    const lastName = doc.name.split(' ').slice(-1)[0].toLowerCase();
-    if (q.includes(lastName) || q.includes(doc.name.toLowerCase())) {
-      return t.doctor_match(doc);
+      const data = await res.json() as any;
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!answer) throw new Error('No text returned by Gemini API');
+      return answer;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
     }
   }
 
-  if (q.includes('department') || q.includes('special') || q.includes('துறை') || q.includes('विभाग') || q.includes('విభాగం')) {
-    return t.dept_list;
+  // Fallback to OpenAI API if OPENAI_API_KEY is configured
+  if (keys.openaiKey) {
+    const model = process.env.AI_MODEL || 'gpt-4o-mini';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7500);
+
+    try {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...history.slice(-4).map(h => ({ role: h.role, content: h.content })),
+        { role: 'user', content: `[Respond in ${targetLanguage}]\n${message}` }
+      ];
+
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${keys.openaiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.3,
+          max_tokens: 900
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`OpenAI API HTTP ${res.status}`);
+      const data = await res.json() as any;
+      const answer = data.choices?.[0]?.message?.content;
+      if (!answer) throw new Error('No text returned by OpenAI API');
+      return answer;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
   }
 
-  if (q.includes('facility') || q.includes('pharmacy') || q.includes('lab') || q.includes('மருந்தகம்') || q.includes('दवाखाना')) {
-    return t.facilities_info;
-  }
-
-  if (q.includes('timing') || q.includes('hour') || q.includes('visit') || q.includes('நேரம்') || q.includes('समय')) {
-    return t.visiting_hours;
-  }
-
-  return t.general_health;
+  throw new Error('No LLM API key configured');
 }
